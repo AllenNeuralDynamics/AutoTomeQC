@@ -1,13 +1,13 @@
-# aind-python-library-template
+# AutoTomeQC
+Sectioning Quality Control
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 
-
-This is a repository template to quickly setup a python library project. This repository utilizes a tool called **uv** to handle all dependency and package management. For more information on this tool go to the [uv wiki](https://docs.astral.sh/uv/). 
-
 ##  Getting Started
-
-- To use this template, click the green ``Use this template`` button and ``Create new repository``.
 - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
+```bash
+uv sync
+uv run python -m autotomeqc
+```
 
 ## Tools
 
