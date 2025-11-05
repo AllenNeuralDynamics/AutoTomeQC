@@ -1,10 +1,16 @@
 [project]
-name = "mypackage"
+name = "autotomeqc"
 version = "0.1.0"
 
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "ultralytics>=8.2.0",
+    "torch>=2.3.0",
+    "numpy>=1.26.0",
+    "opencv-python>=4.9.0",
+
+    # Development/Testing Tools (kept from original)
     "pytest>=8.3.5",
     "ruff>=0.9.9",
 ]
@@ -18,4 +24,4 @@ docs = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "tests"]
+pythonpath = ["autotomeqc", "tests"]
