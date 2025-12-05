@@ -5,8 +5,8 @@ from pathlib import Path
 import os
 
 
-TEST_IMG_DIR = Path(r"C:\Users\hanna.lee\Documents\01_lasso\001_data\Training_data_segmask\Trained\qc3_postpickup_20251027_cropped")
-TEST_OUT_DIR = Path(r"C:\Users\hanna.lee\Documents\01_lasso\001_data\Training_data_segmask\Trained\qc3_postpickup_20251027_cropped_out")
+TEST_IMG_DIR = Path(r"C:\Users\hanna.lee\Documents\00_AutoTomeQC\001_Training_data_segmask\qc3_postpickup_20251027_cropped")
+TEST_OUT_DIR = Path(r"C:\Users\hanna.lee\Documents\00_AutoTomeQC\001_Training_data_segmask\qc3_postpickup_20251027_cropped\cropped_segmented")
 os.makedirs(TEST_OUT_DIR, exist_ok=True)
 
 def load_app_config(filename: str = 'yolo-config.yaml') -> dict:

@@ -1,9 +1,10 @@
 qc:
-  fps: 5
+  fps: 1
   yolo:
     weights_path: "weights/seg_fast.pt" 
-    conf_thresh: 0.25
+    conf_thresh: 0.90
     iou_thresh: 0.45
-    img_size: 640
-    img_dim: [640, 480]
+    img_size: 960
+    img_dim: [960, 960]
     max_det: 30
+    loop_bbox_margin: 30

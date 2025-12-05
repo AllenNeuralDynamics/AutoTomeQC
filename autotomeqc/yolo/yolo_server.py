@@ -29,6 +29,7 @@ class YoloSegmentation:
         self.img_size = config.get('img_size', 640)
         self.img_dim = config.get('img_dim', [640, 480])  # input image dimension for YOLO (w, h)
         self.max_det = config.get('max_det', 30)
+        self.loop_bbox_margin = config.get('loop_bbox_margin', 30)
         self.model = None
         self.frame_queue = deque(maxlen=1)
         self.running = False
@@ -105,7 +106,7 @@ class YoloSegmentation:
             self.worker_thread.join(timeout=1.0)
         self.logger.info("YOLO segmentation worker stopped")
         
-    def process_frame(self, frame: np.ndarray, ts: float = None):
+    def process_frame(self, frame: np.ndarray, ts: float = None, filename: str = ""):
         """Add frame to processing queue"""
         if not self.running:
             return
@@ -114,7 +115,7 @@ class YoloSegmentation:
         try:
             # Clear old frame and append new one to ensure only the latest frame is processed
             self.frame_queue.clear() 
-            self.frame_queue.append((frame, ts))
+            self.frame_queue.append((frame, ts, filename))
         except:
             pass
             
@@ -123,7 +124,7 @@ class YoloSegmentation:
         while self.running:
             try:
                 if len(self.frame_queue) > 0:
-                    (frame, ts) = self.frame_queue.pop()
+                    (frame, ts, filename) = self.frame_queue.pop()
                     detections = []
                     
                     if self.model is None:
@@ -172,13 +173,14 @@ class YoloSegmentation:
                                         'class_name': class_name,
                                         'confidence': conf,
                                         'id': search_id,
-                                        'mask': masks_data.get(i, [])
+                                        'mask': masks_data.get(i, []),
+                                        'loop_bbox_margin': self.loop_bbox_margin
                                     }
                                     detections.append(detection)
                     
                     # Call the provided callback function with detections
                     if self.detection_callback:
-                        self.detection_callback(frame, detections)
+                        self.detection_callback(frame, detections, filename)
                 else:
                     # No frames to process, sleep briefly
                     time.sleep(0.01)

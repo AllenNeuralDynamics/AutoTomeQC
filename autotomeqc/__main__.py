@@ -5,13 +5,13 @@ import cv2
 
 from autotomeqc.yolo.yolo_client import YOLOClient
 from autotomeqc.config.config_loader import CONFIG, TEST_IMG_DIR
-from autotomeqc.yolo.visualization import handle_detections
+from autotomeqc.yolo.visualization import cropped_segmented
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def main() -> None:
-    yolo = YOLOClient(config=CONFIG["qc"], detection_callback=handle_detections)
+    yolo = YOLOClient(config=CONFIG["qc"], detection_callback=cropped_segmented)
     yolo.start_client()
 
     image_files = [f for f in TEST_IMG_DIR.glob("*.jpg")]
@@ -25,8 +25,9 @@ def main() -> None:
         """
         for file_path in image_files:
             frame = cv2.imread(str(file_path))
-            yolo.newframe_captured(frame, current=time.time())
-            time.sleep(0.5)
+            print("... Processing file:", file_path.name)
+            yolo.newframe_captured(frame, current=time.time(), filename=file_path.stem)
+            time.sleep(3)
 
     except KeyboardInterrupt:
         print("Stopping Yolo...")
