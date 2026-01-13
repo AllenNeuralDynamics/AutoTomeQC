@@ -1,40 +1,32 @@
 import logging
 import sys
 import time
-import cv2
-
-from autotomeqc.yolo.yolo_client import YOLOClient
-from autotomeqc.config.config_loader import CONFIG, TEST_IMG_DIR
-from autotomeqc.yolo.visualization import cropped_segmented
+from autotomeqc.config.config_loader import TEST_IMG_DIR
+from autotomeqc.core.pipeline import AutoTomePipeline
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 def main() -> None:
-    yolo = YOLOClient(config=CONFIG["qc"], detection_callback=cropped_segmented)
-    yolo.start_client()
+    pipeline = AutoTomePipeline()
+    pipeline.start()
 
-    image_files = [f for f in TEST_IMG_DIR.glob("*.jpg")]
+    # Temporary: Process all images in the test directory
+    # This simulates feeding images to the pipeline
+    image_files = list(TEST_IMG_DIR.glob("*.jpg"))
+
     try:
-        """
-        w, h = CONFIG['qc']['yolo']['img_dim']
-        for i in range(50):
-            dummy_frame = np.random.randint(0, 255, (h, w, 3), dtype=np.uint8)
-            yolo.newframe_captured(dummy_frame)
-            sleep(0.05) # Simulate frame capture rate
-        """
-        for file_path in image_files:
-            frame = cv2.imread(str(file_path))
-            print("... Processing file:", file_path.name)
-            yolo.newframe_captured(frame, current=time.time(), filename=file_path.stem)
-            time.sleep(3)
+        for file_path in image_files[:2]:
+            logging.info(f"Feeding image: {file_path.name}")
+            pipeline.process_image(file_path)
+            # Simulating capture rate.
+            time.sleep(5)
 
     except KeyboardInterrupt:
-        print("Stopping Yolo...")
+        logging.info("Interrupted by user.")
         
     finally:
-        yolo.stop()
-        print("Yolo stopped.")
+        pipeline.stop()
+        logging.info("Pipeline finished.")
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,4 @@
+# Temp file for testing environment configuration to run locally
 # src/autotomeqc/config/config_loader.py
 
 import yaml
@@ -5,8 +6,8 @@ from pathlib import Path
 import os
 
 
-TEST_IMG_DIR = Path(r"C:\Users\hanna.lee\Documents\00_AutoTomeQC\001_Training_data_segmask\qc3_postpickup_20251027_cropped")
-TEST_OUT_DIR = Path(r"C:\Users\hanna.lee\Documents\00_AutoTomeQC\001_Training_data_segmask\qc3_postpickup_20251027_cropped\cropped_segmented")
+TEST_IMG_DIR = Path(r"C:\Users\hanna.lee\Documents\00_AutoTomeQC\001_Training_data_segmask\qc3_postpickup_20251027_cropped\input")
+TEST_OUT_DIR = Path(r"C:\Users\hanna.lee\Documents\00_AutoTomeQC\001_Training_data_segmask\qc3_postpickup_20251027_cropped\seg_output")
 os.makedirs(TEST_OUT_DIR, exist_ok=True)
 
 def load_app_config(filename: str = 'yolo-config.yaml') -> dict:
