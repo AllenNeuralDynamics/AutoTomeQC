@@ -4,8 +4,7 @@ import time
 import threading
 from unittest.mock import MagicMock, patch
 
-# Assuming YoloSegmentation is available for import
-from autotomeqc.yolo.yolo_server import YoloSegmentation 
+from autotomeqc.yolo_segmentation.yolo_server import YoloSegmentation
 
 # ---------------------------------------------
 # --- Mocking Setup ---

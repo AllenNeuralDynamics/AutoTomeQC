@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from unittest.mock import MagicMock, patch
-from autotomeqc.yolo.yolo_client import YOLOClient
+from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
 
 
 def test_yolo_client_like_example_usage(monkeypatch):

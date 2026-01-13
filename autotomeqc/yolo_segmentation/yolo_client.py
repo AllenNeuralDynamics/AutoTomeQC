@@ -1,6 +1,6 @@
 import numpy as np
 import logging
-from autotomeqc.yolo.yolo_server import YoloSegmentation
+from autotomeqc.yolo_segmentation.yolo_server import YoloSegmentation
 
 class YOLOClient:
     def __init__(self, config={}, detection_callback=None):
