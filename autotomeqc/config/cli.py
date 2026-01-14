@@ -40,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "output_path",
+        "output_json_path",
         type=Path,
         metavar="output_json",
         help="Path where the output JSON QC results will be saved.",
@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
 def print_arg_info(args):
     print(ASCII_ART)
     print(f"Processing Image: {args.input_image_path}")
-    print(f"Output Target:    {args.output_path}")
+    print(f"Output Target:    {args.output_json_path}")
     
     if args.save_segmented_image:
         print(f"Save Debug Img:   {args.save_segmented_image}")
@@ -74,4 +74,4 @@ if __name__ == "__main__":
         print(f"\nError: Input file '{args.input_image_path}' does not exist.")
         sys.exit(1)
         
-    print(f"\nReady to process '{args.input_image_path.name}' -> JSON... {args.output_path}")
+    print(f"\nReady to process '{args.input_image_path.name}' -> JSON... {args.output_json_path}")
