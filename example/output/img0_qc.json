@@ -1,0 +1,32 @@
+{
+    "filename": "img0",
+    "timestamp": 1768433790.194392,
+    "qc_summary": "PASS",
+    "criteria": {
+        "check_shape": {
+            "status": "Diamond",
+            "vertices": 4,
+            "pass": true
+        },
+        "check_bubbles": {
+            "count": 0,
+            "pass": true
+        },
+        "check_cracks": {
+            "count": 0,
+            "pass": true
+        },
+        "check_wrinkles": {
+            "score": 0.0,
+            "pass": true
+        },
+        "check_dimensions": {
+            "area": 1500,
+            "pass": true
+        },
+        "check_color": {
+            "value": "Gold",
+            "pass": true
+        }
+    }
+}
