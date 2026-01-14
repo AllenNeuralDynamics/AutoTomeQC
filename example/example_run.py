@@ -31,9 +31,7 @@ def main():
     print("MASTER: Waiting 10s for model initialization...")
     time.sleep(10)
 
-    # 3. Send Commands
     print(f"MASTER: Starting batch of {len(image_files)} images...")
-
     for img_path in image_files:
         print(f"\nMASTER: >>> Sending: {img_path.name}")
         try:
@@ -43,11 +41,10 @@ def main():
         except BrokenPipeError:
             print("MASTER: Service died.")
             break
-        
         # Wait 3s for precessing to simulate realistic pacing
         time.sleep(3.0) 
 
-    # 4. Stop
+    # Stop
     print("\nMASTER: >>> Sending 'exit'.")
     try:
         process.stdin.write("exit\n")
