@@ -1,9 +1,6 @@
 import logging
 import cv2
 import numpy as np
-import os
-import random
-from autotomeqc.config.config_loader import TEST_OUT_DIR
 
 def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> np.ndarray:
     """

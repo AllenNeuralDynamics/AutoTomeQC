@@ -31,7 +31,7 @@ class YoloSegmentation:
         self.max_det = config.get('max_det', 30)
         self.loop_bbox_margin = config.get('loop_bbox_margin', 30)
         self.model = None
-        self.frame_queue = deque(maxlen=1)
+        self.frame_queue = deque(maxlen=30)
         self.running = False
         self.worker_thread = None
         

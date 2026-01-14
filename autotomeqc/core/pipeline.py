@@ -118,7 +118,6 @@ class AutoTomePipeline:
     def check_color(self, img):
         time.sleep(0.1) # Simulate work
         return {"value": "Gold", "pass": True}
-        
     def check_cracks(self, img): return {"count": 0, "pass": True}
     def check_wrinkles(self, img): return {"score": 0.0, "pass": True}
     def check_bubbles(self, img): return {"count": 0, "pass": True}
