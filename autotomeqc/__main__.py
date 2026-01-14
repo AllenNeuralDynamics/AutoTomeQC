@@ -1,49 +1,68 @@
 import sys
 import logging
-from autotomeqc.config.cli import parse_args, print_arg_info
-from autotomeqc.core.pipeline import AutoTomePipeline
-from autotomeqc.utils.io import save_json_results, save_debug_image
 
-# Configure logging once here; other modules will inherit it.
+from autotomeqc.core.autotomeService import AutoTomeService
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.INFO, 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("AutoTomeMain")
 
-def main() -> None:
-    # Parse and Validate Arguments
-    args = parse_args()
-    print_arg_info(args)
-    if not args.input_image_path.exists():
-        logger.error(f"Input file not found: {args.input_image_path}")
-        sys.exit(1)
+def main():
+    service = AutoTomeService()
 
-    # Run pipeline
-    pipeline = AutoTomePipeline()
-    pipeline.start()
+    # Detect Mode
+    # isatty() returns True if connected to a terminal (Human), False if piped (Robot)
+    is_interactive = sys.stdin.isatty()
+    if is_interactive:  # Human Mode
+        logger.info("==========================================")
+        logger.info("   AutoTomeQC Interactive Service         ")
+        logger.info("   Input: Paste file path to process      ")
+        logger.info("   Commands: exit, stop (or Ctrl+C)       ")
+        logger.info("==========================================")
+        prompt_text = "\nReady > "
+    else:
+        # Machine Mode: No header, silent
+        prompt_text = ""
 
+    # Start
+    service.handle_start()
     try:
-        logger.info(f"Processing image: {args.input_image_path.name}")
-        # Returns: (metrics_dict, segmented_image_numpy_array)
-        metrics, segmented_img = pipeline.process_image(args.input_image_path)
+        while service.running:
+            try:
+                # If human: prints "Ready > " and waits.
+                # If robot: prints nothing, just waits for line from pipe.
+                if is_interactive:
+                    user_input = input(prompt_text).strip()
+                else:
+                    user_input = sys.stdin.readline().strip()
+                    # If readline returns empty string immediately, pipe is closed
+                    if not user_input and len(user_input) == 0:
+                        break
+            except (EOFError, KeyboardInterrupt):
+                break
 
-        # Save Results to Disk
-        save_json_results(metrics, args.output_path)
-        if args.save_segmented_image:
-            save_debug_image(segmented_img, args.save_segmented_image)
+            if not user_input:
+                continue
+
+            if user_input.lower() in ["exit", "quit", "stop", "q"]:  # Quit Command
+                break
+
+            try:
+                input_path_str = user_input.strip('"').strip("'")
+                if len(input_path_str) > 0:
+                    service.handle_process_image(input_path_str)
+            except Exception:
+                logger.error("Invalid input or path error.")
 
     except KeyboardInterrupt:
-        logger.info("Interrupted by user.")
-        sys.exit(130)
-
-    except Exception as e:
-        logger.error(f"Critical error: {e}", exc_info=True)
-        sys.exit(1)
+        if is_interactive:
+            logger.info("\nInterrupted by User.")
 
     finally:
-        pipeline.stop()
-        logger.info("Pipeline finished.")
+        service.handle_stop()
+        logger.info("Bye!")
 
 if __name__ == "__main__":
     main()
