@@ -31,7 +31,7 @@ class YoloSegmentation:
         self.max_det = config.get('max_det', 30)
         self.loop_bbox_margin = config.get('loop_bbox_margin', 30)
         self.model = None
-        self.frame_queue = deque(maxlen=30)
+        self.frame_queue = deque(maxlen=1)
         self.running = False
         self.worker_thread = None
         
@@ -39,7 +39,6 @@ class YoloSegmentation:
         self.detection_callback = detection_callback
         
         try:
-            print(f"weights_path: {self.weights_path}")
             self.model = YOLO(self.weights_path)
             self.model.overrides['conf'] = self.conf_thresh
             self.model.overrides['iou'] = self.iou_thresh
