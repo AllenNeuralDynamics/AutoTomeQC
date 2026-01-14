@@ -1,20 +1,23 @@
+from pathlib import Path
 import time
 import logging
 import json
+from autotomeqc.utils.io import save_json_results, save_debug_image
 import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, asdict
 from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
-from autotomeqc.config.config_loader import CONFIG, TEST_OUT_DIR
+from autotomeqc.config.config_loader import CONFIG
 from autotomeqc.yolo_segmentation.visualization import cropped_segmented
 
 logger = logging.getLogger(__name__)
 
 class AutoTomePipeline:
     def __init__(self):
+        self.output_path = Path(CONFIG["qc"]["output_dir"])
+        self.save_segmented_img = CONFIG["qc"].get("save_segmented_images", True)
         # Preprocessing - Segmentation via YOLO
         self.yolo = YOLOClient(
-            config=CONFIG["qc"], 
+            config=CONFIG["qc"],
             detection_callback=self._handle_detection_and_qc
         )
 
@@ -44,6 +47,7 @@ class AutoTomePipeline:
             return
 
         logger.info(f"Processing: {file_path.name}")
+        logger.info(f"Processing: {str(file_path)}")
         # Pass the filename so we can use it in the JSON output later
         self.yolo.newframe_captured(frame, current=time.time(), filename=file_path.stem)
 
@@ -59,14 +63,9 @@ class AutoTomePipeline:
 
         # Get the cropped/segmented image
         qc_input_image = cropped_segmented(frame, detections)
-        
         if qc_input_image is None:
             logger.warning(f"No segmentation found for {filename}, skipping QC.")
             return
-
-        # Save the segmented check image (Optional)
-        output_path = TEST_OUT_DIR / f"{filename}_segmented.jpg"
-        cv2.imwrite(str(output_path), qc_input_image)
 
         # Run QC Checks in Parallel
         qc_results = self._run_parallel_qc(qc_input_image)
@@ -78,9 +77,14 @@ class AutoTomePipeline:
             "qc_summary": "PASS" if all(r["pass"] for r in qc_results.values()) else "FAIL",
             "criteria": qc_results
         }
-
+        
         # Output Logic
-        self._save_json(final_output)
+        json_filename = self.output_path / f"{filename}_qc.json"
+        save_json_results(final_output, json_filename)
+        if self.save_segmented_img:  # Save Image (Optional)
+            # Construct the full path for the image file
+            img_filename = self.output_path / f"{filename}_segmented.jpg"
+            save_debug_image(qc_input_image, img_filename)
 
     def _run_parallel_qc(self, image):
         """Runs all 6 criteria concurrently and waits for all to finish."""
@@ -105,11 +109,6 @@ class AutoTomePipeline:
                     results[criteria_name] = {"error": str(e), "pass": False}
         
         return results
-
-    def _save_json(self, data):
-        """Helper to save the result."""
-        print(json.dumps(data, indent=2))
-        # TODO : Save or return file
 
     # --- QC criteria Functions Examples ---, # TODO replace with actual implementations
     def check_shape(self, img):
