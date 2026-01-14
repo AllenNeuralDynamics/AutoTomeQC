@@ -4,7 +4,7 @@
 import yaml
 from pathlib import Path
 
-# TODO Use the adapter and validate using pydantic
+# TODO Use the adapter or validate using pydantic
 def load_app_config(filename: str = 'yolo-config.yaml') -> dict:
     """
     Finds the project root and loads the specified configuration file 
