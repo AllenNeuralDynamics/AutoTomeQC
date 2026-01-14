@@ -8,3 +8,5 @@ qc:
     img_dim: [960, 960]
     max_det: 30
     loop_bbox_margin: 30
+  output_dir: "example/output"
+  save_segmented_images: true
