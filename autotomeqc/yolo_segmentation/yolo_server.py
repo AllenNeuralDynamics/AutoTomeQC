@@ -113,7 +113,8 @@ class YoloSegmentation:
             # Clear old frame and append new one to ensure only the latest frame is processed
             self.frame_queue.clear() 
             self.frame_queue.append((frame, ts, filename))
-        except:
+        except Exception as e:
+            self.logger.error(f"Error queuing frame: {e}")
             pass
             
     def _process_frames(self):

@@ -48,11 +48,14 @@ def main():
     try:
         process.stdin.write("exit\n")
         process.stdin.flush()
-    except:
-        pass
+    except (BrokenPipeError, OSError):
+            # Service might already be dead/closed, which is fine during shutdown
+            pass
+    except Exception as e:
+        print(f"MASTER: Warning - failed to send exit command: {e}")
 
-    process.wait()
-    print("MASTER: Service closed.")
+        process.wait()
+        print("MASTER: Service closed.")
 
 if __name__ == "__main__":
     main()
