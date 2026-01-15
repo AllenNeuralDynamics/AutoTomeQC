@@ -4,7 +4,7 @@ import logging
 from autotomeqc.core.autotomeService import AutoTomeService
 
 
-def main():
+def run_interactive_cli():
     service = AutoTomeService()
 
     # Detect Mode
@@ -60,4 +60,4 @@ def main():
         logging.info("Bye!")
 
 if __name__ == "__main__":
-    main()
+    run_interactive_cli()
