@@ -1,8 +1,9 @@
 import logging
+from typing import Optional
 import cv2
 import numpy as np
 
-def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> np.ndarray:
+def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> Optional[np.ndarray]:
     """
     Processing logic:
     1. Finds the 'loop' detection (global context).
@@ -28,10 +29,8 @@ def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> np.nd
         return None
 
     # Select the Best Section
-    # Since the pipeline currently handles one image at a time, we pick the
-    # section with the highest confidence score to be the "Main" section.
     best_section = max(valid_sections, key=lambda x: x.get('confidence', 0.0))
-    
+
     # Processing
     process_frame = frame.copy()
     mask_poly = best_section.get("mask", [])
@@ -49,7 +48,7 @@ def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> np.nd
             polygons.append(np.array(mask_poly, dtype=np.int32))
 
         # Fill the polygon on the mask
-        cv2.fillPoly(polygon_mask, polygons, 255)
+        cv2.fillPoly(polygon_mask, polygons, color=255)  # type: ignore
 
         # Apply mask: Keep only the section, black out everything else
         process_frame = cv2.bitwise_and(process_frame, process_frame, mask=polygon_mask)
@@ -57,7 +56,6 @@ def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> np.nd
         logging.warning(f"[{filename}] Best section has no mask polygon. Skipping masking.")
 
     # Crop to 'loop' BBox ---
-    # We crop to the loop because the section is inside the loop
     if loop_detection:
         bbox = loop_detection.get('bbox', [])
         margin = loop_detection.get('loop_bbox_margin', 30)
@@ -72,8 +70,7 @@ def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> np.nd
             if x2 > x1 and y2 > y1:
                 process_frame = process_frame[y1:y2, x1:x2]
 
-    # Resize (Standardize input for QC models) ---
-    # TODO move to config
+    # Resize (Standardize input for QC models)
     process_frame = cv2.resize(process_frame, (640, 640))
 
     return process_frame
