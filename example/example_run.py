@@ -1,6 +1,5 @@
 import subprocess
 import time
-import sys
 from pathlib import Path
 
 # --- Configuration ---
@@ -15,7 +14,7 @@ def main():
 
     image_files = sorted(list(input_dir.glob("*.jpg")) + list(input_dir.glob("*.png")))
     if not image_files:
-        print(f"MASTER: No images found.")
+        print("MASTER: No images found.")
         return
     
     print("MASTER: Launching AutoTomeQC Service...")

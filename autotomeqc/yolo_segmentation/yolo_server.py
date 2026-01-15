@@ -1,11 +1,9 @@
-import cv2
 import numpy as np
 import time
 import logging
 from collections import deque
-import sys # Import sys for basic signal/logging if needed
 
-from threading import Thread, Event # Using Event for better thread signaling
+from threading import Thread # Using Event for better thread signaling
 from ultralytics import YOLO
 import torch
 

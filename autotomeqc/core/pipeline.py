@@ -1,7 +1,6 @@
 from pathlib import Path
 import time
 import logging
-import json
 from autotomeqc.utils.io import save_json_results, save_debug_image
 import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed

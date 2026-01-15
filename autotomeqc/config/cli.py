@@ -3,8 +3,6 @@ CLI Configuration
 """
 
 import argparse
-import sys
-from pathlib import Path
 
 # Try to import version
 try:
@@ -36,8 +34,8 @@ def parse_args() -> argparse.Namespace:
 def print_arg_info(args):
     """Print configuration info."""
     print(ASCII_ART)
-    print(f"Mode:             INTERACTIVE SERVICE")
-    print(f"Status:           Waiting for input on Stdin...")
+    print("Mode:             INTERACTIVE SERVICE")
+    print("Status:           Waiting for input on Stdin...")
 
 
 if __name__ == "__main__":
