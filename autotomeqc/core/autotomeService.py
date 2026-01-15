@@ -15,7 +15,7 @@ class AutoTomeService:
         self.pipeline = None
         self.running = False
 
-    def handle_start(self):
+    def start(self):
         """Event 1: START - Initialize the pipeline resources."""
         if self.running:
             logger.warning("Service is already running.")
@@ -27,7 +27,7 @@ class AutoTomeService:
         self.running = True
         logger.info("Service Initialized & Ready.")
 
-    def handle_stop(self):
+    def stop(self):
         """Event 2: STOP - Clean shutdown of resources."""
         if not self.running:
             return
@@ -38,7 +38,7 @@ class AutoTomeService:
         self.running = False
         logger.info("Service Shutdown Complete.")
 
-    def handle_process_image(self, input_image_path: str):
+    def process(self, input_image_path: str):
         """Event 3: PROCESS IMAGE - Run logic on a specific file."""
         if not self.running:
             logger.error("Cannot process: Service is stopped. Type 'start' first.")
