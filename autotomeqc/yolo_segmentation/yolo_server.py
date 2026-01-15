@@ -103,7 +103,7 @@ class YoloSegmentation:
             self.worker_thread.join(timeout=1.0)
         self.logger.info("YOLO segmentation worker stopped")
         
-    def process_frame(self, frame: np.ndarray, ts: float = None, filename: str = ""):
+    def process_frame(self, frame: np.ndarray, ts: float | None = None, filename: str = ""):
         """Add frame to processing queue"""
         if not self.running:
             return
