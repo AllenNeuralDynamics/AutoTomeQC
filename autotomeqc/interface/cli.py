@@ -37,7 +37,7 @@ def run_interactive_cli():
                     # If readline returns empty string immediately, pipe is closed
                     if not user_input and len(user_input) == 0:
                         break
-            except (EOFError, KeyboardInterrupt):
+            except (EOFError):
                 break
 
             if not user_input:
