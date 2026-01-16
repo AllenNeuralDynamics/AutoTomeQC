@@ -1,9 +1,8 @@
 # autotomeqc/core/pipeline.py
-from ast import Dict
 from pathlib import Path
 import time
 import logging
-from typing import Any
+from typing import Dict, Any
 import cv2
 import numpy as np
 from autotomeqc.utils.io import save_json_results, save_debug_image
@@ -13,6 +12,7 @@ from autotomeqc.config.config_loader import CONFIG
 from autotomeqc.yolo_segmentation.visualization import cropped_segmented
 
 logger = logging.getLogger(__name__)
+
 
 class AutoTomePipeline:
     def __init__(self):
@@ -75,7 +75,7 @@ class AutoTomePipeline:
 
         # Run QC Checks in Parallel
         qc_results = self._run_parallel_qc(qc_input_image)
-        
+
         # Compile Final JSON
         final_output = {
             "filename": filename,
@@ -83,7 +83,7 @@ class AutoTomePipeline:
             "qc_summary": "PASS" if all(r["pass"] for r in qc_results.values()) else "FAIL",
             "criteria": qc_results
         }
-        
+
         # Output Logic
         json_filename = self.output_path / f"{filename}_qc.json"
         save_json_results(final_output, json_filename)
@@ -103,8 +103,8 @@ class AutoTomePipeline:
         for criteria in as_completed(qc_criteria):
             criteria_name = qc_criteria[criteria]
             try:
-                # If a check takes longer than 2 seconds, kill it (raise TimeoutError)
-                data = criteria.result(timeout=2.0)
+                # If a check takes longer than 1 second, kill it (raise TimeoutError)
+                data = criteria.result(timeout=1.0)
                 results[criteria_name] = data
             except TimeoutError:
                 logger.error(f"{criteria_name} timed out!")
