@@ -1,7 +1,9 @@
 #autotomeqc/interface/cli.py
 import sys
 import logging
-from autotomeqc.core.autotomeService import AutoTomeService
+from autotomeqc.core.autotome_service import AutoTomeService
+
+logger = logging.getLogger(__name__)
 
 
 def run_interactive_cli():
@@ -11,11 +13,11 @@ def run_interactive_cli():
     # isatty() returns True if connected to a terminal (Human), False if piped (Robot)
     is_interactive = sys.stdin.isatty()
     if is_interactive:  # Human Mode
-        logging.info("==========================================")
-        logging.info("   AutoTomeQC Interactive Service         ")
-        logging.info("   Input: Paste file path to process      ")
-        logging.info("   Commands: exit, stop (or Ctrl+C)       ")
-        logging.info("==========================================")
+        logger.info("==========================================")
+        logger.info("   AutoTomeQC Interactive Service         ")
+        logger.info("   Input: Paste file path to process      ")
+        logger.info("   Commands: exit, stop (or Ctrl+C)       ")
+        logger.info("==========================================")
         prompt_text = "\nReady > "
     else:
         # Machine Mode: No header, silent
@@ -45,19 +47,19 @@ def run_interactive_cli():
                 break
 
             try:
-                input_path_str = user_input.strip('"').strip("'")
-                if len(input_path_str) > 0:
-                    service.process(input_path_str)
+                input_input_path = user_input.strip('"').strip("'")
+                if len(input_input_path) > 0:
+                    service.process(input_input_path)
             except Exception:
-                logging.error("Invalid input or path error.")
+                logger.error("Invalid input or path error.")
 
     except KeyboardInterrupt:
         if is_interactive:
-            logging.info("\nInterrupted by User.")
+            logger.info("\nInterrupted by User.")
 
     finally:
         service.stop()
-        logging.info("Bye!")
+        logger.info("Bye!")
 
 if __name__ == "__main__":
     run_interactive_cli()
