@@ -13,7 +13,7 @@ def load_app_config(filename: str = 'yolo-config.yaml') -> dict:
     this_file_path = Path(__file__).resolve()
     project_root = this_file_path.parent.parent
     config_path = project_root / 'config' / filename
-    
+
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file not found at: {config_path}")
 
