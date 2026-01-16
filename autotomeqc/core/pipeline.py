@@ -1,8 +1,12 @@
+# autotomeqc/core/pipeline.py
+from ast import Dict
 from pathlib import Path
 import time
 import logging
-from autotomeqc.utils.io import save_json_results, save_debug_image
+from typing import Any
 import cv2
+import numpy as np
+from autotomeqc.utils.io import save_json_results, save_debug_image
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
 from autotomeqc.config.config_loader import CONFIG
@@ -14,6 +18,10 @@ class AutoTomePipeline:
     def __init__(self):
         self.output_path = Path(CONFIG["qc"]["output_dir"])
         self.save_segmented_img = CONFIG["qc"].get("save_segmented_images", True)
+
+        # Reuse threads for QC criteria
+        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="QC_Worker")
+
         # Preprocessing - Segmentation via YOLO
         self.yolo = YOLOClient(
             config=CONFIG["qc"],
@@ -23,11 +31,10 @@ class AutoTomePipeline:
         # Run QC criteria in parallel
         self.qc_criteria = [
             self.check_shape,
-            self.check_color,
-            self.check_cracks,
-            self.check_wrinkles,
-            self.check_bubbles,
-            self.check_dimensions
+            self.check_color_quality,
+            self.check_section_coverage,
+            self.check_knife_marks,
+            self.check_thickness
         ]
 
     def start(self):
@@ -37,6 +44,7 @@ class AutoTomePipeline:
     def stop(self):
         logger.info("Stopping Pipeline...")
         self.yolo.stop()
+        self.executor.shutdown(wait=False)  # Cleanup threads
 
     def process_image(self, file_path):
         """Entry point for processing a single file."""
@@ -45,7 +53,6 @@ class AutoTomePipeline:
             logger.error(f"Failed to load {file_path}")
             return
 
-        logger.info(f"Processing: {file_path.name}")
         logger.info(f"Processing: {str(file_path)}")
         # Pass the filename so we can use it in the JSON output later
         self.yolo.newframe_captured(frame, current=time.time(), filename=file_path.stem)
@@ -85,38 +92,33 @@ class AutoTomePipeline:
             img_filename = self.output_path / f"{filename}_segmented.jpg"
             save_debug_image(qc_input_image, img_filename)
 
-    def _run_parallel_qc(self, image):
-        """Runs all 6 criteria concurrently and waits for all to finish."""
+    def _run_parallel_qc(self, image: np.ndarray) -> Dict[str, Any]:
         results = {}
-        
-        # ThreadPoolExecutor manages the threads automatically
-        with ThreadPoolExecutor(max_workers=6) as executor:
-            # Map each function to a future
-            future_to_criteria = {
-                executor.submit(func, image): func.__name__ 
-                for func in self.qc_criteria
-            }
 
-            # Wait for all to complete
-            for future in as_completed(future_to_criteria):
-                criteria_name = future_to_criteria[future]
-                try:
-                    data = future.result()
-                    results[criteria_name] = data
-                except Exception as e:
-                    logger.error(f"{criteria_name} generated an exception: {e}")
-                    results[criteria_name] = {"error": str(e), "pass": False}
-        
+        qc_criteria = {
+            self.executor.submit(func, image): func.__name__
+            for func in self.qc_criteria
+        }
+
+        for criteria in as_completed(qc_criteria):
+            criteria_name = qc_criteria[criteria]
+            try:
+                # If a check takes longer than 2 seconds, kill it (raise TimeoutError)
+                data = criteria.result(timeout=2.0)
+                results[criteria_name] = data
+            except TimeoutError:
+                logger.error(f"{criteria_name} timed out!")
+                results[criteria_name] = {"error": "Timeout", "pass": False}
+            except Exception as e:
+                logger.error(f"{criteria_name} failed: {e}")
+                results[criteria_name] = {"error": str(e), "pass": False}
         return results
 
     # --- QC criteria Functions Examples ---, # TODO replace with actual implementations
-    def check_shape(self, img):
-        return {"status": "Diamond", "vertices": 4, "pass": True}
-
-    def check_color(self, img):
-        time.sleep(0.1) # Simulate work
-        return {"value": "Gold", "pass": True}
-    def check_cracks(self, img): return {"count": 0, "pass": True}
-    def check_wrinkles(self, img): return {"score": 0.0, "pass": True}
-    def check_bubbles(self, img): return {"count": 0, "pass": True}
-    def check_dimensions(self, img): return {"area": 1500, "pass": True}
+    def check_color_quality(self, img):
+        return {"value": "Consistent", "pass": True}
+    def check_section_coverage(self, img):
+        return {"value": "Full", "pass": True}
+    def check_knife_marks(self, img): return {"value": "None", "pass": True}
+    def check_thickness(self, img): return {"value": 30, "pass": True}
+    def check_shape(self, img): return {"value": "Hexagon", "pass": True}
