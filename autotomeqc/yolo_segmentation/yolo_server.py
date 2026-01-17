@@ -36,22 +36,21 @@ class YoloSegmentation:
         self.worker_thread = None
         self.detection_callback = detection_callback
 
+        self._load_model()
+
+    def _load_model(self):
+        """Encapsulate model loading logic"""
         try:
             self.model = YOLO(self.weights_path)
-            self.model.overrides['conf'] = self.conf_thresh
-            self.model.overrides['iou'] = self.iou_thresh
-            self.model.overrides['max_det'] = self.max_det
-            self.model.overrides['imgsz'] = self.img_size
-            self.model.overrides['verbose'] = False
-            self.model.to('cuda' if torch.cuda.is_available() else 'cpu')
             self.logger.info(f"YOLO model loaded from: {self.weights_path}")
-            self.logger.info(f"Model is running on: {self.model.device}")
 
-            # Warmup the model
+            # Check device availability
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            self.model.to(device)
+            self.logger.info(f"Model is running on: {device}")
             self._warmup_model()
-            self.logger.info("YOLO model warmup completed")
         except Exception as e:
-            self.logger.error(f"Failed to load YOLO model: {e}, running yolo in dummy mode")
+            self.logger.error(f"Failed to load YOLO model: {e}. Running in DUMMY mode.")
             self.model = None
 
     def start(self):
@@ -136,7 +135,12 @@ class YoloSegmentation:
                         # Run YOLO inference
                         results = self.model.track(
                             frame, 
-                            persist=True
+                            persist=True,
+                            conf=self.conf_thresh,
+                            iou=self.iou_thresh,
+                            imgsz=self.img_size,
+                            max_det=self.max_det,
+                            verbose=False
                         )
 
                         # Convert results to detection format
