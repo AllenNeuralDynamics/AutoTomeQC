@@ -1,3 +1,4 @@
+# autotomeqc/yolo_segmentation/yolo_server.py
 import numpy as np
 import time
 import logging
@@ -7,9 +8,8 @@ from threading import Thread # Using Event for better thread signaling
 from ultralytics import YOLO
 import torch
 
+logger = logging.getLogger(__name__)
 
-# Basic logging setup (You can customize this in your main script)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 class YoloSegmentation:
     """YOLO segmentation worker that runs in its own thread"""
@@ -28,14 +28,14 @@ class YoloSegmentation:
         self.img_dim = config.get('img_dim', [640, 480])  # input image dimension for YOLO (w, h)
         self.max_det = config.get('max_det', 30)
         self.loop_bbox_margin = config.get('loop_bbox_margin', 30)
+
+        # State
         self.model = None
         self.frame_queue = deque(maxlen=1)
         self.running = False
         self.worker_thread = None
-        
-        # New: Store the callback function
         self.detection_callback = detection_callback
-        
+
         try:
             self.model = YOLO(self.weights_path)
             self.model.overrides['conf'] = self.conf_thresh
@@ -108,10 +108,7 @@ class YoloSegmentation:
         if not self.running:
             return
         
-        # Use deque's nature to drop older frames if a new one arrives immediately
         try:
-            # Clear old frame and append new one to ensure only the latest frame is processed
-            self.frame_queue.clear() 
             self.frame_queue.append((frame, ts, filename))
         except Exception as e:
             self.logger.error(f"Error queuing frame: {e}")
