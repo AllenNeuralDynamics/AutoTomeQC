@@ -56,10 +56,9 @@ class YoloSegmentation:
     def start(self):
         """Start the YOLO segmentation thread"""
         if self.running:
+            logger.warning("YOLO segmentation thread already running")
             return True
-            
         self.running = True
-        # Use a standard Thread
         self.worker_thread = Thread(target=self._process_frames, daemon=True)
         self.worker_thread.start()
         self.logger.info("YOLO segmentation thread started")
@@ -69,10 +68,10 @@ class YoloSegmentation:
         """Warm up the model with dummy inference to avoid first-frame delay"""
         if self.model is None:
             return
-            
+
         self.logger.info("Warming up YOLO model...")
         warmup_start = time.time()
-        
+
         try:
             # Create dummy frame matching your expected input
             dummy_frame = np.random.randint(0, 255, (self.img_dim[1], self.img_dim[0], 3), dtype=np.uint8)
@@ -93,7 +92,6 @@ class YoloSegmentation:
         except Exception as e:
             self.logger.error(f"Warmup failed: {e}")
             self.warmup_done = True  # Continue anyway
-    
         
     def stop(self):
         """Stop the YOLO processing thread"""
@@ -183,7 +181,7 @@ class YoloSegmentation:
                 else:
                     # No frames to process, sleep briefly
                     time.sleep(0.01)
-                    
+
             except Exception as e:
                 self.logger.error(f"Error processing frame: {e}")
                 time.sleep(0.01)
