@@ -4,6 +4,8 @@ on:
     branches:
       - main
       - dev
+      - 'feat*'
+      - 'feat/**'
 jobs:
   test-lint-and-type-check:
     uses: AllenNeuralDynamics/aind-python-library-template/.github/workflows/test_lint_type.yml@main
