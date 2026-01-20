@@ -1,7 +1,6 @@
 import pytest
 import logging  # <--- Added import
-from unittest.mock import patch, MagicMock, call
-import sys
+from unittest.mock import patch, call
 
 # Import the function to test
 from autotomeqc.interface.cli import run_interactive_cli

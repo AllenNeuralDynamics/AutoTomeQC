@@ -1,8 +1,6 @@
 import pytest
-import cv2
 import numpy as np
-import logging
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import patch
 from concurrent.futures import TimeoutError, Future
 
 # Import the class

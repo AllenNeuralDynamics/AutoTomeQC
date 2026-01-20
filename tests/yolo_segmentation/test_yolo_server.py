@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 import time
 from unittest.mock import MagicMock, patch
-from collections import deque
 
 # Adjust import path to match your project structure
 from autotomeqc.yolo_segmentation.yolo_server import YoloSegmentation

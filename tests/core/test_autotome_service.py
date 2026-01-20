@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from autotomeqc.core.autotome_service import AutoTomeService 
 
 # --- FIXTURES ---

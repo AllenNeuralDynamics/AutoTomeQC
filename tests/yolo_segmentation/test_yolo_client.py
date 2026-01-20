@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
-import logging
 
 # Adjust the import path to match your project structure
 from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
