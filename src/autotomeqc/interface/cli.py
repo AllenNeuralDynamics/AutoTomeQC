@@ -1,10 +1,24 @@
 #autotomeqc/interface/cli.py
 import sys
 import logging
+import autotomeqc
 from autotomeqc.core.autotome_service import AutoTomeService
+
 
 logger = logging.getLogger(__name__)
 
+ASCII_ART = r"""
+    _         _      _____                  ___   ____  
+   / \  _   _| |_ __|_   _|__  _ __ ___    / _ \ / ___| 
+  / _ \| | | | __/ _ \| |/ _ \| '_ ` _ \  | | | | |     
+ / ___ \ |_| | || (_) | | (_) | | | | | | | |_| | |___  
+/_/   \_\__,_|\__\___/|_|\___/|_| |_| |_|  \__\_\\____| 
+"""
+
+def print_arg_info(args):
+    """Print configuration info."""
+    logger.info(ASCII_ART)
+    logger.info(f"version: {autotomeqc.__version__}")
 
 def run_interactive_cli():
     service = AutoTomeService()
@@ -13,6 +27,7 @@ def run_interactive_cli():
     # isatty() returns True if connected to a terminal (Human), False if piped (Robot)
     is_interactive = sys.stdin.isatty()
     if is_interactive:  # Human Mode
+        print_arg_info(None)
         logger.info("==========================================")
         logger.info("   AutoTomeQC Interactive Service         ")
         logger.info("   Input: Paste file path to process      ")
