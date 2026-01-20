@@ -36,7 +36,7 @@ uv run ruff check
 - Type Check
 
 ```bash
-uv run mypy autotomeqc
+uv run python -m autotomeqc
 ```
 
 ## Documentation
