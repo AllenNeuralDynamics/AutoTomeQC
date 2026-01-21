@@ -19,8 +19,6 @@ class YoloSegmentation:
         :param config: Configuration dictionary.
         :param detection_callback: A function to call with the list of detections.
         """
-        # super().__init__() # REMOVED QObject
-        self.logger = logging.getLogger(self.__class__.__name__)
         self.weights_path = config.get('weights_path', r'weights\seg_fast.pt')
         self.conf_thresh = config.get('conf_thresh', 0.25)
         self.iou_thresh = config.get('iou_thresh', 0.45)
@@ -42,15 +40,15 @@ class YoloSegmentation:
         """Encapsulate model loading logic"""
         try:
             self.model = YOLO(self.weights_path)
-            self.logger.info(f"YOLO model loaded from: {self.weights_path}")
+            logger.info(f"YOLO model loaded from: {self.weights_path}")
 
             # Check device availability
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
             self.model.to(device)
-            self.logger.info(f"Model is running on: {device}")
+            logger.info(f"Model is running on: {device}")
             self._warmup_model()
         except Exception as e:
-            self.logger.error(f"Failed to load YOLO model: {e}. Running in DUMMY mode.")
+            logger.error(f"Failed to load YOLO model: {e}. Running in DUMMY mode.")
             self.model = None
 
     def start(self):
@@ -61,7 +59,7 @@ class YoloSegmentation:
         self.running = True
         self.worker_thread = Thread(target=self._process_frames, daemon=True)
         self.worker_thread.start()
-        self.logger.info("YOLO segmentation thread started")
+        logger.info("YOLO segmentation thread started")
         return True
     
     def _warmup_model(self):
@@ -69,7 +67,7 @@ class YoloSegmentation:
         if self.model is None:
             return
 
-        self.logger.info("Warming up YOLO model...")
+        logger.info("Warming up YOLO model...")
         warmup_start = time.time()
 
         try:
@@ -86,11 +84,11 @@ class YoloSegmentation:
                 torch.cuda.synchronize()  # Wait for GPU operations to complete
                 
             warmup_time = time.time() - warmup_start
-            self.logger.info(f"Model warmup completed in {warmup_time:.2f}s")
+            logger.info(f"Model warmup completed in {warmup_time:.2f}s")
             self.warmup_done = True
             
         except Exception as e:
-            self.logger.error(f"Warmup failed: {e}")
+            logger.error(f"Warmup failed: {e}")
             self.warmup_done = True  # Continue anyway
         
     def stop(self):
@@ -98,7 +96,7 @@ class YoloSegmentation:
         self.running = False
         if self.worker_thread:
             self.worker_thread.join(timeout=1.0)
-        self.logger.info("YOLO segmentation worker stopped")
+        logger.info("YOLO segmentation worker stopped")
         
     def process_frame(self, frame: np.ndarray, ts: float | None = None, filename: str = ""):
         """Add frame to processing queue"""
@@ -108,7 +106,7 @@ class YoloSegmentation:
         try:
             self.frame_queue.append((frame, ts, filename))
         except Exception as e:
-            self.logger.error(f"Error queuing frame: {e}")
+            logger.error(f"Error queuing frame: {e}")
             pass
             
     def _process_frames(self):
@@ -183,6 +181,6 @@ class YoloSegmentation:
                     time.sleep(0.01)
 
             except Exception as e:
-                self.logger.error(f"Error processing frame: {e}")
+                logger.error(f"Error processing frame: {e}")
                 time.sleep(0.01)
                 continue

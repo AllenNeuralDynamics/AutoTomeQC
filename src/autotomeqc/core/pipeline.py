@@ -11,6 +11,9 @@ from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
 from autotomeqc.config.config_loader import CONFIG
 from autotomeqc.yolo_segmentation.visualization import cropped_segmented
 
+from autotomeqc.algorithms.coverage import SectionCoverageQC
+from autotomeqc.algorithms.knife_mark import KnifeMarksQC
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,17 +28,14 @@ class AutoTomePipeline:
         # Preprocessing - Segmentation via YOLO
         self.yolo = YOLOClient(
             config=CONFIG["qc"],
-            detection_callback=self._handle_detection_and_qc
+            detection_callback=self._handle_detection
         )
 
-        # Run QC criteria in parallel
-        self.qc_criteria = [
-            self.check_shape,
-            self.check_color_quality,
-            self.check_section_coverage,
-            self.check_knife_marks,
-            self.check_thickness
-        ]
+        logger.info("Initializing QC Models...")
+        self.qc_modules = {
+            "coverage": SectionCoverageQC(CONFIG["qc"]),
+            "knife_mark": KnifeMarksQC(CONFIG["qc"]),
+        }
 
     def start(self):
         logger.info("Starting Pipeline...")
@@ -57,7 +57,7 @@ class AutoTomePipeline:
         # Pass the filename so we can use it in the JSON output later
         self.yolo.newframe_captured(frame, current=time.time(), filename=file_path.stem)
 
-    def _handle_detection_and_qc(self, frame, detections, filename):
+    def _handle_detection(self, frame, detections, filename):
         """
         Callback triggered when YOLO finishes.
         Args:
@@ -74,13 +74,14 @@ class AutoTomePipeline:
             return
 
         # Run QC Checks in Parallel
-        qc_results = self._run_parallel_qc(qc_input_image)
+        qc_results = self._run_all_checks(qc_input_image)
 
         # Compile Final JSON
+        final_summary = "PASS" if all(r["pass"] for r in qc_results.values()) else "FAIL"
         final_output = {
             "filename": filename,
             "timestamp": timestamp,
-            "qc_summary": "PASS" if all(r["pass"] for r in qc_results.values()) else "FAIL",
+            "qc_summary": final_summary,
             "criteria": qc_results
         }
 
@@ -92,33 +93,22 @@ class AutoTomePipeline:
             img_filename = self.output_path / f"{filename}_segmented.jpg"
             save_debug_image(qc_input_image, img_filename)
 
-    def _run_parallel_qc(self, image: np.ndarray) -> Dict[str, Any]:
+    def _run_all_checks(self, image):
+        """Runs defined QC modules in parallel + geometry check."""
         results = {}
+        futures = {}
 
-        qc_criteria = {
-            self.executor.submit(func, image): func.__name__
-            for func in self.qc_criteria
-        }
+        # Submit QC checks (Coverage, etc.)
+        for name, module in self.qc_modules.items():
+            futures[self.executor.submit(module.check, image)] = name
 
-        for criteria in as_completed(qc_criteria):
-            criteria_name = qc_criteria[criteria]
+        # Collect results
+        for future in as_completed(futures):
+            name = futures[future]
             try:
-                # If a check takes longer than 1 second, kill it (raise TimeoutError)
-                data = criteria.result(timeout=1.0)
-                results[criteria_name] = data
-            except TimeoutError:
-                logger.error(f"{criteria_name} timed out!")
-                results[criteria_name] = {"error": "Timeout", "pass": False}
+                results[name] = future.result(timeout=2.0) # 2s timeout per check
             except Exception as e:
-                logger.error(f"{criteria_name} failed: {e}")
-                results[criteria_name] = {"error": str(e), "pass": False}
-        return results
+                logger.error(f"QC Check {name} failed: {e}")
+                results[name] = {"pass": False, "error": str(e)}
 
-    # --- QC criteria Functions Examples ---, # TODO replace with actual implementations
-    def check_color_quality(self, img):
-        return {"value": "Consistent", "pass": True}
-    def check_section_coverage(self, img):
-        return {"value": "Full", "pass": True}
-    def check_knife_marks(self, img): return {"value": "None", "pass": True}
-    def check_thickness(self, img): return {"value": 30, "pass": True}
-    def check_shape(self, img): return {"value": "Hexagon", "pass": True}
+        return results
