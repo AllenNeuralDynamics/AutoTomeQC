@@ -13,6 +13,9 @@ from autotomeqc.yolo_segmentation.visualization import cropped_segmented
 
 from autotomeqc.algorithms.coverage import SectionCoverageQC
 from autotomeqc.algorithms.knife_mark import KnifeMarksQC
+from autotomeqc.algorithms.thickness_consistency import ThicknessConsistencyQC
+from autotomeqc.algorithms.thickness import ThicknessQC
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,8 @@ class AutoTomePipeline:
         self.qc_modules = {
             "coverage": SectionCoverageQC(CONFIG["qc"]),
             "knife_mark": KnifeMarksQC(CONFIG["qc"]),
+            "thickness_consistency": ThicknessConsistencyQC(CONFIG["qc"]),
+            "thickness": ThicknessQC(CONFIG["qc"]),
         }
 
     def start(self):

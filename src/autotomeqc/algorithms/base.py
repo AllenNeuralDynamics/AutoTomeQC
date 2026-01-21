@@ -1,7 +1,9 @@
 import logging
 import numpy as np
+from typing import List
 from ultralytics import YOLO
 from cv2 import resize, INTER_NEAREST
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +11,7 @@ class YOLOClassifier:
     """
     Generic wrapper that handles Loading, Prediction, and QC Evaluation.
     """
-    def __init__(self, model_path: str, img_size: int, pass_labels: list, min_conf: float):
+    def __init__(self, model_path: str, img_size: int, pass_labels: List[str], min_conf: float):
         self.model = None
         self.model_name = model_path.split("/")[-1]
         self.img_size = img_size
@@ -33,7 +35,7 @@ class YOLOClassifier:
             if image.shape[0] != self.img_size or image.shape[1] != self.img_size:
                 image = resize(image, (self.img_size, self.img_size), interpolation=INTER_NEAREST)
             results = self.model(image, verbose=False)
-            top_idx = results[0].probs.top1
+            top_idx = results[0].probs.top1  # Index of highest confidence
             conf = float(results[0].probs.top1conf)
             label = results[0].names[top_idx]
             return {"label": label, "conf": round(conf, 4), "error": None}
@@ -52,7 +54,7 @@ class YOLOClassifier:
 
         # Check Label
         # Handle "ANY" wildcard (for Thickness check)
-        if self.pass_labels == "ANY":
+        if "ANY" in self.pass_labels:
             is_valid_label = True
         else:
             is_valid_label = result["label"] in self.pass_labels
@@ -60,7 +62,7 @@ class YOLOClassifier:
         # Check Confidence
         is_confident = result["conf"] >= self.min_confidence
 
-        # 3. Final Decision
+        # Final Decision
         if is_valid_label and is_confident:
             result["pass"] = True
         else:

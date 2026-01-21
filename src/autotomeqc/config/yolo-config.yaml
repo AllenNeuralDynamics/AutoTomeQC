@@ -32,5 +32,5 @@ qc:
     weights_path: "weights/thickness_v1.pt"
     img_size: 224
     img_dim: [224, 224]
-    pass_labels: "ANY"
-    min_confidence: 0.5
+    pass_labels: ["ANY"]
+    min_confidence: 0.1
