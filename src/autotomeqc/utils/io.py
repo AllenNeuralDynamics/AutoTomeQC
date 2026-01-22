@@ -1,3 +1,4 @@
+import time
 import json
 import cv2
 import logging
@@ -32,3 +33,24 @@ def save_debug_image(image: Optional[np.ndarray], path: Path) -> None:
         logger.info(f"Debug image saved to: {path}")
     except Exception as e:
         logger.error(f"Failed to save image to {path}: {e}")
+
+def save_failure_report(output_dir: Path, filename: str, reason: str) -> None:
+    """
+    Generates and saves a standardized JSON failure report.
+    
+    Args:
+        output_dir (Path): The directory to save the JSON file in.
+        filename (str): The base name of the file (without extension).
+        reason (str): The failure reason to log.
+    """
+    output = {
+        "filename": filename,
+        "timestamp": time.time(),
+        "qc_summary": "FAIL",
+        "error_reason": reason,
+        "criteria": {}  # Empty because no checks ran
+    }
+    # Construct the full path consistent with pipeline logic
+    full_path = Path(output_dir) / f"{filename}_qc.json"
+    # Reuse the existing save logic
+    save_json_results(output, full_path)

@@ -2,14 +2,12 @@
 from pathlib import Path
 import time
 import logging
-from typing import Dict, Any
 import cv2
-import numpy as np
-from autotomeqc.utils.io import save_json_results, save_debug_image
+from autotomeqc.utils.io import save_json_results, save_failure_report, save_debug_image
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
 from autotomeqc.config.config_loader import CONFIG
-from autotomeqc.yolo_segmentation.visualization import cropped_segmented
+from autotomeqc.yolo_segmentation.visualization import cropped_segmented, get_best_section_detection
 
 from autotomeqc.algorithms.coverage import SectionCoverageQC
 from autotomeqc.algorithms.knife_mark import KnifeMarksQC
@@ -53,14 +51,17 @@ class AutoTomePipeline:
 
     def process_image(self, file_path):
         """Entry point for processing a single file."""
+        path_obj = Path(file_path)
+        filename = path_obj.stem
+
         frame = cv2.imread(str(file_path))
         if frame is None:
             logger.error(f"Failed to load {file_path}")
+            save_failure_report(self.output_path, filename, "Image Load Failed")
             return
 
         logger.info(f"Processing: {str(file_path)}")
-        # Pass the filename so we can use it in the JSON output later
-        self.yolo.newframe_captured(frame, current=time.time(), filename=file_path.stem)
+        self.yolo.newframe_captured(frame, current=time.time(), filename=filename)
 
     def _handle_detection(self, frame, detections, filename):
         """
@@ -74,8 +75,10 @@ class AutoTomePipeline:
 
         # Get the cropped/segmented image
         qc_input_image = cropped_segmented(frame, detections)
+        get_section_conf = round(get_best_section_detection(detections).get('confidence', 0.0), 2)
         if qc_input_image is None:
             logger.warning(f"No segmentation found for {filename}, skipping QC.")
+            save_failure_report(self.output_path, filename, "Segmentation Failed: No section detected")
             return
 
         # Run QC Checks in Parallel
@@ -87,7 +90,8 @@ class AutoTomePipeline:
             "filename": filename,
             "timestamp": timestamp,
             "qc_summary": final_summary,
-            "criteria": qc_results
+            "segmentation_conf": get_section_conf,
+            "criteria": qc_results,
         }
 
         # Output Logic

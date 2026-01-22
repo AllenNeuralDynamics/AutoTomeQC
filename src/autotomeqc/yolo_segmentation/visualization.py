@@ -1,9 +1,23 @@
+
 import logging
 from typing import Optional
 import cv2
 import numpy as np
 
-def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> Optional[np.ndarray]:
+def get_best_section_detection(detections: list) -> Optional[dict]:
+    # Find ALL 'section' detections with high confidence
+    valid_sections = [
+        d for d in detections
+        if d['class_name'] == 'section'
+    ]
+    if not valid_sections:
+        return None
+
+    # Select the Best Section
+    best_section = max(valid_sections, key=lambda x: x.get('confidence', 0.0))
+    return best_section
+
+def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optional[np.ndarray]:
     """
     Processing logic:
     1. Finds the 'loop' detection (global context).
@@ -18,18 +32,10 @@ def cropped_segmented(frame: np.ndarray, detections: dict, filename="") -> Optio
     # Find the 'loop' detection (Global for the frame)
     loop_detection = next((d for d in detections if d['class_name'] == 'loop'), None)
 
-    # Find ALL 'section' detections with high confidence
-    valid_sections = [
-        d for d in detections
-        if d['class_name'] == 'section' and d.get('confidence', 0.0) > 0.8
-    ]
-
-    if not valid_sections:
-        logging.warning(f"[{filename}] No valid 'section' found (conf > 0.8). Skipping.")
+    best_section = get_best_section_detection(detections)
+    if best_section is None:
+        logging.warning(f"[{filename}] No valid 'section' found. Skipping.")
         return None
-
-    # Select the Best Section
-    best_section = max(valid_sections, key=lambda x: x.get('confidence', 0.0))
 
     # Processing
     process_frame = frame.copy()

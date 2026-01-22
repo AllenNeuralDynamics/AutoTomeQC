@@ -4,7 +4,7 @@ qc:
   save_segmented_images: true
   yolo:
     weights_path: "weights/seg_fast.pt" 
-    conf_thresh: 0.7
+    conf_thresh: 0.5
     iou_thresh: 0.45
     img_size: 960
     img_dim: [960, 960]
