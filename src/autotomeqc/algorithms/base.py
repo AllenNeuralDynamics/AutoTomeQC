@@ -5,8 +5,6 @@ from ultralytics import YOLO
 from cv2 import resize, INTER_NEAREST
 
 
-logger = logging.getLogger(__name__)
-
 class YOLOClassifier:
     """
     Generic wrapper that handles Loading, Prediction, and QC Evaluation.
@@ -17,15 +15,16 @@ class YOLOClassifier:
         self.img_size = img_size
         self.pass_labels = pass_labels
         self.min_confidence = min_conf
+        self.log = logging.getLogger(self.__class__.__name__)
 
         try:
-            logger.info(f"Loading model: {self.model_name}...")
+            self.log.info(f"Loading model: {self.model_name}...")
             self.model = YOLO(model_path)
             # Warmup inference
             self.model(np.zeros((self.img_size, self.img_size, 3), dtype=np.uint8), verbose=False)
-            logger.info(f"Model {self.model_name} loaded successfully.")
+            self.log.info(f"Model {self.model_name} loaded successfully.")
         except Exception as e:
-            logger.warning(f"Could not load {model_path}. Error: {e}")
+            self.log.warning(f"Could not load {model_path}. Error: {e}")
 
     def predict(self, image: np.ndarray) -> dict:
         if self.model is None or image is None:
@@ -40,7 +39,7 @@ class YOLOClassifier:
             label = results[0].names[top_idx]
             return {"label": label, "conf": round(conf, 4), "error": None}
         except Exception as e:
-            logger.error(f"Prediction failed for {self.model_name}: {e}")
+            self.log.error(f"Prediction failed for {self.model_name}: {e}")
             return {"error": str(e), "label": "Error", "conf": 0.0}
 
     def check(self, image: np.ndarray) -> dict:
@@ -69,6 +68,7 @@ class YOLOClassifier:
             result["pass"] = False
             if not is_valid_label:
                 result["reason"] = f"Defect Detected: {result['label']}"
+                self.log.info(result["reason"])
             elif not is_confident:
                 result["reason"] = f"Low Confidence ({result['conf']} < {self.min_confidence})"
 

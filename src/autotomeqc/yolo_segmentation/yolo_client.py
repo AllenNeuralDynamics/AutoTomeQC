@@ -2,28 +2,23 @@ import numpy as np
 import logging
 from autotomeqc.yolo_segmentation.yolo_server import YoloSegmentation
 
+
 class YOLOClient:
     def __init__(self, config={}, detection_callback=None):
-        # super().__init__() # REMOVED QObject
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
         self.fps = config.get('fps', 5)
         self.current_time = None
-        
-        # Create YOLO segmentator, passing the detection callback
         yolo_config = config.get('yolo', {})
         self.yolo_worker = YoloSegmentation(yolo_config, detection_callback=detection_callback)
-
-        # Note: All PyQT signal/slot connections have been replaced by the direct 
-        # `detection_callback` function passed to YoloSegmentation's constructor.
 
     def start_client(self):
         """Start the YOLO processing worker"""
         try:
             self.yolo_worker.start()
-            self.logger.info("Simple YOLO client started successfully")
+            self.log.info("Simple YOLO client started successfully")
             return True
         except Exception as e:
-            self.logger.error(f"Error starting Simple YOLO client: {e}")
+            self.log.error(f"Error starting Simple YOLO client: {e}")
             return False
         
     def newframe_captured(self, frame: np.ndarray, current: float, filename: str = ""):
@@ -37,50 +32,4 @@ class YOLOClient:
         """Stop the YOLO worker"""
         if self.yolo_worker:
             self.yolo_worker.stop()
-
-
-# --- Example Usage ---
-# If you need an example of how to use the detection_callback:
-"""
-def handle_detections(detections):
-    print(f"Received {len(detections)} detections.")
-    # for detection in detections:
-    #     print(f"  {detection['class_name']} with confidence {detection['confidence']:.2f}")
-
-if __name__ == '__main__':
-    # 1. Define configuration
-    yolo_client_config = {
-        'fps': 10,
-        'yolo': {
-            'weights_path': 'path/to/your/model.pt', # REPLACE with your actual path!
-            'img_dim': [640, 480] 
-        }
-    }
-    
-    # 2. Define the callback function (replaces the Signal)
-    def handle_detections(detections):
-        print(f"Thread: {threading.current_thread().name} - Received {len(detections)} detections.")
-        # Add your main thread processing logic here
-
-    # 3. Initialize and start the client
-    client = YOLOClient(config=yolo_client_config, detection_callback=handle_detections)
-    client.start_client()
-    
-    # 4. Simulate a video stream (sending frames)
-    # The 'newframe_captured' method is now a regular method call.
-    try:
-        w, h = yolo_client_config['yolo']['img_dim']
-        for i in range(50):
-            # Create a dummy frame
-            dummy_frame = np.random.randint(0, 255, (h, w, 3), dtype=np.uint8)
-            client.newframe_captured(dummy_frame)
-            time.sleep(0.05) # Simulate frame capture rate
-
-    except KeyboardInterrupt:
-        print("Stopping client...")
-        
-    finally:
-        # 5. Stop the worker thread cleanly
-        client.stop()
-        print("Client stopped.")
-"""
+            self.log.info("YOLO client stopped.")

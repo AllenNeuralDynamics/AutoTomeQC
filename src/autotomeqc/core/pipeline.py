@@ -15,11 +15,9 @@ from autotomeqc.algorithms.thickness_consistency import ThicknessConsistencyQC
 from autotomeqc.algorithms.thickness import ThicknessQC
 
 
-logger = logging.getLogger(__name__)
-
-
 class AutoTomePipeline:
     def __init__(self):
+        self.log = logging.getLogger(self.__class__.__name__)
         self.output_path = Path(CONFIG["qc"]["output_dir"])
         self.save_segmented_img = CONFIG["qc"].get("save_segmented_images", True)
 
@@ -32,7 +30,7 @@ class AutoTomePipeline:
             detection_callback=self._handle_detection
         )
 
-        logger.info("Initializing QC Models...")
+        self.log.info("Initializing QC Models...")
         self.qc_modules = {
             "coverage": SectionCoverageQC(CONFIG["qc"]),
             "knife_mark": KnifeMarksQC(CONFIG["qc"]),
@@ -41,11 +39,11 @@ class AutoTomePipeline:
         }
 
     def start(self):
-        logger.info("Starting Pipeline...")
+        self.log.info("Starting Pipeline...")
         self.yolo.start_client()
 
     def stop(self):
-        logger.info("Stopping Pipeline...")
+        self.log.info("Stopping Pipeline...")
         self.yolo.stop()
         self.executor.shutdown(wait=False)  # Cleanup threads
 
@@ -56,11 +54,11 @@ class AutoTomePipeline:
 
         frame = cv2.imread(str(file_path))
         if frame is None:
-            logger.error(f"Failed to load {file_path}")
+            self.log.error(f"Failed to load {file_path}")
             save_failure_report(self.output_path, filename, "Image Load Failed")
             return
 
-        logger.info(f"Processing: {str(file_path)}")
+        self.log.info(f"Processing: {str(file_path)}")
         self.yolo.newframe_captured(frame, current=time.time(), filename=filename)
 
     def _handle_detection(self, frame, detections, filename):
@@ -77,7 +75,7 @@ class AutoTomePipeline:
         qc_input_image = cropped_segmented(frame, detections)
         get_section_conf = round(get_best_section_detection(detections).get('confidence', 0.0), 2)
         if qc_input_image is None:
-            logger.warning(f"No segmentation found for {filename}, skipping QC.")
+            self.log.warning(f"No segmentation found for {filename}, skipping QC.")
             save_failure_report(self.output_path, filename, "Segmentation Failed: No section detected")
             return
 
@@ -117,7 +115,7 @@ class AutoTomePipeline:
             try:
                 results[name] = future.result(timeout=2.0) # 2s timeout per check
             except Exception as e:
-                logger.error(f"QC Check {name} failed: {e}")
+                self.log.error(f"QC Check {name} failed: {e}")
                 results[name] = {"pass": False, "error": str(e)}
 
         return results

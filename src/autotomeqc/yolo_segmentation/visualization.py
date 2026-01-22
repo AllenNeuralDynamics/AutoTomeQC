@@ -4,6 +4,8 @@ from typing import Optional
 import cv2
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 def get_best_section_detection(detections: list) -> Optional[dict]:
     # Find ALL 'section' detections with high confidence
     valid_sections = [
@@ -34,7 +36,7 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
 
     best_section = get_best_section_detection(detections)
     if best_section is None:
-        logging.warning(f"[{filename}] No valid 'section' found. Skipping.")
+        logger.warning(f"[{filename}] No valid 'section' found. Skipping.")
         return None
 
     # Processing
@@ -59,7 +61,7 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
         # Apply mask: Keep only the section, black out everything else
         process_frame = cv2.bitwise_and(process_frame, process_frame, mask=polygon_mask)
     else:
-        logging.warning(f"[{filename}] Best section has no mask polygon. Skipping masking.")
+        logger.warning(f"[{filename}] Best section has no mask polygon. Skipping masking.")
 
     # Crop to 'loop' BBox ---
     if loop_detection:
