@@ -2,6 +2,7 @@
 import sys
 import logging
 import time
+from unittest import result
 import autotomeqc
 from autotomeqc.core.autotome_service import AutoTomeService
 
@@ -82,8 +83,23 @@ def run_interactive_cli():
 
                     result = future.result()
                     status = result.get("qc_summary", "UNKNOWN")
-                    logger.info(f"Summary: {status}")
-                    logger.info(f"  Details: {result.get('criteria', 'No Data')}")
+                    if status == "PASS":
+                        logger.info(f"✅ PASS: {status}")
+                        logger.info(f"   Details: {result.get('criteria', {})}")
+                    else:
+                        top_level_error = result.get("error_reason", result.get("error"))
+                        if top_level_error:
+                            reason = top_level_error
+                        else:
+                            # Check for specific QC criteria failures
+                            failed_criteria = []
+                            criteria = result.get("criteria", {})
+                            for name, data in criteria.items():
+                                if data.get("pass") is False:
+                                    msg = data.get("reason", data.get("label", "Failed"))
+                                    failed_criteria.append(f"{name} ({msg})")
+                            reason = ", ".join(failed_criteria) if failed_criteria else "Unknown Failure"
+                        logger.info(f"❌ FAIL: {reason}")
             except Exception as e:
                 logger.error(f"Invalid input or path error: {e}")
 

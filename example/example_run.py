@@ -1,5 +1,6 @@
 import subprocess
 import time
+import sys
 from pathlib import Path
 
 # --- Configuration ---
@@ -8,56 +9,55 @@ project_root = current_dir.parent
 input_dir = current_dir / "input_images"
 
 def main():
+    # Validation
     if not input_dir.exists():
-        print(f"MASTER: Error - Input directory not found: {input_dir}")
+        print(f"[MASTER] Error: Input directory not found at {input_dir}")
         return
 
     image_files = sorted(list(input_dir.glob("*.jpg")) + list(input_dir.glob("*.png")))
     if not image_files:
-        print("MASTER: No images found.")
+        print("[MASTER] No images found to process.")
         return
     
-    print("MASTER: Launching AutoTomeQC Service...")
+    print(f"[MASTER] Found {len(image_files)} images.")
+    print("[MASTER] Launching AutoTomeQC Service...")
     
-    # We ONLY pipe stdin (to send commands). 
-    # We let stdout/stderr go directly to the console so you can see them naturally.
+    # Launch Service as a Subprocess
     process = subprocess.Popen(
-        ["uv", "run", "python", "-m", "autotomeqc"],
+        [sys.executable, "-m", "autotomeqc"],
         stdin=subprocess.PIPE,
-        text=True,
-        bufsize=0  # Unbuffered
+        text=True,     # Work with strings, not bytes
+        bufsize=1,     # Line buffered (send commands immediately)
+        cwd=project_root
     )
-    print("MASTER: Waiting 10s for model initialization...")
-    time.sleep(10)
 
-    print(f"MASTER: Starting batch of {len(image_files)} images...")
-    for img_path in image_files:
-        print(f"\nMASTER: >>> Sending: {img_path.name}")
-        try:
-            # Write Path + Newline
-            process.stdin.write(f"{img_path.absolute()}\n")
-            process.stdin.flush()
-        except BrokenPipeError:
-            print("MASTER: Service died.")
-            break
-        # Wait 3s for precessing to simulate realistic pacing
-        time.sleep(3.0) 
+    # Warmup
+    # The service needs a moment to load YOLO/PyTorch models
+    print("[MASTER] Waiting 5s for service initialization...")
+    time.sleep(5)
 
-    # Stop
-    print("\nMASTER: >>> Sending 'exit'.")
+    # Batch Processing Loop
+    print(f"[MASTER] Starting batch submission...")
     try:
-        process.stdin.write("exit\n")
-        process.stdin.flush()
-    except (BrokenPipeError, OSError):
-            # Service might already be dead/closed, which is fine during shutdown
-            pass
-    except Exception as e:
-        print(f"MASTER: Warning - failed to send exit command: {e}")
+        for i, img_path in enumerate(image_files):
+            print(f"\n[MASTER] >>> Command: Process {img_path.name}")
+            process.stdin.write(f"{img_path.absolute()}\n")
+            time.sleep(2) 
 
-        process.wait()
-        print("MASTER: Service closed.")
+        # Shutdown
+        print("\n[MASTER] >>> Command: Stop")
+        process.stdin.write("stop\n")
+        
+    except BrokenPipeError:
+        print("[MASTER] Error: Service pipe closed unexpectedly.")
+    except KeyboardInterrupt:
+        print("\n[MASTER] Interrupted. Closing service...")
+        
+    finally:
+        if process.stdin:
+            process.stdin.close()
+        process.wait() # Wait for service to finish its cleanup
+        print("[MASTER] Batch run complete.")
 
 if __name__ == "__main__":
     main()
-    # Example of running this script:
-    # uv run python example/example_run.py
