@@ -1,6 +1,7 @@
 #autotomeqc/interface/cli.py
 import sys
 import logging
+import time
 import autotomeqc
 from autotomeqc.core.autotome_service import AutoTomeService
 
@@ -38,8 +39,13 @@ def run_interactive_cli():
         # Machine Mode: No header, silent
         prompt_text = ""
 
+
     # Start
-    service.start()
+    if not service.start():
+        logger.error("Failed to start service.")
+        return
+
+    # Process Loop
     try:
         while service.running:
             try:
@@ -62,11 +68,24 @@ def run_interactive_cli():
                 break
 
             try:
-                input_input_path = user_input.strip('"').strip("'")
-                if len(input_input_path) > 0:
-                    service.process(input_input_path)
-            except Exception:
-                logger.error("Invalid input or path error.")
+                input_path = user_input.strip('"').strip("'")
+                if len(input_path) > 0:
+                    future = service.process(input_path)
+                    if is_interactive:
+                        print("Processing...", end="", flush=True)
+                        while not future.done():
+                            time.sleep(0.1)
+                        print(" Done.")
+                    else:
+                        # Robot mode: just wait efficiently
+                        future.result()
+
+                    result = future.result()
+                    status = result.get("qc_summary", "UNKNOWN")
+                    logger.info(f"Summary: {status}")
+                    logger.info(f"  Details: {result.get('criteria', 'No Data')}")
+            except Exception as e:
+                logger.error(f"Invalid input or path error: {e}")
 
     except KeyboardInterrupt:
         if is_interactive:
