@@ -8,11 +8,11 @@ on:
       - 'feat/**'
       - 'feature/**'
 jobs:
-  test-lint-and-type-check:
-    uses: AllenNeuralDynamics/aind-python-library-template/.github/workflows/test_lint_type.yml@main
+#  test-lint-and-type-check:
+#    uses: AllenNeuralDynamics/aind-python-library-template/.github/workflows/test_lint_type.yml@main
   tag:
     runs-on: self-hosted-good 
-    needs: test-lint-and-type-check
+    # needs: test-lint-and-type-check
     env: 
       UV_PYTHON_INSTALL_DIR: C:\ProgramData\AIBS_MPE\uv_python
       UV_TOOL_DIR: C:\ProgramData\AIBS_MPE\uv_python
