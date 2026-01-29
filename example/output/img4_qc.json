@@ -1,31 +1,38 @@
 {
     "filename": "img4",
-    "timestamp": 1768433797.4507754,
-    "qc_summary": "PASS",
+    "timestamp": "2026-01-29 10:48:34",
+    "qc_summary": "FAIL",
+    "segmentation_conf": 0.95,
     "criteria": {
-        "check_cracks": {
-            "count": 0,
+        "shape": {
+            "label": "Hexagon",
+            "metric": 6,
+            "message": "Detected Hexagon (vertices=6)",
             "pass": true
         },
-        "check_bubbles": {
-            "count": 0,
+        "coverage": {
+            "label": "full_section",
+            "conf": 0.9979,
+            "error": null,
             "pass": true
         },
-        "check_shape": {
-            "status": "Diamond",
-            "vertices": 4,
+        "thickness": {
+            "label": "140",
+            "conf": 0.1287,
+            "error": null,
             "pass": true
         },
-        "check_wrinkles": {
-            "score": 0.0,
-            "pass": true
+        "thickness_consistency": {
+            "label": "Rainbow",
+            "conf": 0.6095,
+            "error": null,
+            "pass": false,
+            "reason": "Defect Detected: Rainbow"
         },
-        "check_dimensions": {
-            "area": 1500,
-            "pass": true
-        },
-        "check_color": {
-            "value": "Gold",
+        "knife_mark": {
+            "label": "knifemark_none",
+            "conf": 0.9973,
+            "error": null,
             "pass": true
         }
     }

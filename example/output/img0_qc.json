@@ -1,31 +1,37 @@
 {
     "filename": "img0",
-    "timestamp": 1768433790.194392,
+    "timestamp": "2026-01-29 10:48:28",
     "qc_summary": "PASS",
+    "segmentation_conf": 0.94,
     "criteria": {
-        "check_shape": {
-            "status": "Diamond",
-            "vertices": 4,
+        "shape": {
+            "label": "Hexagon",
+            "metric": 6,
+            "message": "Detected Hexagon (vertices=6)",
             "pass": true
         },
-        "check_bubbles": {
-            "count": 0,
+        "thickness_consistency": {
+            "label": "Consistent",
+            "conf": 0.9945,
+            "error": null,
             "pass": true
         },
-        "check_cracks": {
-            "count": 0,
+        "coverage": {
+            "label": "full_section",
+            "conf": 0.9998,
+            "error": null,
             "pass": true
         },
-        "check_wrinkles": {
-            "score": 0.0,
+        "thickness": {
+            "label": "90",
+            "conf": 0.3705,
+            "error": null,
             "pass": true
         },
-        "check_dimensions": {
-            "area": 1500,
-            "pass": true
-        },
-        "check_color": {
-            "value": "Gold",
+        "knife_mark": {
+            "label": "knifemark_none",
+            "conf": 0.696,
+            "error": null,
             "pass": true
         }
     }
