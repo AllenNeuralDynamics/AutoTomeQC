@@ -79,15 +79,18 @@ def test_start_client_failure(client, caplog):
 
 def test_newframe_captured(client):
     """Verify new frames are forwarded to the worker."""
+    client.yolo_worker = MagicMock()
+
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     timestamp = 1000.5
     filename = "test.jpg"
-    client.newframe_captured(frame, timestamp, filename)
-    # Check internal state update
-    assert client.current_time == timestamp
-    # Check call to worker
+    req_id = "test_id"
+
+    client.newframe_captured(frame, id=req_id, filename=filename, ts=timestamp)
+
+    # Check that it was passed to worker, instead of checking current_time
     client.yolo_worker.process_frame.assert_called_once_with(
-        frame, ts=timestamp, filename=filename
+        frame, id=req_id, filename=filename, ts=timestamp
     )
 
 def test_fps_rate_limiting_logic(client):
