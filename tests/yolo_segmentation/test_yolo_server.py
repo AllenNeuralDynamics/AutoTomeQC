@@ -65,10 +65,10 @@ def test_initialization_failure(mock_config, caplog):
         assert "Failed to load YOLO model" in caplog.text
         # Ensure it switches to dummy mode behavior (implied by model=None)
 
-def test_queue_drops_old_frames(server):
+def test_queue_holds_multiple_frames(server):
     """
-    Verify deque(maxlen=1) behavior: 
-    Adding a new frame should automatically displace the old one.
+    Verify queue behavior with multiple inputs:
+    Adding new frames should append them, not drop old ones.
     """
     # Simulate adding frames directly
     server.running = True # Needs to be running to accept frames
@@ -78,14 +78,21 @@ def test_queue_drops_old_frames(server):
     # Add Frame 1
     server.process_frame(frame1, ts=1.0, filename="frame1")
     assert len(server.frame_queue) == 1
-    # Add Frame 2 (Should push out Frame 1)
-    server.process_frame(frame2, ts=2.0, filename="frame2")
-    assert len(server.frame_queue) == 1
 
-    # Check that the remaining frame is Frame 2
-    (_, ts, name) = server.frame_queue[0]
-    assert name == "frame2"
-    assert ts == 2.0
+    # Add Frame 2 (Should now append, resulting in 2 frames)
+    server.process_frame(frame2, ts=2.0, filename="frame2")
+    assert len(server.frame_queue) == 2
+
+    # Check that Frame 1 is still first (FIFO)
+    # Tuple unpacking: (frame, id, filename, ts)
+    (_, _, name1, ts1) = server.frame_queue[0]
+    assert name1 == "frame1"
+    assert ts1 == 1.0
+
+    # Check that Frame 2 is second
+    (_, _, name2, ts2) = server.frame_queue[1]
+    assert name2 == "frame2"
+    assert ts2 == 2.0
 
 def test_warmup_logic(server, mock_yolo_class, caplog):
     """Test that warmup runs the model 3 times."""
