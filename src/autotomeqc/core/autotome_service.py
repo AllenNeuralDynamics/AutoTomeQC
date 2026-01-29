@@ -97,8 +97,10 @@ class AutoTomeService:
                 self.log.info(f">>> EVENT: PROCESS_FRAME | Shape: {frame.shape}")
                 return self.pipeline.process(frame=frame)
 
+            raise ValueError("Input provided but did not match path or frame criteria.")
+
         except Exception as e:
             self.log.error(f"Submission Failed: {e}")
-            f = Future()
+            f: Future[dict] = Future()
             f.set_exception(e)
             return f

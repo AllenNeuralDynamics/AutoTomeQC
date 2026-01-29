@@ -1,6 +1,6 @@
 # autotomeqc/algorithms/shape.py
+from typing import Optional
 import cv2
-import numpy as np
 import logging
 from pathlib import Path
 from autotomeqc.utils.io import save_debug_image
@@ -20,7 +20,7 @@ class ShapeQC:
         self.log = logging.getLogger(self.__class__.__name__)
         self.log.info("ShapeQC initialized.")
 
-    def check(self, image: np.ndarray, filename: str = None) -> dict:
+    def check(self, image, filename: Optional[str] = None):
         """
         Analyzes the section shape (Diamond vs Hexagon).
         

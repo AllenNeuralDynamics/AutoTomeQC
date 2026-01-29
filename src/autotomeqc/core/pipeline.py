@@ -6,7 +6,7 @@ import logging
 import cv2
 import numpy as np
 import uuid
-from typing import Optional
+from typing import Dict, Optional, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from autotomeqc.utils.io import save_json_results, save_failure_report, save_debug_image
 from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
@@ -59,7 +59,7 @@ class AutoTomePipeline:
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
         """Entry point for processing a single file."""
-        future_ticket = Future()
+        future_ticket: Future[Dict[str, Any]] = Future()
         ts = time.time()
 
         # Validate Input (XOR logic)
@@ -103,7 +103,7 @@ class AutoTomePipeline:
         ticket.set_exception(ValueError(f"{reason}: {filename}"))
         return ticket
 
-    def _handle_detection(self, frame: np.ndarray, detections: dict, filename: str, id: str, ts: float):
+    def _handle_detection(self, frame: np.ndarray, detections: list[Dict[str, Any]], filename: str, id: str, ts: float):
         """
         Callback triggered when YOLO finishes.
         Args:
@@ -147,11 +147,15 @@ class AutoTomePipeline:
         # Run QC Checks in Parallel
         qc_results = self._run_all_checks(qc_input_image)
 
+        #  time
+        processing_time = time.time() - ts
+
         # Compile Final JSON
         final_summary = "PASS" if all(r.get("pass", False) for r in qc_results.values()) else "FAIL"
         final_output = {
             "filename": filename,
-            "timestamp": timestamp_str, # Use the formatted string
+            "timestamp": timestamp_str,
+            "processing_time_sec": round(processing_time, 4),
             "qc_summary": final_summary,
             "segmentation_conf": get_section_conf,
             "criteria": qc_results,
