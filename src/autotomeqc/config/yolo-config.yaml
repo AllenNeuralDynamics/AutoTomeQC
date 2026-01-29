@@ -2,6 +2,7 @@ qc:
   fps: 1
   output_dir: "example/output"
   save_segmented_images: true
+  save_input_images: false
   yolo:
     weights_path: "weights/seg_fast.pt" 
     conf_thresh: 0.5
@@ -36,5 +37,5 @@ qc:
     min_confidence: 0.1
   shape:
     save_debug_img: true
-    
+
 

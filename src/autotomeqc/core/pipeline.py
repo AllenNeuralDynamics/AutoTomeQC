@@ -25,6 +25,7 @@ class AutoTomePipeline:
         self.log = logging.getLogger(self.__class__.__name__)
         self.output_path = Path(CONFIG["qc"]["output_dir"])
         self.save_segmented_img = CONFIG["qc"].get("save_segmented_images", True)
+        self.save_input_img = CONFIG["qc"].get("save_input_images", False)
 
         # Reuse threads for QC criteria
         self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="QC_Worker")
@@ -167,6 +168,9 @@ class AutoTomePipeline:
         if self.save_segmented_img:
             img_filename = self.output_path / f"{filename}_segmented.jpg"
             save_debug_image(qc_input_image, img_filename)
+        if self.save_input_img:
+            input_img_filename = self.output_path / f"{filename}_input.jpg"
+            save_debug_image(frame, input_img_filename)
 
     def _run_all_checks(self, image):
         """Runs defined QC modules in parallel + geometry check."""
