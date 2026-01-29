@@ -31,7 +31,7 @@ jobs:
       run: uv run ruff check
     - name: Type check with mypy 
       run: |
-        uv run mypy src/mypackage --strict
+        uv run mypy src --strict
 
 # Job 2: Build Documentation (DISABLED)
   # build-docs:
