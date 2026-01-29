@@ -1,3 +1,5 @@
+# autotomeqc/utils/io.py
+from datetime import datetime
 import time
 import json
 import cv2
@@ -34,7 +36,7 @@ def save_debug_image(image: Optional[np.ndarray], path: Path) -> None:
     except Exception as e:
         logger.error(f"Failed to save image to {path}: {e}")
 
-def save_failure_report(output_dir: Path, filename: str, reason: str) -> None:
+def save_failure_report(output_dir: Path, filename: str, reason: str, ts: float) -> None:
     """
     Generates and saves a standardized JSON failure report.
     
@@ -43,14 +45,21 @@ def save_failure_report(output_dir: Path, filename: str, reason: str) -> None:
         filename (str): The base name of the file (without extension).
         reason (str): The failure reason to log.
     """
+    # Generate current timestamp for the report
+    ts_dt = datetime.fromtimestamp(ts)
+    timestamp_str = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
+
     output = {
         "filename": filename,
-        "timestamp": time.time(),
+        "timestamp": timestamp_str,     # Added to match success schema
         "qc_summary": "FAIL",
         "error_reason": reason,
-        "criteria": {}  # Empty because no checks ran
+        "segmentation_conf": 0.0,       # Optional: defaults to 0.0 on failure
+        "criteria": {}                  # Empty because no checks ran
     }
+
     # Construct the full path consistent with pipeline logic
     full_path = Path(output_dir) / f"{filename}_qc.json"
+
     # Reuse the existing save logic
     save_json_results(output, full_path)

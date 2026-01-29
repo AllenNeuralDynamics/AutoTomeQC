@@ -34,3 +34,7 @@ qc:
     img_dim: [224, 224]
     pass_labels: ["ANY"]
     min_confidence: 0.1
+  shape:
+    save_debug_img: true
+    
+

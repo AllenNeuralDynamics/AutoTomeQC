@@ -97,13 +97,13 @@ class YoloSegmentation:
             self.worker_thread.join(timeout=1.0)
         self.log.info("YOLO segmentation worker stopped")
         
-    def process_frame(self, frame: np.ndarray, ts: float | None = None, filename: str = ""):
+    def process_frame(self, frame: np.ndarray, id: str | None = None, filename: str = "", ts: float = 0.0):
         """Add frame to processing queue"""
         if not self.running:
             return
         
         try:
-            self.frame_queue.append((frame, ts, filename))
+            self.frame_queue.append((frame, id, filename, ts))
         except Exception as e:
             self.log.error(f"Error queuing frame: {e}")
             pass
@@ -113,7 +113,7 @@ class YoloSegmentation:
         while self.running:
             try:
                 if len(self.frame_queue) > 0:
-                    (frame, ts, filename) = self.frame_queue.pop()
+                    (frame, id, filename, ts) = self.frame_queue.pop()
                     detections = []
                     
                     if self.model is None:
@@ -161,7 +161,6 @@ class YoloSegmentation:
                                     else:
                                         search_id = 0
                                     detection = {
-                                        'timestamp': ts,
                                         'bbox': bbox.tolist(),
                                         'class': int(cls_id),
                                         'class_name': class_name,
@@ -174,7 +173,7 @@ class YoloSegmentation:
                     
                     # Call the provided callback function with detections
                     if self.detection_callback:
-                        self.detection_callback(frame, detections, filename)
+                        self.detection_callback(frame, detections, filename, id, ts)
                 else:
                     # No frames to process, sleep briefly
                     time.sleep(0.01)

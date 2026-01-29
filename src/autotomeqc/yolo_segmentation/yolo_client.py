@@ -1,3 +1,4 @@
+# autotomeqc/yolo_segmentation/yolo_client.py
 import numpy as np
 import logging
 from autotomeqc.yolo_segmentation.yolo_server import YoloSegmentation
@@ -21,12 +22,11 @@ class YOLOClient:
             self.log.error(f"Error starting Simple YOLO client: {e}")
             return False
         
-    def newframe_captured(self, frame: np.ndarray, current: float, filename: str = ""):
+    def newframe_captured(self, frame: np.ndarray, id: str, filename: str = "", ts: float = 0.0):
         """Put new frame at the specified FPS rate"""
         # Rate limit the frames sent to the YOLO worker
         #if self.current_time is None or current - self.current_time > (1/self.fps):
-        self.yolo_worker.process_frame(frame, ts=current, filename=filename)
-        self.current_time = current
+        self.yolo_worker.process_frame(frame, id=id, filename=filename, ts=ts)
             
     def stop(self):
         """Stop the YOLO worker"""

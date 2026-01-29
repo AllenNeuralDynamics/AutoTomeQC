@@ -1,7 +1,9 @@
 # autotomeqc/core/autotomeService.py
 import logging
 from pathlib import Path
+import numpy as np
 from concurrent.futures import Future
+from typing import Optional
 from autotomeqc.core.pipeline import AutoTomePipeline
 
 
@@ -22,7 +24,7 @@ class AutoTomeService:
         if self.running:
             self.log.warning("Service is already running.")
             return False
-        self.log.info(">>> EVENT: START")
+        self.log.info(">>> exampEVENT: START")
         try:
             self.pipeline = AutoTomePipeline()
             success = self.pipeline.start()
@@ -59,9 +61,13 @@ class AutoTomeService:
             self.log.error(f"Error during shutdown: {e}")
             return False
 
-    def process(self, input_image_path: str) -> Future:
+    def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
         """
-        PROCESS IMAGE - Submits the image to the pipeline.
+        PROCESS IMAGE - Submits either a file path OR a raw frame to the pipeline.
+
+        Args:
+            img_path (str, optional): Path to the image file.
+            frame (np.ndarray, optional): Raw image data (e.g., from cv2.imread).
 
         Returns:
             Future: A Future object representing the pending result.
@@ -69,16 +75,30 @@ class AutoTomeService:
         if not self.running:
             raise RuntimeError("Service is stopped")
 
-        input_path = Path(input_image_path.strip('"').strip("'"))
-        if not input_path.exists():
-            raise FileNotFoundError(f"File not found: {input_path}")
+       # Validate Input
+        if img_path is not None and frame is not None:
+            raise ValueError("Ambiguous input: Provide either 'img_path' OR 'frame', not both.")
+        if img_path is None and frame is None:
+            raise ValueError("Missing input: Must provide either 'img_path' or 'frame'.")
 
-        self.log.info(f">>> EVENT: PROCESS_IMAGE | File: {input_path.name}")        
         try:
-            return self.pipeline.process_image(input_path)
+            # Handle File Path
+            if img_path:
+                path = Path(img_path.strip('"').strip("'"))
+                if not path.exists():
+                    raise FileNotFoundError(f"File not found: {path}")
+                self.log.info(f">>> EVENT: PROCESS_FILE | File: {path.name}")
+                return self.pipeline.process(img_path=path)
+
+            # Handle Numpy Frame
+            elif frame is not None:
+                if frame.size == 0:
+                    raise ValueError("Frame is empty.")
+                self.log.info(f">>> EVENT: PROCESS_FRAME | Shape: {frame.shape}")
+                return self.pipeline.process(frame=frame)
+
         except Exception as e:
             self.log.error(f"Submission Failed: {e}")
-            # If submission fails (rare), return a failed Future so the client doesn't hang
             f = Future()
             f.set_exception(e)
             return f
