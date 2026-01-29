@@ -28,7 +28,7 @@ class YoloSegmentation:
 
         # State
         self.model = None
-        self.frame_queue = deque(maxlen=1)
+        self.frame_queue = deque(maxlen=None)
         self.running = False
         self.worker_thread = None
         self.detection_callback = detection_callback
