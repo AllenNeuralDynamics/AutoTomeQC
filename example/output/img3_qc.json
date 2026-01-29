@@ -1,6 +1,6 @@
 {
     "filename": "img3",
-    "timestamp": "2026-01-29 10:48:32",
+    "timestamp": "2026-01-29 10:52:38",
     "qc_summary": "FAIL",
     "segmentation_conf": 0.96,
     "criteria": {
@@ -9,13 +9,6 @@
             "metric": 6,
             "message": "Detected Hexagon (vertices=6)",
             "pass": true
-        },
-        "thickness_consistency": {
-            "label": "Inconsistent",
-            "conf": 0.8044,
-            "error": null,
-            "pass": false,
-            "reason": "Defect Detected: Inconsistent"
         },
         "coverage": {
             "label": "full_section",
@@ -28,6 +21,13 @@
             "conf": 0.2115,
             "error": null,
             "pass": true
+        },
+        "thickness_consistency": {
+            "label": "Inconsistent",
+            "conf": 0.8044,
+            "error": null,
+            "pass": false,
+            "reason": "Defect Detected: Inconsistent"
         },
         "knife_mark": {
             "label": "knifemark_stillmark",

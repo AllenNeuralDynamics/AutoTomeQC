@@ -1,6 +1,6 @@
 {
     "filename": "img2",
-    "timestamp": "2026-01-29 10:48:31",
+    "timestamp": "2026-01-29 10:52:36",
     "qc_summary": "FAIL",
     "segmentation_conf": 0.95,
     "criteria": {
@@ -10,11 +10,12 @@
             "message": "Detected Diamond (vertices=5)",
             "pass": true
         },
-        "coverage": {
-            "label": "full_section",
-            "conf": 0.9966,
+        "thickness_consistency": {
+            "label": "Inconsistent",
+            "conf": 0.7572,
             "error": null,
-            "pass": true
+            "pass": false,
+            "reason": "Defect Detected: Inconsistent"
         },
         "thickness": {
             "label": "170",
@@ -22,12 +23,11 @@
             "error": null,
             "pass": true
         },
-        "thickness_consistency": {
-            "label": "Inconsistent",
-            "conf": 0.7572,
+        "coverage": {
+            "label": "full_section",
+            "conf": 0.9966,
             "error": null,
-            "pass": false,
-            "reason": "Defect Detected: Inconsistent"
+            "pass": true
         },
         "knife_mark": {
             "label": "knifemark_none",

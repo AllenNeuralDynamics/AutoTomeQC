@@ -1,6 +1,6 @@
 {
     "filename": "img5",
-    "timestamp": "2026-01-29 10:48:36",
+    "timestamp": "2026-01-29 10:52:40",
     "qc_summary": "FAIL",
     "segmentation_conf": 0.93,
     "criteria": {
@@ -16,15 +16,15 @@
             "error": null,
             "pass": true
         },
-        "thickness": {
-            "label": "70",
-            "conf": 0.3058,
-            "error": null,
-            "pass": true
-        },
         "thickness_consistency": {
             "label": "Consistent",
             "conf": 0.9812,
+            "error": null,
+            "pass": true
+        },
+        "thickness": {
+            "label": "70",
+            "conf": 0.3058,
             "error": null,
             "pass": true
         },

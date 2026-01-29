@@ -1,6 +1,6 @@
 {
     "filename": "img4",
-    "timestamp": "2026-01-29 10:48:34",
+    "timestamp": "2026-01-29 10:52:39",
     "qc_summary": "FAIL",
     "segmentation_conf": 0.95,
     "criteria": {
@@ -16,18 +16,18 @@
             "error": null,
             "pass": true
         },
-        "thickness": {
-            "label": "140",
-            "conf": 0.1287,
-            "error": null,
-            "pass": true
-        },
         "thickness_consistency": {
             "label": "Rainbow",
             "conf": 0.6095,
             "error": null,
             "pass": false,
             "reason": "Defect Detected: Rainbow"
+        },
+        "thickness": {
+            "label": "140",
+            "conf": 0.1287,
+            "error": null,
+            "pass": true
         },
         "knife_mark": {
             "label": "knifemark_none",
