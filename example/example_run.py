@@ -37,7 +37,7 @@ def main():
     time.sleep(5)
 
     # Batch Processing Loop
-    print(f"[MASTER] Starting batch submission...")
+    print("[MASTER] Starting batch submission...")
     try:
         for i, img_path in enumerate(image_files):
             print(f"\n[MASTER] >>> Command: Process {img_path.name}")

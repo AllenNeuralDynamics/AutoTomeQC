@@ -1,6 +1,5 @@
 # autotomeqc/utils/io.py
 from datetime import datetime
-import time
 import json
 import cv2
 import logging

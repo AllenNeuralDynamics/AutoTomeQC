@@ -1,11 +1,11 @@
 import time
-import cv2
 import json
 from autotomeqc.core.autotome_service import AutoTomeService
 
 def main():
     service = AutoTomeService()
-    if not service.start(): return
+    if not service.start():
+        return
 
     print("Warming up...")
     time.sleep(3)
@@ -29,7 +29,8 @@ def main():
             # ---------------------------------------------------------
             
             # Wait for result
-            while not future.done(): time.sleep(0.1)
+            while not future.done():
+                time.sleep(0.1)
             
             # Print output
             result = future.result()

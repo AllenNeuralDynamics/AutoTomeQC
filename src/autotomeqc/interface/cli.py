@@ -3,7 +3,6 @@ import sys
 import logging
 import time
 import json
-from unittest import result
 import autotomeqc
 from autotomeqc.core.autotome_service import AutoTomeService
 
