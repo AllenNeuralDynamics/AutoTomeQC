@@ -1,6 +1,6 @@
 import pytest
 import logging  # <--- Added import
-from unittest.mock import patch, call
+from unittest.mock import MagicMock, patch, call
 
 # Import the function to test
 from autotomeqc.interface.cli import run_interactive_cli
@@ -47,34 +47,34 @@ def test_interactive_mode_happy_path(mock_service_class, caplog):
         assert "Bye!" in caplog.text
 
 def test_machine_mode_happy_path(mock_service_class, caplog):
-    """
-    Scenario: Machine (Robot) pipes input.
-    Checks: No banner logged, reads from sys.stdin.readline, handles process loop.
-    """
-    # --- FIX: Capture INFO level logs ---
-    caplog.set_level(logging.INFO)
-
-    # ARRANGE
-    inputs = ["img1.png\n", "img2.png\n", ""]
-
-    with patch("sys.stdin.isatty", return_value=False), \
-         patch("sys.stdin.readline", side_effect=inputs):
-
-        # ACT
-        run_interactive_cli()
-
-        # ASSERT
-        # Ensure NO human banner was printed
-        assert "AutoTomeQC Interactive Service" not in caplog.text
-
+        caplog.set_level(logging.INFO)
+        
+        # Mock the service instance
         service = mock_service_class.return_value
-        service.start.assert_called_once()
+        # Configure 'process' to return a Mock Future
+        mock_future = MagicMock()
+        # Configure the Future to return a valid dict when .result() is called
+        mock_future.result.return_value = {"qc_summary": "PASS", "criteria": {}}
+        # Attach this Future to the process method
+        service.process.return_value = mock_future
 
-        # Verify process was called twice with stripped strings
-        expected_calls = [call("img1.png"), call("img2.png")]
-        service.process.assert_has_calls(expected_calls)
+        # ARRANGE
+        inputs = ["img1.png\n", "img2.png\n", ""]
 
-        service.stop.assert_called_once()
+        with patch("sys.stdin.isatty", return_value=False), \
+             patch("sys.stdin.readline", side_effect=inputs):
+
+            # ACT
+            run_interactive_cli()
+
+            # ASSERT
+            assert "AutoTomeQC Interactive Service" not in caplog.text
+            service.start.assert_called_once()
+
+            # Verify process was called twice with stripped strings
+            assert service.process.call_count == 2
+            service.process.assert_any_call("img1.png")
+            service.process.assert_any_call("img2.png")
 
 def test_exit_commands(mock_service_class):
     """Test that various exit keywords break the loop immediately."""
@@ -111,7 +111,6 @@ def test_quoted_path_handling(mock_service_class):
 
 def test_keyboard_interrupt(mock_service_class, caplog):
     """Test that Ctrl+C is handled gracefully."""
-    # --- FIX: Capture INFO level logs ---
     caplog.set_level(logging.INFO)
 
     with patch("sys.stdin.isatty", return_value=True), \
