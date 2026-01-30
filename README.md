@@ -9,6 +9,76 @@ uv sync
 uv run python -m autotomeqc
 ```
 
+## Usage 1. Interactive Mode (CLI)
+
+Use this mode to quickly test your saved section images. It launches the service and waits for you to paste file paths for analysis.
+
+Run the service:
+```bash
+uv run python -m autotomeqc
+```
+
+Once the service says `Ready >`, you can:
+
+Paste a file path: `example/input_images/img0.jpg`
+
+Exit: Type `exit`, `stop`, or press `Ctrl+C`.
+
+
+## Usage 2. Python Library 
+
+You can import `AutoTomeService` directly into your own Python code to integrate QC into your acquisition loops.
+
+See the example codes  `example/example_import.py`
+
+```bash
+from autotomeqc.core.autotome_service import AutoTomeService
+
+# Initialize Service (Loads YOLO & Classification Models)
+service = AutoTomeService()
+service.start()
+
+# Method A: Process by File Path
+future_a = service.process(img_path="data/sample_01.jpg")
+result = future_a.result()  # Wait for the result
+print(f"QC Status: {result['qc_summary']}")
+
+# Method B: Process by Raw Frame (e.g., from Camera)
+future_b = service.process(frame=frame)
+result = future_a.result()  # Wait for the result
+print(f"QC Status: {result['qc_summary']}")
+
+service.stop()
+```
+
+## Output
+
+A full JSON report are also saved to disk.
+
+Directory: The location is defined in `src/autotomeqc/config/yolo-config.yaml` (see the output_dir setting).
+
+Files: {filename}_qc.json
+
+
+And, you can view the results directly in the terminal:
+
+**Example Output:**
+```bash
+Ready > example/input_images/img0.jpg
+Processing... Done.
+✅ PASS: PASS
+   Details:
+   {
+       "shape": { "label": "Hexagon", "pass": true },
+       "coverage": { "label": "full_section", "conf": 0.99, "pass": true },
+       "knife_mark": { "label": "knifemark_none", "pass": true },
+       ...
+   }
+```
+
+
+
+
 ## Tools
 
 ### Package/Project Management 

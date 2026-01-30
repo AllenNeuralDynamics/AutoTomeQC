@@ -1,3 +1,4 @@
+# example/example_subprocess.py
 import subprocess
 import time
 import sys
@@ -33,8 +34,8 @@ def main():
 
     # Warmup
     # The service needs a moment to load YOLO/PyTorch models
-    print("[MASTER] Waiting 5s for service initialization...")
-    time.sleep(5)
+    print("[MASTER] Waiting 10s for service initialization...")
+    time.sleep(10)
 
     # Batch Processing Loop
     print("[MASTER] Starting batch submission...")

@@ -1,3 +1,4 @@
+# example/example_import.py
 import time
 import json
 from autotomeqc.core.autotome_service import AutoTomeService
@@ -18,7 +19,7 @@ def main():
             # ---------------------------------------------------------
             # WAY 1: Pass by File Path (Service loads the file)
             # ---------------------------------------------------------
-            future = service.process(img_path=path)
+            future = service.process(img_path=path)  # Service starts working in background
 
             # ---------------------------------------------------------
             # WAY 2: Pass by Raw Frame (You load the file)
@@ -27,10 +28,6 @@ def main():
             #if frame is None: continue 
             #future = service.process(frame=frame)
             # ---------------------------------------------------------
-            
-            # Wait for result
-            while not future.done():
-                time.sleep(0.1)
             
             # Print output
             result = future.result()
