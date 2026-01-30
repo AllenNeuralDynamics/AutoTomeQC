@@ -147,7 +147,7 @@ class AutoTomePipeline:
         # Run QC Checks in Parallel
         qc_results = self._run_all_checks(qc_input_image)
 
-        #  time
+        # Measure processing time in seconds since the frame timestamp
         processing_time = time.time() - ts
 
         # Compile Final JSON

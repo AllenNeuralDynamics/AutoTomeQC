@@ -24,7 +24,7 @@ class AutoTomeService:
         if self.running:
             self.log.warning("Service is already running.")
             return False
-        self.log.info(">>> exampEVENT: START")
+        self.log.info(">>> EVENT: START")
         try:
             self.pipeline = AutoTomePipeline()
             success = self.pipeline.start()

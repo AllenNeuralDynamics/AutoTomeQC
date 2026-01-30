@@ -2,7 +2,7 @@ qc:
   fps: 1
   output_dir: "example/output"
   save_segmented_images: true
-  save_input_images: false
+  save_input_images: true
   yolo:
     weights_path: "weights/seg_fast.pt" 
     conf_thresh: 0.5
@@ -12,7 +12,7 @@ qc:
     max_det: 30
     loop_bbox_margin: 30
   section_coverage:
-    weights_path: "weights/setction_coverage_v1.pt"
+    weights_path: "weights/section_coverage_v1.pt"
     img_size: 224
     img_dim: [224, 224]
     pass_labels: ["full_section"]
