@@ -1,13 +1,16 @@
 # example/example_subprocess.py
+import json
 import subprocess
 import time
 import sys
 from pathlib import Path
 
+
 # --- Configuration ---
 current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parent
 input_dir = current_dir / "input_images"
+READY_SIGNAL = "System Ready"
 
 def main():
     # Validation
@@ -27,27 +30,40 @@ def main():
     process = subprocess.Popen(
         [sys.executable, "-m", "autotomeqc"],
         stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
         text=True,     # Work with strings, not bytes
         bufsize=1,     # Line buffered (send commands immediately)
         cwd=project_root
     )
 
     # Warmup
-    # The service needs a moment to load YOLO/PyTorch models
-    print("[MASTER] Waiting 10s for service initialization...")
-    time.sleep(10)
+    print("[MASTER] Waiting for initialization...")
+    while True:
+        line = process.stdout.readline()
+        if not line:
+            break  # Process died
+        if READY_SIGNAL in line:
+            print("[MASTER] >>> Service Ready.")
+            break
 
     # Batch Processing Loop
     print("[MASTER] Starting batch submission...")
     try:
         for i, img_path in enumerate(image_files):
             print(f"\n[MASTER] >>> Command: Process {img_path.name}")
+
+            # Send image path to service
             process.stdin.write(f"{img_path.absolute()}\n")
-            time.sleep(2) 
+            process.stdin.flush()
+
+            # Receive (Blocks until done)
+            result = json.loads(process.stdout.readline())
+            print(f"[MASTER] Result: {result}")
 
         # Shutdown
         print("\n[MASTER] >>> Command: Stop")
         process.stdin.write("stop\n")
+        process.stdin.flush()
         
     except BrokenPipeError:
         print("[MASTER] Error: Service pipe closed unexpectedly.")

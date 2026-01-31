@@ -127,7 +127,6 @@ class AutoTomePipeline:
 
         if qc_input_image is None:
             self.log.warning(f"No segmentation found for {filename}, skipping QC.")
-
             # Construct failure output
             if future_ticket:
                 output = {
@@ -138,10 +137,12 @@ class AutoTomePipeline:
                     "segmentation_conf": 0.0,
                     "criteria": {}
                 }
-                future_ticket.set_result(output)
-
-                # Create a failure record on disk as well?
+                # Create a failure record on disk as well
                 save_json_results(output, self.output_path / f"{filename}_qc.json")
+                if self.save_input_img:
+                    input_img_filename = self.output_path / f"{filename}_input.jpg"
+                    save_debug_image(frame, input_img_filename)
+                future_ticket.set_result(output)
             return
 
         # Run QC Checks in Parallel
@@ -161,20 +162,19 @@ class AutoTomePipeline:
             "criteria": qc_results,
         }
 
-        # Deliver Result
-        if future_ticket:
-            future_ticket.set_result(final_output)
-
         # Output Logic
         json_filename = self.output_path / f"{filename}_qc.json"
         save_json_results(final_output, json_filename)
-
         if self.save_segmented_img:
             img_filename = self.output_path / f"{filename}_segmented.jpg"
             save_debug_image(qc_input_image, img_filename)
         if self.save_input_img:
             input_img_filename = self.output_path / f"{filename}_input.jpg"
             save_debug_image(frame, input_img_filename)
+
+        # Deliver Result
+        if future_ticket:
+            future_ticket.set_result(final_output)
 
     def _run_all_checks(self, image):
         """Runs defined QC modules in parallel + geometry check."""

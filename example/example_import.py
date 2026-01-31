@@ -8,8 +8,7 @@ def main():
     if not service.start():
         return
 
-    print("Warming up...")
-    time.sleep(3)
+    print("Service Ready! Starting processing...")
 
     try:
         for i in range(10):
@@ -19,7 +18,7 @@ def main():
             # ---------------------------------------------------------
             # WAY 1: Pass by File Path (Service loads the file)
             # ---------------------------------------------------------
-            future = service.process(img_path=path)  # Service starts working in background
+            future = service.process(img_path=path)
 
             # ---------------------------------------------------------
             # WAY 2: Pass by Raw Frame (You load the file)
