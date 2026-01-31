@@ -9,16 +9,9 @@ from autotomeqc.interface.cli import run_interactive_cli
 
 @pytest.fixture
 def mock_service_class():
-    """
-    Patches the AutoTomeService class.
-    We intercept the creation of the service so we can check if .start(), .process(), and .stop() are called.
-    """
-    with patch("autotomeqc.interface.cli.AutoTomeService") as MockClass:
-        # Create a mock instance that the CLI will use
-        mock_instance = MockClass.return_value
-        # Ensure the loop condition (while service.running) defaults to True
-        mock_instance.running = True
-        yield MockClass
+    # Patch the class where it is IMPORTED, not where it is defined
+    with patch("autotomeqc.interface.cli.AutoTomeService") as mock:
+        yield mock
 
 # --- TESTS ---
 
@@ -123,20 +116,34 @@ def test_keyboard_interrupt(mock_service_class, caplog):
 
 def test_process_exception_handling(mock_service_class, caplog):
     """Test that if processing one file fails, the app stays alive for the next one."""
-    # Note: ERROR logs are captured by default, but adding this doesn't hurt.
     caplog.set_level(logging.INFO)
 
-    service = mock_service_class.return_value
-    # First file crashes, second file works
-    service.process.side_effect = [Exception("Corrupt File"), None]
+    # 1. Get the mock instance that the CLI will use
+    service_instance = mock_service_class.return_value
     
+    # 2. Setup a "Good" future object for the successful file
+    # This mimics the concurrent.futures.Future object
+    good_future = MagicMock()
+    good_future.result.return_value = {"qc_summary": "PASS", "criteria": {}}
+
+    # 3. Configure the side effects for service.process()
+    # Call 1: Raises an Exception ("Corrupt File")
+    # Call 2: Returns the good_future object
+    service_instance.process.side_effect = [Exception("Corrupt File"), good_future]
+
+    # 4. Simulate User Input: 
+    #   1. "bad.jpg" (triggers exception)
+    #   2. "good.jpg" (triggers success)
+    #   3. "exit" (quits loop)
     with patch("sys.stdin.isatty", return_value=True), \
          patch("builtins.input", side_effect=["bad.jpg", "good.jpg", "exit"]):
 
         run_interactive_cli()
 
-        # Verify error was logged
-        assert "Invalid input or path error" in caplog.text
-
-        # Verify we tried to process both
-        assert service.process.call_count == 2
+    # 5. Assertions
+    # Verify the first error was caught and logged gracefully
+    assert "Error: Corrupt File" in caplog.text
+    
+    # Verify the app stayed alive and processed the second file successfully
+    # (If the app crashed on the first error, this line would be missing)
+    assert "PASS" in caplog.text
