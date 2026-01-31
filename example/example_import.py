@@ -1,5 +1,4 @@
 # example/example_import.py
-import time
 import json
 from autotomeqc.core.autotome_service import AutoTomeService
 

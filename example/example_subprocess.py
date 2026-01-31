@@ -1,7 +1,6 @@
 # example/example_subprocess.py
 import json
 import subprocess
-import time
 import sys
 from pathlib import Path
 
