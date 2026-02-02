@@ -34,7 +34,7 @@ def mock_config():
 @pytest.fixture
 def mock_yolo_client_class():
     """Mock the YOLO Client so we don't load AI models."""
-    with patch("autotomeqc.core.pipeline.YOLOClient") as MockClass:
+    with patch("autotomeqc.core.pipeline.YoloSegmentation") as MockClass:
         yield MockClass
 
 @pytest.fixture
@@ -99,7 +99,7 @@ def test_stop_cleans_up_resources(pipeline):
     """Test that stop() shuts down the thread pool."""
     with patch.object(pipeline.executor, 'shutdown') as mock_shutdown:
         pipeline.stop()
-        pipeline.yolo.stop.assert_called_once()
+        pipeline.segmenter.stop.assert_called_once()
         mock_shutdown.assert_called_once_with(wait=False)
 
 def test_process_flow(pipeline, mock_external_deps, tmp_path):
@@ -110,7 +110,7 @@ def test_process_flow(pipeline, mock_external_deps, tmp_path):
     pipeline.process(img_path=str(image_path))
     # ASSERT
     mock_external_deps["cv2"].imread.assert_called_once()
-    pipeline.yolo.newframe_captured.assert_called_once()
+    pipeline.segmenter.process_frame.assert_called_once()
 
 def test_handle_detection_runs_qc(pipeline, mock_external_deps):
     """
