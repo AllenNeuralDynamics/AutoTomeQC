@@ -9,7 +9,7 @@ import uuid
 from typing import Dict, Optional, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from autotomeqc.utils.io import save_json_results, save_failure_report, save_debug_image
-from autotomeqc.yolo_segmentation.yolo_client import YOLOClient
+from autotomeqc.yolo_segmentation.yolo_server import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
 from autotomeqc.yolo_segmentation.visualization import cropped_segmented, get_best_section_detection
 
@@ -34,8 +34,8 @@ class AutoTomePipeline:
         self.pending_results = {}
 
         # Preprocessing - Segmentation via YOLO
-        self.yolo = YOLOClient(
-            config=CONFIG["qc"],
+        self.yolosegmentation = YoloSegmentation(
+            config=CONFIG["qc"].get('yolo', {}),
             detection_callback=self._handle_detection
         )
 
@@ -50,11 +50,13 @@ class AutoTomePipeline:
 
     def start(self):
         self.log.info("Starting Pipeline...")
-        return self.yolo.start_client()
+        # TODO change into signal
+        return self.yolosegmentation.start()
 
     def stop(self):
         self.log.info("Stopping Pipeline...")
-        self.yolo.stop()
+        if self.yolosegmentation:
+            self.yolosegmentation.stop()
         self.executor.shutdown(wait=False)  # Cleanup threads
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
@@ -92,7 +94,7 @@ class AutoTomePipeline:
 
         # Dispatch to YOLO
         # Passing 'ts' (float) and 'request_id' to be returned in callback
-        self.yolo.newframe_captured(frame, id=request_id, filename=filename, ts=ts)
+        self.yolosegmentation.process_frame(frame, id=request_id, filename=filename, ts=ts)
 
         return future_ticket
 
@@ -161,6 +163,7 @@ class AutoTomePipeline:
             "segmentation_conf": get_section_conf,
             "criteria": qc_results,
         }
+
 
         # Output Logic
         json_filename = self.output_path / f"{filename}_qc.json"
