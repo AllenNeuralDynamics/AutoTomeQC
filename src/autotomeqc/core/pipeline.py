@@ -9,7 +9,7 @@ import uuid
 from typing import Dict, Optional, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from autotomeqc.utils.io import save_json_results, save_failure_report, save_debug_image
-from src.autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
+from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
 from autotomeqc.yolo_segmentation.visualization import cropped_segmented, get_best_section_detection
 

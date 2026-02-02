@@ -1,4 +1,6 @@
 # autotomeqc/yolo_segmentation/yolo_segmentation.py
+from collections.abc import Callable
+from typing import Deque, Optional, Tuple
 import numpy as np
 import time
 import logging
@@ -13,7 +15,7 @@ import torch
 class YoloSegmentation:
     """YOLO segmentation worker that runs in its own thread"""
     
-    def __init__(self, config, detection_callback=None):
+    def __init__(self, config: dict, detection_callback: Optional[Callable] = None):
         """
         :param config: Configuration dictionary.
         :param detection_callback: A function to call with the list of detections.
@@ -29,7 +31,7 @@ class YoloSegmentation:
 
         # State
         self.model = None
-        self.frame_queue = deque(maxlen=None)
+        self.frame_queue: Deque[Tuple[np.ndarray, Optional[str], str, float]] = deque(maxlen=None)
         self.running = False
         self.worker_thread = None
         self.detection_callback = detection_callback
