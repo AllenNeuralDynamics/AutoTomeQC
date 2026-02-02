@@ -4,7 +4,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 # Adjust import path to match your project structure
-from autotomeqc.yolo_segmentation.yolo_server import YoloSegmentation
+from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 
 # --- FIXTURES ---
 
@@ -24,7 +24,7 @@ def mock_yolo_class():
     """
     Patches the ultralytics.YOLO class so we don't download/load real models.
     """
-    with patch("autotomeqc.yolo_segmentation.yolo_server.YOLO") as MockClass:
+    with patch("autotomeqc.yolo_segmentation.yolo_segmentation.YOLO") as MockClass:
         mock_instance = MockClass.return_value
         # Setup 'overrides' dict to prevent KeyError in __init__
         mock_instance.overrides = {}
@@ -59,7 +59,7 @@ def test_initialization(server, mock_config, mock_yolo_class):
 
 def test_initialization_failure(mock_config, caplog):
     """Test graceful fallback if YOLO fails to load."""
-    with patch("autotomeqc.yolo_segmentation.yolo_server.YOLO", side_effect=Exception("Corrupt Weights")):
+    with patch("autotomeqc.yolo_segmentation.yolo_segmentation.YOLO", side_effect=Exception("Corrupt Weights")):
         server = YoloSegmentation(config=mock_config)
         assert server.model is None
         assert "Failed to load YOLO model" in caplog.text

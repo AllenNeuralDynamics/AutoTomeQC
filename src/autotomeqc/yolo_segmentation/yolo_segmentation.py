@@ -1,4 +1,4 @@
-# autotomeqc/yolo_segmentation/yolo_server.py
+# autotomeqc/yolo_segmentation/yolo_segmentation.py
 import numpy as np
 import time
 import logging
