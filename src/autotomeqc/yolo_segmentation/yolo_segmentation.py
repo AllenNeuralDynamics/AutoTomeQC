@@ -2,6 +2,7 @@
 import numpy as np
 import time
 import logging
+from threading import Event
 from collections import deque
 
 from threading import Thread # Using Event for better thread signaling
@@ -32,6 +33,7 @@ class YoloSegmentation:
         self.running = False
         self.worker_thread = None
         self.detection_callback = detection_callback
+        self.ready: Event = Event()
 
         self._load_model()
 
@@ -46,6 +48,7 @@ class YoloSegmentation:
             self.model.to(device)
             self.log.info(f"Model is running on: {device}")
             self._warmup_model()
+            self.ready.set()
         except Exception as e:
             self.log.error(f"Failed to load YOLO model: {e}. Running in DUMMY mode.")
             self.model = None
@@ -84,11 +87,9 @@ class YoloSegmentation:
                 
             warmup_time = time.time() - warmup_start
             self.log.info(f"Model warmup completed in {warmup_time:.2f}s")
-            self.warmup_done = True
             
         except Exception as e:
             self.log.error(f"Warmup failed: {e}")
-            self.warmup_done = True  # Continue anyway
         
     def stop(self):
         """Stop the YOLO processing thread"""

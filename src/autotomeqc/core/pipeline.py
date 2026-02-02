@@ -34,7 +34,7 @@ class AutoTomePipeline:
         self.pending_results = {}
 
         # Preprocessing - Segmentation via YOLO
-        self.yolosegmentation = YoloSegmentation(
+        self.segmenter = YoloSegmentation(
             config=CONFIG["qc"].get('yolo', {}),
             detection_callback=self._handle_detection
         )
@@ -50,13 +50,31 @@ class AutoTomePipeline:
 
     def start(self):
         self.log.info("Starting Pipeline...")
-        # TODO change into signal
-        return self.yolosegmentation.start()
+        try:
+            is_ready = self.segmenter.ready.wait(timeout=60.0)  # Wait
+            if not is_ready:
+                self.log.error("Pipeline Start Failed: YOLO Model initialization timed out.")
+                return False
+            # Check if the model actually loaded correctly
+            if self.segmenter.model is None:
+                 self.log.error("Pipeline Start Failed: YOLO Model is None (Load failed).")
+                 return False
+            # Start the Segmenter Thread
+            if self.segmenter.start():
+                self.log.info("Pipeline started successfully.")
+                return True
+            else:
+                self.log.error("YOLO Segmentation refused to start.")
+                return False
+
+        except Exception as e:
+            self.log.error(f"Critical error starting pipeline: {e}")
+            return False
 
     def stop(self):
         self.log.info("Stopping Pipeline...")
-        if self.yolosegmentation:
-            self.yolosegmentation.stop()
+        if self.segmenter:
+            self.segmenter.stop()
         self.executor.shutdown(wait=False)  # Cleanup threads
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
@@ -94,7 +112,7 @@ class AutoTomePipeline:
 
         # Dispatch to YOLO
         # Passing 'ts' (float) and 'request_id' to be returned in callback
-        self.yolosegmentation.process_frame(frame, id=request_id, filename=filename, ts=ts)
+        self.segmenter.process_frame(frame, id=request_id, filename=filename, ts=ts)
 
         return future_ticket
 
