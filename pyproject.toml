@@ -1,12 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
-name = "mypackage"
-version = "0.1.0"
+name = "autotomeqc"
+dynamic = ["version"]
 
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "ultralytics>=8.2.0",
+    "torch>=2.3.0",
+    "numpy>=1.26.0",
+    "opencv-python>=4.9.0",
+    "PyYAML>=6.0",
+    "lapx>=0.5.5",
+
+    # Development/Testing Tools (kept from original)
     "pytest>=8.3.5",
     "ruff>=0.9.9",
+    "mypy>=1.10.0",
+    "types-PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -17,5 +31,11 @@ docs = [
     'docutils'
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/autotomeqc"]
+
 [tool.pytest.ini_options]
-pythonpath = ["src", "tests"]
+pythonpath = ["tests"]
+
+[tool.hatch.version]
+path = "src/autotomeqc/__init__.py"
