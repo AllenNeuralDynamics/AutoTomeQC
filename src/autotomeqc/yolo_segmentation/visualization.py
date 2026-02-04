@@ -16,6 +16,7 @@ def get_best_section_detection(detections: list) -> Optional[dict]:
         return None
 
     # Select the Best Section
+    # TODO get setcion within the loop bbox
     best_section = max(valid_sections, key=lambda x: x.get('confidence', 0.0))
     return best_section
 

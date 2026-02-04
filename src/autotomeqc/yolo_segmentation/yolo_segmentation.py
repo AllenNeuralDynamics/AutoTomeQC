@@ -6,10 +6,11 @@ import time
 import logging
 from threading import Event
 from collections import deque
-
+from cv2 import resize, INTER_NEAREST
 from threading import Thread # Using Event for better thread signaling
 from ultralytics import YOLO
 import torch
+
 
 
 class YoloSegmentation:
@@ -22,7 +23,6 @@ class YoloSegmentation:
         """
         self.weights_path = config.get('weights_path', r'weights\seg_fast.pt')
         self.conf_thresh = config.get('conf_thresh', 0.25)
-        self.iou_thresh = config.get('iou_thresh', 0.45)
         self.img_size = config.get('img_size', 640)
         self.img_dim = config.get('img_dim', [640, 480])  # input image dimension for YOLO (w, h)
         self.max_det = config.get('max_det', 30)
@@ -104,8 +104,10 @@ class YoloSegmentation:
         """Add frame to processing queue"""
         if not self.running:
             return
-        
+
         try:
+            if frame.shape[0] != self.img_dim[1] or frame.shape[1] != self.img_dim[0]:
+                frame = resize(frame, (self.img_dim[0], self.img_dim[1]), interpolation=INTER_NEAREST)
             self.frame_queue.append((frame, id, filename, ts))
         except Exception as e:
             self.log.error(f"Error queuing frame: {e}")
@@ -135,10 +137,9 @@ class YoloSegmentation:
                             frame, 
                             persist=True,
                             conf=self.conf_thresh,
-                            iou=self.iou_thresh,
                             imgsz=self.img_size,
                             max_det=self.max_det,
-                            verbose=False
+                            verbose=False,
                         )
 
                         # Convert results to detection format
