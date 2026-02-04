@@ -139,6 +139,7 @@ class YoloSegmentation:
                             conf=self.conf_thresh,
                             imgsz=self.img_size,
                             max_det=self.max_det,
+                            retina_masks=True,
                             verbose=False,
                         )
 
