@@ -3,6 +3,7 @@ import logging
 from typing import Optional
 import cv2
 import numpy as np
+from autotomeqc.config.config_loader import CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
     # Crop to 'loop' BBox ---
     if loop_detection:
         bbox = loop_detection.get('bbox', [])
-        margin = loop_detection.get('loop_bbox_margin', 30)
+        margin = CONFIG["qc"].get("yolo", {}).get("loop_bbox_margin", 30)
 
         if len(bbox) == 4:
             x1, y1, x2, y2 = map(int, bbox)
@@ -80,6 +81,6 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
                 process_frame = process_frame[y1:y2, x1:x2]
 
     # Resize (Standardize input for QC models)
-    process_frame = cv2.resize(process_frame, (640, 640))
-
+    output_dim = CONFIG["qc"].get("yolo", {}).get("out_dim", [640, 640])
+    process_frame = cv2.resize(process_frame, tuple(output_dim))
     return process_frame

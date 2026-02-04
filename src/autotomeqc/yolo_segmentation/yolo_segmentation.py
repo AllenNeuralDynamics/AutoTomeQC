@@ -6,11 +6,10 @@ import time
 import logging
 from threading import Event
 from collections import deque
-from cv2 import resize, INTER_NEAREST
+import cv2
 from threading import Thread # Using Event for better thread signaling
 from ultralytics import YOLO
 import torch
-
 
 
 class YoloSegmentation:
@@ -107,7 +106,7 @@ class YoloSegmentation:
 
         try:
             if frame.shape[0] != self.img_dim[1] or frame.shape[1] != self.img_dim[0]:
-                frame = resize(frame, (self.img_dim[0], self.img_dim[1]), interpolation=INTER_NEAREST)
+                frame = cv2.resize(frame, (self.img_dim[0], self.img_dim[1]), interpolation=cv2.INTER_AREA)
             self.frame_queue.append((frame, id, filename, ts))
         except Exception as e:
             self.log.error(f"Error queuing frame: {e}")
@@ -172,7 +171,6 @@ class YoloSegmentation:
                                         'confidence': conf,
                                         'id': search_id,
                                         'mask': masks_data.get(i, []),
-                                        'loop_bbox_margin': self.loop_bbox_margin
                                     }
                                     detections.append(detection)
                     
