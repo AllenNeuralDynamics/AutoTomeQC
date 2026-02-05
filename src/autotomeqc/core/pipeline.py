@@ -1,5 +1,6 @@
 # autotomeqc/core/pipeline.py
 from datetime import datetime
+from fileinput import filename
 from pathlib import Path
 import time
 import logging
@@ -11,8 +12,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from autotomeqc.utils.io import save_json_results, save_failure_report, save_debug_image
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
-from autotomeqc.yolo_segmentation.visualization import cropped_segmented, get_best_section_detection
-
+from autotomeqc.yolo_segmentation.post_processing import (cropped_segmented,
+                                                          get_best_section_detection,
+                                                          validate_detections )
 from autotomeqc.algorithms.coverage import SectionCoverageQC
 from autotomeqc.algorithms.knife_mark import KnifeMarksQC
 from autotomeqc.algorithms.thickness_consistency import ThicknessConsistencyQC
@@ -135,10 +137,29 @@ class AutoTomePipeline:
         """
         # Retrieve the waiting ticket
         future_ticket = self.pending_results.pop(id, None)
-
-        # Convert float timestamp to datetime object for formatting
         ts_dt = datetime.fromtimestamp(ts)
         timestamp_str = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Validate
+        is_valid, error_reason = validate_detections(detections)
+        if not is_valid:
+            self.log.warning(f"[{filename}] Pipeline Rejected: {error_reason}")
+            if future_ticket:
+                output = {
+                    "filename": filename,
+                    "timestamp": timestamp_str,
+                    "qc_summary": "FAIL",
+                    "error_reason": error_reason,  # This tells LASSO why it failed
+                    "segmentation_conf": 0.0,
+                    "criteria": {}
+                }
+                # Save failure report and notify the system
+                save_json_results(output, self.output_path / f"{filename}_qc.json")
+                if self.save_input_img:
+                    input_img_filename = self.output_path / f"{filename}_input.jpg"
+                    save_debug_image(frame, input_img_filename)
+                future_ticket.set_result(output)
+            return
 
         # Get the cropped/segmented image
         qc_input_image = cropped_segmented(frame, detections)

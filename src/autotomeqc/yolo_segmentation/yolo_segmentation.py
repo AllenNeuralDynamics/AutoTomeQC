@@ -25,7 +25,6 @@ class YoloSegmentation:
         self.img_size = config.get('img_size', 640)
         self.img_dim = config.get('img_dim', [640, 480])  # input image dimension for YOLO (w, h)
         self.max_det = config.get('max_det', 30)
-        self.loop_bbox_margin = config.get('loop_bbox_margin', 30)
         self.log = logging.getLogger(self.__class__.__name__)
 
         # State
