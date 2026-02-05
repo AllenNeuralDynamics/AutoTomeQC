@@ -38,14 +38,14 @@ def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, l
         img_dim = (output_dim[0], output_dim[1])  # (w, h)
         mask_s = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
         mask_l = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
-        
+
         cv2.fillPoly(mask_s, [np.array(section_poly, dtype=np.int32)], 255)
         cv2.fillPoly(mask_l, [np.array(loop_poly, dtype=np.int32)], 255)
-        
+
         intersection = cv2.bitwise_and(mask_s, mask_l)
         area_s = np.sum(mask_s > 0)
         area_int = np.sum(intersection > 0)
-        
+
         return float(area_int / area_s) if area_s > 0 else 0.0
     except Exception:
         return 0.0
@@ -66,7 +66,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str], li
     # Case 2: No Loop logic
     if not loop_detection:
         if not allow_no_loop:
-            return False, "No loop detected"
+            return False, "No loop detected", []
         return True, None, detections  # Proceed in Global Mode (Section only) for debuging purposes
 
     # --- Identify Sections relative to the Loop ---
@@ -113,7 +113,6 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
 
     # Find the 'loop' detection (Global for the frame)
     loop_detection = next((d for d in detections if d['class_name'] == 'loop'), None)
-
     best_section = get_best_section_detection(detections)
     if best_section is None:
         logger.warning(f"[{filename}] No valid 'section' found. Skipping.")
@@ -128,12 +127,13 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
         polygon_mask = np.zeros((h, w), dtype=np.uint8)
 
         polygons = []
-        # Handle different polygon nesting formats
-        if isinstance(mask_poly[0][0], (list, tuple, np.ndarray)):
+        if isinstance(mask_poly[0], (list, tuple, np.ndarray)) and len(mask_poly[0]) > 2:
+            # It's a flat list of points or a single polygon
+            polygons.append(np.array(mask_poly, dtype=np.int32))
+        else:
+            # It's a list of polygons (nested)
             for poly in mask_poly:
                 polygons.append(np.array(poly, dtype=np.int32))
-        else:
-            polygons.append(np.array(mask_poly, dtype=np.int32))
 
         # Fill the polygon on the mask
         cv2.fillPoly(polygon_mask, polygons, color=255)  # type: ignore
