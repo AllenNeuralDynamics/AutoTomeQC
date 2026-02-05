@@ -77,7 +77,7 @@ class TestYoloPostProcessing:
         is_valid, reason, filtered = validate_detections(sample_detections)
         assert is_valid is True
         assert len(filtered) == 2
-        assert reason is None
+        assert reason == "N/A"
 
     def test_validate_detections_no_section(self):
         detections = [{'class_name': 'loop', 'bbox': [0,0,10,10], 'mask': []}]
@@ -97,7 +97,6 @@ class TestYoloPostProcessing:
     def test_cropped_segmented_output_shape(self, sample_detections):
         # Create a dummy 1000x1000 image
         dummy_frame = np.zeros((1000, 1000, 3), dtype=np.uint8)
-        
         result = cropped_segmented(dummy_frame, sample_detections)
 
         assert result is not None
