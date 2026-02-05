@@ -104,13 +104,23 @@ class YoloSegmentation:
             return
 
         try:
-            if frame.shape[0] != self.img_dim[1] or frame.shape[1] != self.img_dim[0]:
-                frame = cv2.resize(frame, (self.img_dim[0], self.img_dim[1]), interpolation=cv2.INTER_AREA)
+            frame = self._resize_frame(frame)
             self.frame_queue.append((frame, id, filename, ts))
         except Exception as e:
             self.log.error(f"Error queuing frame: {e}")
             pass
-            
+
+    def _resize_frame(self, frame: np.ndarray) -> np.ndarray:
+        """
+        Ensures the input frame matches the model's required dimensions.
+        """
+        target_h, target_w = self.img_dim[1], self.img_dim[0]
+        current_h, current_w = frame.shape[:2]
+
+        if current_h != target_h or current_w != target_w:
+            return cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        return frame
+
     def _process_frames(self):
         """Process frames from the queue"""
         while self.running:

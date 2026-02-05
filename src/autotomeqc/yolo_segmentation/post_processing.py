@@ -106,7 +106,7 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
     """
     Processing logic:
     1. Finds the 'loop' detection (global context).
-    2. Finds the 'best' section (highest confidence > 0.8).
+    2. Finds the 'best' section (highest confidence).
     3. Masks that specific section (blacking out background).
     4. Crops to the 'loop' bounding box.
     5. Returns the processed image for QC.
