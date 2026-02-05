@@ -16,11 +16,41 @@ def get_best_section_detection(detections: list) -> Optional[dict]:
     if not valid_sections:
         return None
 
-    # Select the Best Section
-    best_section = max(valid_sections, key=lambda x: x.get('confidence', 0.0))
-    return best_section
+    # Return early if there's only one valid section
+    if len(valid_sections) == 1:
+        return valid_sections[0]
 
-def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str]]:
+    # If multiple exist (e.g., debugging/global mode), pick the highest confidence
+    return max(valid_sections, key=lambda x: x.get('confidence', 0.0))
+
+def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, loop_bbox: list) -> float:
+    # Quick BBox Check (Cheap)
+    # If the rectangles don't even touch, the ratio is definitely 0.0
+    x1_s, y1_s, x2_s, y2_s = section_bbox
+    x1_l, y1_l, x2_l, y2_l = loop_bbox
+
+    if x1_s > x2_l or x2_s < x1_l or y1_s > y2_l or y2_s < y1_l:
+        return 0.0
+
+    # Precise Mask Check (Only if BBoxes overlap)
+    try:
+        output_dim = CONFIG["qc"].get("yolo_post_processing", {}).get("out_dim", [640, 640])
+        img_dim = (output_dim[0], output_dim[1])  # (w, h)
+        mask_s = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
+        mask_l = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
+        
+        cv2.fillPoly(mask_s, [np.array(section_poly, dtype=np.int32)], 255)
+        cv2.fillPoly(mask_l, [np.array(loop_poly, dtype=np.int32)], 255)
+        
+        intersection = cv2.bitwise_and(mask_s, mask_l)
+        area_s = np.sum(mask_s > 0)
+        area_int = np.sum(intersection > 0)
+        
+        return float(area_int / area_s) if area_s > 0 else 0.0
+    except Exception:
+        return 0.0
+
+def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str], list[dict]]:
     """
     Validates detections against AutoTomeQC logic cases (1-5).
     Returns: (is_valid, error_reason)
@@ -31,13 +61,13 @@ def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str]]:
 
     # Case 1: No Section detected in the whole frame
     if not all_sections:
-        return False, "No section detected"
+        return False, "No section detected", []
 
     # Case 2: No Loop logic
     if not loop_detection:
         if not allow_no_loop:
             return False, "No loop detected"
-        return True, None  # Proceed in Global Mode (Section only) for debuging purposes
+        return True, None, detections  # Proceed in Global Mode (Section only) for debuging purposes
 
     # --- Identify Sections relative to the Loop ---
     sections_in_loop = []
@@ -59,41 +89,15 @@ def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str]]:
 
     # Case 3: Loop present but section is outside
     if len(sections_in_loop) == 0 and len(sections_outside_loop) > 0:
-        return False, "Section detected outside loop"
+        return False, "Section detected outside loop", []
 
     # Case 4: Multiple Sections in Loop
     if len(sections_in_loop) > 1:
-        return False, f"Multiple sections ({len(sections_in_loop)}) detected in loop"
+        return False, f"Multiple sections ({len(sections_in_loop)}) detected in loop", []
 
     # Case 5: Success (Exactly one section in loop)
-    return True, None
-
-def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, loop_bbox: list) -> float:
-    # Quick BBox Check (Cheap)
-    # If the rectangles don't even touch, the ratio is definitely 0.0
-    x1_s, y1_s, x2_s, y2_s = section_bbox
-    x1_l, y1_l, x2_l, y2_l = loop_bbox
-    
-    if x1_s > x2_l or x2_s < x1_l or y1_s > y2_l or y2_s < y1_l:
-        return 0.0
-
-    # Precise Mask Check (Only if BBoxes overlap)
-    try:
-        output_dim = CONFIG["qc"].get("yolo_post_processing", {}).get("out_dim", [640, 640])
-        img_dim = (output_dim[0], output_dim[1])  # (w, h)
-        mask_s = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
-        mask_l = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
-        
-        cv2.fillPoly(mask_s, [np.array(section_poly, dtype=np.int32)], 255)
-        cv2.fillPoly(mask_l, [np.array(loop_poly, dtype=np.int32)], 255)
-        
-        intersection = cv2.bitwise_and(mask_s, mask_l)
-        area_s = np.sum(mask_s > 0)
-        area_int = np.sum(intersection > 0)
-        
-        return float(area_int / area_s) if area_s > 0 else 0.0
-    except Exception:
-        return 0.0
+    filtered_detections = [loop_detection, sections_in_loop[0]]
+    return True, None, filtered_detections
     
 def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optional[np.ndarray]:
     """

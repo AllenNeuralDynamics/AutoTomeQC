@@ -141,7 +141,7 @@ class AutoTomePipeline:
         timestamp_str = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
 
         # Validate
-        is_valid, error_reason = validate_detections(detections)
+        is_valid, error_reason, detections = validate_detections(detections)
         if not is_valid:
             self.log.warning(f"[{filename}] Pipeline Rejected: {error_reason}")
             if future_ticket:
