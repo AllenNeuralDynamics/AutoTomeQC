@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import cv2
 from unittest.mock import patch
 from autotomeqc.yolo_segmentation.post_processing import (
     get_overlap_ratio, 
