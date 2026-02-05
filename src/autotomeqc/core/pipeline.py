@@ -1,6 +1,5 @@
 # autotomeqc/core/pipeline.py
 from datetime import datetime
-from fileinput import filename
 from pathlib import Path
 import time
 import logging
