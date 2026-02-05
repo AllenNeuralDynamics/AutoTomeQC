@@ -69,7 +69,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str], li
     if not loop_detection:
         if not allow_no_loop:
             return False, "No loop detected", []
-        return True, None, detections  # Proceed in Global Mode (Section only) for debuging purposes
+        return True, None, detections  # Proceed in Global Mode (Section only) for debugging purposes
 
     # --- Identify Sections relative to the Loop ---
     sections_in_loop = []
