@@ -52,7 +52,7 @@ def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, l
     except Exception:
         return 0.0
 
-def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str], list[dict]]:
+def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
     """
     Validates detections against AutoTomeQC logic cases (1-5).
     Returns: (is_valid, error_reason)
@@ -69,7 +69,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str], li
     if not loop_detection:
         if not allow_no_loop:
             return False, "No loop detected", []
-        return True, None, detections  # Proceed in Global Mode (Section only) for debuging purposes
+        return True, "N/A", detections  # Proceed in Global Mode (Section only) for debuging purposes
 
     # --- Identify Sections relative to the Loop ---
     sections_in_loop = []
@@ -85,6 +85,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str], li
             loop_bbox=loop_bbox
         )
         if overlap > 0.5:
+            s['overlap_ratio'] = overlap
             sections_in_loop.append(s)
         else:
             sections_outside_loop.append(s)
@@ -99,7 +100,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, Optional[str], li
 
     # Case 5: Success (Exactly one section in loop)
     filtered_detections = [loop_detection, sections_in_loop[0]]
-    return True, None, filtered_detections
+    return True, "N/A", filtered_detections
     
 def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optional[np.ndarray]:
     """

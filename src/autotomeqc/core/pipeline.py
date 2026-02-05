@@ -125,95 +125,71 @@ class AutoTomePipeline:
         return ticket
 
     def _handle_detection(self, frame: np.ndarray, detections: list[Dict[str, Any]], filename: str, id: str, ts: float):
-        """
-        Callback triggered when YOLO finishes.
-        Args:
-            frame: The original image (numpy array).
-            detections: The YOLO result object.
-            filename: The name of the file (string).
-            id: The UUID request_id.
-            ts: The timestamp (float).
-        """
-        # Retrieve the waiting ticket
+        """Callback triggered when YOLO finishes."""
         future_ticket = self.pending_results.pop(id, None)
-        ts_dt = datetime.fromtimestamp(ts)
-        timestamp_str = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
-        # Validate
-        is_valid, error_reason, detections = validate_detections(detections)
+        # 1. Validation
+        is_valid, error_reason, validated_detections = validate_detections(detections)
         if not is_valid:
-            self.log.warning(f"[{filename}] Pipeline Rejected: {error_reason}")
-            if future_ticket:
-                output: dict[str, Any] = {
-                    "filename": filename,
-                    "timestamp": timestamp_str,
-                    "qc_summary": "FAIL",
-                    "error_reason": error_reason,  # This tells LASSO why it failed
-                    "segmentation_conf": 0.0,
-                    "criteria": {}
-                }
-                # Save failure report and notify the system
-                save_json_results(output, self.output_path / f"{filename}_qc.json")
-                if self.save_input_img:
-                    input_img_filename = self.output_path / f"{filename}_input.jpg"
-                    save_debug_image(frame, input_img_filename)
-                future_ticket.set_result(output)
+            self._handle_pipeline_failure(frame, filename, timestamp_str, error_reason, future_ticket)
             return
 
-        # Get the cropped/segmented image
-        qc_input_image = cropped_segmented(frame, detections)
-        best_section = get_best_section_detection(detections)
-        get_section_conf = round(best_section.get('confidence', 0.0), 2) if best_section else 0.0
-
+        # 2. Pre-processing for QC (Segmentation & Cropping)
+        qc_input_image = cropped_segmented(frame, validated_detections)
         if qc_input_image is None:
-            self.log.warning(f"No segmentation found for {filename}, skipping QC.")
-            # Construct failure output
-            if future_ticket:
-                output = {
-                    "filename": filename,
-                    "timestamp": timestamp_str, # Use the formatted string
-                    "qc_summary": "FAIL",
-                    "error_reason": "Segmentation Failed: No section detected",
-                    "segmentation_conf": 0.0,
-                    "criteria": {}
-                }
-                # Create a failure record on disk as well
-                save_json_results(output, self.output_path / f"{filename}_qc.json")
-                if self.save_input_img:
-                    input_img_filename = self.output_path / f"{filename}_input.jpg"
-                    save_debug_image(frame, input_img_filename)
-                future_ticket.set_result(output)
+            self._handle_pipeline_failure(frame, filename, timestamp_str, "Segmentation Failed", future_ticket)
             return
 
-        # Run QC Checks in Parallel
-        qc_results = self._run_all_checks(qc_input_image)
+        # 3. Execution for QC Algorithms
+        self._handle_pipeline_success(frame, qc_input_image, validated_detections, filename, timestamp_str, ts, future_ticket)
 
-        # Measure processing time in seconds since the frame timestamp
-        processing_time = time.time() - ts
+    def _handle_pipeline_failure(self, frame: np.ndarray, filename: str, timestamp: str, reason: str, future_ticket):
+        """Standardized reporting for any rejection or failure in the pipeline."""
+        self.log.warning(f"[{filename}] Pipeline Rejected: {reason}")
+        output = {
+            "filename": filename,
+            "timestamp": timestamp,
+            "qc_summary": "FAIL",
+            "error_reason": reason,
+            "segmentation_conf": 0.0,
+            "overlap_ratio": 0.0,
+            "criteria": {}
+        }
+        save_json_results(output, self.output_path / f"{filename}_qc.json")
+        if self.save_input_img:
+            save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
+        if future_ticket:
+            future_ticket.set_result(output)
 
-        # Compile Final JSON
+    def _handle_pipeline_success(self, frame: np.ndarray, qc_image: np.ndarray, detections: list, filename: str, timestamp: str, start_ts: float, future_ticket):
+        """Executes QC checks and compiles final successful results."""
+        # Extract metadata
+        best_section = get_best_section_detection(detections)
+        section_conf = round(best_section.get('confidence', 0.0), 2) if best_section else 0.0
+        section_ratio = best_section.get('overlap_ratio', 0.0) if best_section else 0.0
+
+        # Run Algorithms
+        qc_results = self._run_all_checks(qc_image)
+        processing_time = round(time.time() - start_ts, 4)
         final_summary = "PASS" if all(r.get("pass", False) for r in qc_results.values()) else "FAIL"
+
         final_output = {
             "filename": filename,
-            "timestamp": timestamp_str,
-            "processing_time_sec": round(processing_time, 4),
+            "timestamp": timestamp,
+            "processing_time_sec": processing_time,
             "qc_summary": final_summary,
-            "segmentation_conf": get_section_conf,
+            "segmentation_conf": section_conf,
+            "overlap_ratio": section_ratio,
             "criteria": qc_results,
         }
 
-
-        # Output Logic
-        json_filename = self.output_path / f"{filename}_qc.json"
-        save_json_results(final_output, json_filename)
+        # IO Operations
+        save_json_results(final_output, self.output_path / f"{filename}_qc.json")
         if self.save_segmented_img:
-            img_filename = self.output_path / f"{filename}_segmented.jpg"
-            save_debug_image(qc_input_image, img_filename)
+            save_debug_image(qc_image, self.output_path / f"{filename}_segmented.jpg")
         if self.save_input_img:
-            input_img_filename = self.output_path / f"{filename}_input.jpg"
-            save_debug_image(frame, input_img_filename)
-
-        # Deliver Result
+            save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
         if future_ticket:
             future_ticket.set_result(final_output)
 
