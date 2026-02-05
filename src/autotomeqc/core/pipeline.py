@@ -144,7 +144,7 @@ class AutoTomePipeline:
         if not is_valid:
             self.log.warning(f"[{filename}] Pipeline Rejected: {error_reason}")
             if future_ticket:
-                output = {
+                output: dict[str, Any] = {
                     "filename": filename,
                     "timestamp": timestamp_str,
                     "qc_summary": "FAIL",

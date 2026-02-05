@@ -39,8 +39,10 @@ def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, l
         mask_s = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
         mask_l = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
 
-        cv2.fillPoly(mask_s, [np.array(section_poly, dtype=np.int32)], 255)
-        cv2.fillPoly(mask_l, [np.array(loop_poly, dtype=np.int32)], 255)
+        poly_s = np.array(section_poly, dtype=np.int32).reshape((-1, 1, 2))
+        poly_l = np.array(loop_poly, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.fillPoly(mask_s, [poly_s], (255,))
+        cv2.fillPoly(mask_l, [poly_l], (255,))
 
         intersection = cv2.bitwise_and(mask_s, mask_l)
         area_s = np.sum(mask_s > 0)
@@ -127,13 +129,13 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
         polygon_mask = np.zeros((h, w), dtype=np.uint8)
 
         polygons = []
-        if isinstance(mask_poly[0], (list, tuple, np.ndarray)) and len(mask_poly[0]) > 2:
-            # It's a flat list of points or a single polygon
-            polygons.append(np.array(mask_poly, dtype=np.int32))
-        else:
-            # It's a list of polygons (nested)
-            for poly in mask_poly:
-                polygons.append(np.array(poly, dtype=np.int32))
+        if len(mask_poly) > 0:
+            # If mask_poly is a flat list [x1, y1, x2, y2...] or [[x1, y1], [x2, y2]]
+            poly_array = np.array(mask_poly, dtype=np.int32)
+            # Ensure shape is (N, 1, 2)
+            if poly_array.ndim == 2:
+                poly_array = poly_array.reshape((-1, 1, 2))
+            polygons.append(poly_array)
 
         # Fill the polygon on the mask
         cv2.fillPoly(polygon_mask, polygons, color=255)  # type: ignore
