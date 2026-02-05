@@ -1,4 +1,4 @@
-# autotome/yolo_segmentation/post_processing.py
+# autotomeqc/yolo_segmentation/post_processing.py
 import logging
 from typing import Optional
 import cv2
