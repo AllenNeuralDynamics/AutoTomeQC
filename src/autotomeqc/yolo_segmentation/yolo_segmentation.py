@@ -118,6 +118,7 @@ class YoloSegmentation:
         current_h, current_w = frame.shape[:2]
 
         if current_h != target_h or current_w != target_w:
+            self.log.debug(f"Resizing frame from ({current_w}x{current_h}) to ({target_w}x{target_h}). ")
             return cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_AREA)
         return frame
 
