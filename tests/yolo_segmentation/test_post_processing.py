@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from autotomeqc.yolo_segmentation.post_processing import (
     get_overlap_ratio, 
     validate_detections, 
@@ -8,15 +8,10 @@ from autotomeqc.yolo_segmentation.post_processing import (
 )
 
 # Mock CONFIG to avoid file I/O during tests
-MOCK_CONFIG = {
-    "qc": {
-        "yolo_post_processing": {
-            "out_dim": [640, 640],
-            "allow_no_loop": True,
-            "loop_bbox_margin": 10
-        }
-    }
-}
+mock_config = MagicMock()
+mock_config.qc.yolo_post_processing.allow_no_loop = True
+mock_config.qc.yolo_post_processing.out_dim = [640, 640]
+mock_config.qc.yolo_post_processing.loop_bbox_margin = 30
 
 @pytest.fixture
 def sample_detections():
@@ -36,7 +31,7 @@ def sample_detections():
         }
     ]
 
-@patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", MOCK_CONFIG)
+@patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config)
 class TestYoloPostProcessing:
 
     def test_get_overlap_ratio_full_overlap(self):

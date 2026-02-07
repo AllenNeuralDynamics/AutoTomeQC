@@ -10,14 +10,14 @@ from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 
 @pytest.fixture
 def mock_config():
-    return {
-        "weights_path": "dummy_weights.pt",
-        "conf_thresh": 0.6,
-        "iou_thresh": 0.4,
-        "img_size": 640,
-        "max_det": 10,
-        "loop_bbox_margin": 15
-    }
+    """Provides a mocked config object that supports dot notation."""
+    config = MagicMock()
+    config.weights_path = "weights/test_yolo.pt"
+    config.conf_thresh = 0.6
+    config.img_size = 640
+    config.img_dim = [640, 640]
+    config.max_det = 30
+    return config
 
 @pytest.fixture
 def mock_yolo_class():
@@ -53,9 +53,9 @@ def server(mock_config, mock_yolo_class):
 def test_initialization(server, mock_config, mock_yolo_class):
     """Verify config is loaded and model settings are applied."""
     assert server.conf_thresh == 0.6
-    assert server.weights_path == "dummy_weights.pt"
+    assert server.weights_path == "weights/test_yolo.pt"
     # Check if YOLO was loaded
-    mock_yolo_class.assert_called_with("dummy_weights.pt")
+    mock_yolo_class.assert_called_once_with("weights/test_yolo.pt")
 
 def test_initialization_failure(mock_config, caplog):
     """Test graceful fallback if YOLO fails to load."""

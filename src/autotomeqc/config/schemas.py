@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
+from typing import List, Optional
 
 class YoloSettings(BaseModel):
     weights_path: str

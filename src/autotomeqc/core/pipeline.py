@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import uuid
 from typing import Dict, Optional, Any
-from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+from concurrent.futures import ThreadPoolExecutor, Future
 from autotomeqc.utils.io import save_json_results, save_failure_report, save_debug_image
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
@@ -154,7 +154,6 @@ class AutoTomePipeline:
             qc_summary="FAIL",
             error_reason=reason
         )
-        self.log.warning(result.log_status)
         output = result.model_dump(exclude_none=True)
         save_json_results(output, self.output_path / f"{filename}_qc.json")
         if self.save_input_img:
@@ -172,8 +171,7 @@ class AutoTomePipeline:
         # Run Algorithms
         qc_results = self._run_all_checks(qc_image)
         processing_time = round(time.time() - start_ts, 4)
-        final_summary = "PASS" if all(r.get("pass", False) for r in qc_results.values()) else "FAIL"
-
+        final_summary = "PASS" if all(r.pass_status for r in qc_results.values()) else "FAIL"
         result = PipelineResult(
             filename=filename,
             timestamp=timestamp,
@@ -194,24 +192,23 @@ class AutoTomePipeline:
         if future_ticket:
             future_ticket.set_result(output)
 
-    def _run_all_checks(self, image):
-        """Runs defined QC modules in parallel + geometry check."""
+    def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
+        """Submits QC tasks and resolves them with robust error handling."""
+        futures = {
+            name: self.executor.submit(module.check, qc_image)
+            for name, module in self.qc_modules.items()
+        }
         results = {}
-        futures = {}
-
-        # Submit QC checks (Coverage, etc.)
-        for name, module in self.qc_modules.items():
-            futures[self.executor.submit(module.check, image)] = name
-
-        # Collect results
-        for future in as_completed(futures):
-            name = futures[future]
+        for name, future in futures.items():
             try:
-                raw_data = future.result(timeout=2.0)
-                validated_data = QCCriteria.model_validate(raw_data)
-                results[name] = validated_data.model_dump(by_alias=True, exclude_none=True)
+                raw_res = future.result(timeout=2.0)
+                results[name] = QCCriteria(**raw_res)
             except Exception as e:
-                self.log.error(f"QC Check {name} failed: {e}")
-                # Fallback failure object
-                results[name] = {"pass": False, "error": str(e)}
+                self.log.error(f"QC Check {name} failed or timed out: {e}")
+                # Ensure consistent field naming in fallback
+                results[name] = QCCriteria(
+                    pass_status=False,
+                    label="Error",
+                    message=str(e)
+                )
         return results

@@ -48,28 +48,27 @@ class YOLOClassifier:
         """
         result = self.predict(image)
         if result.get("error"):
-            result["pass"] = False
+            result["pass_status"] = False  # Changed key
             return result
 
         # Check Label
-        # Handle "ANY" wildcard (for Thickness check)
         if "ANY" in self.pass_labels:
             is_valid_label = True
         else:
-            is_valid_label = result["label"] in self.pass_labels
+            is_valid_label = result.get("label") in self.pass_labels
             
         # Check Confidence
-        is_confident = result["conf"] >= self.min_confidence
+        is_confident = result.get("conf", 0) >= self.min_confidence
 
-        # Final Decision
+        # Final Decision using pass_status
         if is_valid_label and is_confident:
-            result["pass"] = True
+            result["pass_status"] = True
         else:
-            result["pass"] = False
+            result["pass_status"] = False
             if not is_valid_label:
-                result["reason"] = f"Defect Detected: {result['label']}"
+                result["reason"] = f"Defect Detected: {result.get('label')}"
                 self.log.info(result["reason"])
             elif not is_confident:
-                result["reason"] = f"Low Confidence ({result['conf']} < {self.min_confidence})"
+                result["reason"] = f"Low Confidence ({result.get('conf')} < {self.min_confidence})"
 
         return result
