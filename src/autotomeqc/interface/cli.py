@@ -107,7 +107,7 @@ def _print_result(result):
             failed_criteria = []
             criteria = result.get("criteria", {})
             for name, data in criteria.items():
-                if data.get("pass") is False:
+                if data.get("pass_status") is False:
                     msg = data.get("reason", data.get("label", "Failed"))
                     failed_criteria.append(f"{name} ({msg})")
             reason = ", ".join(failed_criteria) if failed_criteria else "Unknown Failure"

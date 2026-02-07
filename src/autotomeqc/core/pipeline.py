@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from autotomeqc.utils.io import save_json_results, save_failure_report, save_debug_image
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
+from autotomeqc.core.models import PipelineResult, QCCriteria
 from autotomeqc.yolo_segmentation.post_processing import (cropped_segmented,
                                                           get_best_section_detection,
                                                           validate_detections )
@@ -147,15 +148,14 @@ class AutoTomePipeline:
     def _handle_pipeline_failure(self, frame: np.ndarray, filename: str, timestamp: str, reason: str, future_ticket):
         """Standardized reporting for any rejection or failure in the pipeline."""
         self.log.warning(f"[{filename}] Pipeline Rejected: {reason}")
-        output = {
-            "filename": filename,
-            "timestamp": timestamp,
-            "qc_summary": "FAIL",
-            "error_reason": reason,
-            "segmentation_conf": 0.0,
-            "overlap_ratio": 0.0,
-            "criteria": {}
-        }
+        result = PipelineResult(
+            filename=filename,
+            timestamp=timestamp,
+            qc_summary="FAIL",
+            error_reason=reason
+        )
+        self.log.warning(result.log_status)
+        output = result.model_dump(exclude_none=True)
         save_json_results(output, self.output_path / f"{filename}_qc.json")
         if self.save_input_img:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
@@ -174,24 +174,25 @@ class AutoTomePipeline:
         processing_time = round(time.time() - start_ts, 4)
         final_summary = "PASS" if all(r.get("pass", False) for r in qc_results.values()) else "FAIL"
 
-        final_output = {
-            "filename": filename,
-            "timestamp": timestamp,
-            "processing_time_sec": processing_time,
-            "qc_summary": final_summary,
-            "segmentation_conf": section_conf,
-            "overlap_ratio": section_ratio,
-            "criteria": qc_results,
-        }
+        result = PipelineResult(
+            filename=filename,
+            timestamp=timestamp,
+            processing_time_sec=processing_time,
+            qc_summary=final_summary,
+            segmentation_conf=section_conf,
+            overlap_ratio=section_ratio,
+            criteria=qc_results
+        )
+        output = result.model_dump(exclude_none=True)
 
         # IO Operations
-        save_json_results(final_output, self.output_path / f"{filename}_qc.json")
+        save_json_results(output, self.output_path / f"{filename}_qc.json")
         if self.save_segmented_img:
             save_debug_image(qc_image, self.output_path / f"{filename}_segmented.jpg")
         if self.save_input_img:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
         if future_ticket:
-            future_ticket.set_result(final_output)
+            future_ticket.set_result(output)
 
     def _run_all_checks(self, image):
         """Runs defined QC modules in parallel + geometry check."""
@@ -206,9 +207,11 @@ class AutoTomePipeline:
         for future in as_completed(futures):
             name = futures[future]
             try:
-                results[name] = future.result(timeout=2.0) # 2s timeout per check
+                raw_data = future.result(timeout=2.0)
+                validated_data = QCCriteria.model_validate(raw_data)
+                results[name] = validated_data.model_dump(by_alias=True, exclude_none=True)
             except Exception as e:
                 self.log.error(f"QC Check {name} failed: {e}")
+                # Fallback failure object
                 results[name] = {"pass": False, "error": str(e)}
-
         return results
