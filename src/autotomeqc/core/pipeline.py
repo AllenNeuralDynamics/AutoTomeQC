@@ -25,9 +25,9 @@ from autotomeqc.algorithms.shape import ShapeQC
 class AutoTomePipeline:
     def __init__(self):
         self.log = logging.getLogger(self.__class__.__name__)
-        self.output_path = Path(CONFIG["qc"]["output_dir"])
-        self.save_segmented_img = CONFIG["qc"].get("save_segmented_images", True)
-        self.save_input_img = CONFIG["qc"].get("save_input_images", False)
+        self.output_path = Path(CONFIG.qc.output_dir)
+        self.save_segmented_img = CONFIG.qc.save_segmented_images
+        self.save_input_img = CONFIG.qc.save_input_images
 
         # Reuse threads for QC criteria
         self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="QC_Worker")
@@ -37,17 +37,17 @@ class AutoTomePipeline:
 
         # Preprocessing - Segmentation via YOLO
         self.segmenter = YoloSegmentation(
-            config=CONFIG["qc"].get('yolo', {}),
+            config=CONFIG.qc.yolo,
             detection_callback=self._handle_detection
         )
 
         self.log.info("Initializing QC Models...")
         self.qc_modules = {
-            "coverage": SectionCoverageQC(CONFIG["qc"]),
-            "knife_mark": KnifeMarksQC(CONFIG["qc"]),
-            "thickness_consistency": ThicknessConsistencyQC(CONFIG["qc"]),
-            "thickness": ThicknessQC(CONFIG["qc"]),
-            "shape": ShapeQC(CONFIG["qc"]),
+            "coverage": SectionCoverageQC(CONFIG.qc.section_coverage),
+            "knife_mark": KnifeMarksQC(CONFIG.qc.knife_mark),
+            "thickness_consistency": ThicknessConsistencyQC(CONFIG.qc.thickness_consistency),
+            "thickness": ThicknessQC(CONFIG.qc.thickness),
+            "shape": ShapeQC(CONFIG.qc.shape, output_dir=self.output_path),
         }
 
     def start(self):

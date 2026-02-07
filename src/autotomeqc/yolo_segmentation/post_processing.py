@@ -34,7 +34,7 @@ def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, l
 
     # Precise Mask Check (Only if BBoxes overlap)
     try:
-        output_dim = CONFIG["qc"].get("yolo_post_processing", {}).get("out_dim", [640, 640])
+        output_dim = CONFIG.qc.yolo_post_processing.out_dim
         img_dim = (output_dim[0], output_dim[1])  # (w, h)
         mask_s = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
         mask_l = np.zeros((img_dim[1], img_dim[0]), dtype=np.uint8)
@@ -59,7 +59,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
     """
     loop_detection = next((d for d in detections if d['class_name'] == 'loop'), None)
     all_sections = [d for d in detections if d['class_name'] == 'section']
-    allow_no_loop = CONFIG["qc"].get("yolo_post_processing", {}).get("allow_no_loop", True)
+    allow_no_loop = CONFIG.qc.yolo_post_processing.allow_no_loop
 
     # Case 1: No Section detected in the whole frame
     if not all_sections:
@@ -149,7 +149,7 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
     # Crop to 'loop' BBox ---
     if loop_detection:
         bbox = loop_detection.get('bbox', [])
-        margin = CONFIG["qc"].get("yolo_post_processing", {}).get("loop_bbox_margin", 30)
+        margin = CONFIG.qc.yolo_post_processing.loop_bbox_margin
 
         if len(bbox) == 4:
             x1, y1, x2, y2 = map(int, bbox)
@@ -162,6 +162,6 @@ def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optio
                 process_frame = process_frame[y1:y2, x1:x2]
 
     # Resize (Standardize input for QC models)
-    output_dim = CONFIG["qc"].get("yolo_post_processing", {}).get("out_dim", [640, 640])
+    output_dim = CONFIG.qc.yolo_post_processing.out_dim
     process_frame = cv2.resize(process_frame, tuple(output_dim))
     return process_frame

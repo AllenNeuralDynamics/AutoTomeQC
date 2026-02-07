@@ -3,26 +3,23 @@
 
 import yaml
 from pathlib import Path
+from autotomeqc.config.schemas import AppConfig
 
 # TODO Use the adapter or validate using pydantic
-def load_app_config(filename: str = 'yolo-config.yaml') -> dict:
-    """
-    Finds the project root and loads the specified configuration file 
-    from the project's root 'config' directory.
-    """
-    this_file_path = Path(__file__).resolve()
-    project_root = this_file_path.parent.parent
-    config_path = project_root / 'config' / filename
+def load_app_config() -> AppConfig:
+    # Get the directory where THIS file (config_loader.py) lives
+    config_dir = Path(__file__).resolve().parent
+
+    # Point directly to the yaml in the same folder
+    config_path = config_dir / 'yolo-config.yaml'
 
     if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found at: {config_path}")
+        print(f"DEBUG: Looking for config at: {config_path.absolute()}")
+        raise FileNotFoundError(f"Config missing at: {config_path}")
 
     with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+        raw_yaml = yaml.safe_load(f)
 
-# Define the global configuration dictionary (loaded only once)
-try:
-    CONFIG = load_app_config()
-except FileNotFoundError as e:
-    print(f"FATAL CONFIG ERROR: {e}")
-    CONFIG = {} # Fallback to empty dictionary
+    return AppConfig(**raw_yaml)
+
+CONFIG = load_app_config()

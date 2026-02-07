@@ -5,12 +5,11 @@ class ThicknessQC(YOLOClassifier):
     def __init__(self, config):
         """
         Args:
-            config: The entire 'qc' dictionary from config.yaml
+            config: An instance of AlgorithmSettings (CONFIG.qc.thickness)
         """
-        qc_config = config["thickness"]
         super().__init__(
-            model_path=qc_config["weights_path"], 
-            img_size=qc_config["img_size"], 
-            pass_labels=qc_config["pass_labels"],
-            min_conf=qc_config.get("min_confidence", 0.5)
+            model_path=config.weights_path,
+            img_size=config.img_size,
+            pass_labels=config.pass_labels,
+            min_conf=config.min_confidence
         )

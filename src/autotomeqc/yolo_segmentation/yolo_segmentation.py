@@ -20,11 +20,11 @@ class YoloSegmentation:
         :param config: Configuration dictionary.
         :param detection_callback: A function to call with the list of detections.
         """
-        self.weights_path = config.get('weights_path', r'weights/seg_fast_yolo26_640.pt')
-        self.conf_thresh = config.get('conf_thresh', 0.25)
-        self.img_size = config.get('img_size', 640)
-        self.img_dim = config.get('img_dim', [640, 480])  # input image dimension for YOLO (w, h)
-        self.max_det = config.get('max_det', 30)
+        self.weights_path = config.weights_path
+        self.conf_thresh = config.conf_thresh
+        self.img_size = config.img_size
+        self.img_dim = config.img_dim
+        self.max_det = config.max_det
         self.log = logging.getLogger(self.__class__.__name__)
 
         # State
