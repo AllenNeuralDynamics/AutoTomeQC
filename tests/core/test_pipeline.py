@@ -6,12 +6,13 @@ from concurrent.futures import TimeoutError, Future
 
 # Import the class
 from autotomeqc.core.pipeline import AutoTomePipeline
+from autotomeqc.config.schemas import AppConfig
 
 # --- FIXTURES ---
 
 @pytest.fixture
 def mock_config():
-    """Mock config with ALL required sections to avoid KeyErrors."""
+    """Mock config with ALL required sections for Pydantic validation."""
     return {
         "qc": {
             "fps": 1, 
@@ -20,14 +21,20 @@ def mock_config():
             "save_input_images": False,
             "yolo": {
                 "conf_thresh": 0.9, "img_dim": [960, 960], 
-                "img_size": 960, "iou_thresh": 0.45, "weights_path": "dummy.pt"
+                "img_size": 960, "iou_thresh": 0.45, "weights_path": "dummy.pt",
+                "max_det": 30
             },
-            # Mock config for all 5 algorithms
+            # Add missing post-processing section
+            "yolo_post_processing": {
+                "out_dim": [640, 640],
+                "loop_bbox_margin": 30,
+                "allow_no_loop": True
+            },
             "section_coverage": {"weights_path": "d", "img_size": 224, "pass_labels": ["full"], "min_confidence": 0.5},
             "knife_mark": {"weights_path": "d", "img_size": 640, "pass_labels": ["none"], "min_confidence": 0.5},
             "thickness_consistency": {"weights_path": "d", "img_size": 224, "pass_labels": ["consistent"], "min_confidence": 0.5},
-            "thickness": {"weights_path": "d", "img_size": 224, "pass_labels": "ANY", "min_confidence": 0.5},
-            "shape": {"weights_path": "d", "img_size": 224, "pass_labels": ["good"], "min_confidence": 0.5}
+            "thickness": {"weights_path": "d", "img_size": 224, "pass_labels": ["ANY"], "min_confidence": 0.5},
+            "shape": {"save_debug_img": True}  # Matches ShapeSettings schema
         }
     }
 
@@ -51,7 +58,7 @@ def mock_algorithms():
         # Setup default "Pass" behavior
         for mock in [cov, knife, thick_c, thick, shape]:
             mock.return_value.check.return_value = {
-                "pass": True, "label": "Mocked", "conf": 0.99
+                "pass_status": True, "label": "Mocked", "conf": 0.99
             }
 
         yield {
@@ -81,7 +88,11 @@ def mock_external_deps():
 @pytest.fixture
 def pipeline(mock_yolo_client_class, mock_config, mock_algorithms):
     """Creates the pipeline instance with mocked config."""
-    with patch.dict("autotomeqc.core.pipeline.CONFIG", mock_config):
+    # 1. Convert the dictionary into a validated Pydantic object
+    test_config_obj = AppConfig(**mock_config)
+    
+    # 2. Patch the object itself, not its dictionary (avoids TypeError)
+    with patch("autotomeqc.core.pipeline.CONFIG", test_config_obj):
         pipe = AutoTomePipeline()
         yield pipe
         pipe.stop()
@@ -138,29 +149,54 @@ def test_handle_detection_runs_qc(pipeline, mock_external_deps):
     assert "shape" in criteria
     assert saved_data["qc_summary"] == "PASS"
 
+
+# tests/core/test_pipeline.py
+
 def test_qc_timeout_handling(pipeline, mock_external_deps):
-    """Simulate a QC check hanging and timing out."""
-    # ARRANGE: 5 futures (for 5 modules) that raise TimeoutError
+    """
+    Simulate a QC check hanging and timing out to ensure 
+    the pipeline still saves a failure report.
+    """
+    # 1. ARRANGE: Create 5 futures (one for each QC module)
+    # We set them to raise a TimeoutError when .result() is called
     futures_list = []
     for _ in range(5):
         f = Future()
-        f.set_exception(TimeoutError("Too slow!"))
+        f.set_exception(TimeoutError("QC check exceeded 2.0s limit"))
         futures_list.append(f)
 
+    # Mock the executor to return our failing futures
     with patch.object(pipeline.executor, 'submit', side_effect=futures_list):
-        # ACT
+        
+        # 2. ACT: Trigger the detection handler
         detections = [{'class_name': 'section', 'confidence': 0.9}]
         pipeline._handle_detection(
-            np.zeros((10,10)), detections, "test_timeout", "dummy_uuid", time.time()
+            np.zeros((10, 10)), 
+            detections, 
+            "test_timeout_image", 
+            "dummy_uuid", 
+            time.time()
         )
 
-        # ASSERT
+        # 3. ASSERT: Verify the pipeline survived the timeout
+        
+        # The try/except in _run_all_checks ensures this IS called
+        mock_external_deps["save_json"].assert_called_once()
+        
+        # Extract the data passed to save_json_results(output, path)
+        # call_args[0][0] gets the 'output' dictionary
         saved_data = mock_external_deps["save_json"].call_args[0][0]
-        # Verify it failed
+        
+        # The overall summary must be FAIL because of the timeout
         assert saved_data["qc_summary"] == "FAIL"
-        # Verify specific error recorded
+        
+        # Verify the specific criteria entry uses the correct 'pass_status' key
+        # We take the first module result (e.g., 'coverage') to check the structure
         check_result = list(saved_data["criteria"].values())[0]
-        assert check_result["pass"] is False
+        
+        assert "pass_status" in check_result, "Key 'pass_status' missing from JSON output"
+        assert check_result["pass_status"] is False
+        assert "QC check exceeded 2.0s limit" in check_result["message"]
 
 def test_qc_exception_handling(pipeline, mock_external_deps):
     """Test that a generic crash in a worker thread is caught."""

@@ -6,16 +6,15 @@ from pathlib import Path
 from autotomeqc.utils.io import save_debug_image
 
 class ShapeQC:
-    def __init__(self, config):
+    def __init__(self, config, output_dir: Path):
         """
         Args:
-            config (dict): The main QC configuration dictionary.
+            config: An instance of AlgorithmSettings (CONFIG.qc.shape).
+            output_dir (Path): The global output directory Path object.
         """
-        # Specific config for this module (thresholds, flags)
-        self.shape_config = config.get("shape", {})
-        
-        # Global output directory from the main QC config
-        self.output_dir = Path(config.get("output_dir", "output"))
+        self.shape_config = config
+        self.output_dir = output_dir
+        self.save_debug_img = getattr(config, "save_debug_img", True)
         
         self.log = logging.getLogger(self.__class__.__name__)
         self.log.info("ShapeQC initialized.")
@@ -75,7 +74,7 @@ class ShapeQC:
 
             # 7. Visualization & Saving Logic
             # Check if saving is enabled in config
-            if self.shape_config.get("save_debug_img", False):
+            if self.save_debug_img:
                 vis_img = image.copy()
                 
                 # Draw the approximated polygon (Green)
@@ -93,9 +92,6 @@ class ShapeQC:
 
                 # Save the image if filename is provided
                 if filename:
-                    # Ensure directory exists (optional safety)
-                    self.output_dir.mkdir(parents=True, exist_ok=True)
-                    
                     save_path = self.output_dir / f"{filename}_shape.jpg"
                     save_debug_image(vis_img, save_path)
                     self.log.debug(f"Saved shape debug image to {save_path}")

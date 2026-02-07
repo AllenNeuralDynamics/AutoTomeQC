@@ -4,13 +4,15 @@ qc:
   save_segmented_images: true
   save_input_images: true
   yolo:
-    weights_path: "weights/seg_fast.pt" 
-    conf_thresh: 0.5
-    iou_thresh: 0.45
-    img_size: 960
-    img_dim: [960, 960]
-    max_det: 30
+    weights_path: "weights/seg_fast_yolo26_640.pt"
+    conf_thresh: 0.25
+    img_size: 640
+    img_dim: [640, 640]
+    max_det: 10
+  yolo_post_processing:
+    out_dim: [640, 640]
     loop_bbox_margin: 30
+    allow_no_loop: true
   section_coverage:
     weights_path: "weights/section_coverage_v1.pt"
     img_size: 224
