@@ -8,6 +8,7 @@ from threading import Event
 from collections import deque
 import cv2
 from threading import Thread # Using Event for better thread signaling
+from autotomeqc.config.schemas import YoloSettings
 from ultralytics import YOLO
 import torch
 
@@ -15,7 +16,7 @@ import torch
 class YoloSegmentation:
     """YOLO segmentation worker that runs in its own thread"""
     
-    def __init__(self, config: dict, detection_callback: Optional[Callable] = None):
+    def __init__(self, config: YoloSettings, detection_callback: Optional[Callable] = None):
         """
         :param config: Configuration dictionary.
         :param detection_callback: A function to call with the list of detections.
