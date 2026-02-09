@@ -74,6 +74,8 @@ class TestYoloPostProcessing:
         CONFIG.qc.yolo_post_processing.allow_no_loop = False
         is_valid, reason, filtered = validate_detections(sample_detections)
         assert is_valid is True
+        assert len(filtered) == 2
+        assert reason == "N/A"
 
     def test_validate_detections_no_section(self):
         detections = [{'class_name': 'loop', 'bbox': [0,0,10,10], 'mask': []}]
