@@ -1,5 +1,4 @@
 qc:
-  fps: 1
   output_dir: "example/output"
   save_segmented_images: true
   save_input_images: true
