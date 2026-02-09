@@ -96,7 +96,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
         filtered_detections = [loop_detection] + sections_outside_loop
         ratio = [round(s['overlap_ratio'], 2) for s in sections_outside_loop]
         msg = f"Section detected outside loop. IoA for section(s): {ratio} (threshold: {thres})"
-        return False, msg, sections_outside_loop
+        return False, msg, filtered_detections
 
     # Case 4: Multiple Sections in Loop
     if len(sections_in_loop) > 1:
