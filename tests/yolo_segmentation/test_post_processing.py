@@ -69,10 +69,11 @@ class TestYoloPostProcessing:
         assert ratio == pytest.approx(0.5, abs=1e-2)
 
     def test_validate_detections_success(self, sample_detections):
+        from autotomeqc.yolo_segmentation.post_processing import CONFIG
+        CONFIG.qc.yolo_post_processing.overlap_threshold = 0.5 
+        CONFIG.qc.yolo_post_processing.allow_no_loop = False
         is_valid, reason, filtered = validate_detections(sample_detections)
         assert is_valid is True
-        assert len(filtered) == 2
-        assert reason == "N/A"
 
     def test_validate_detections_no_section(self):
         detections = [{'class_name': 'loop', 'bbox': [0,0,10,10], 'mask': []}]

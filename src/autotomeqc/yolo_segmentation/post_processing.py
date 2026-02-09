@@ -84,19 +84,25 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
             section_bbox=s.get('bbox', [0,0,0,0]),
             loop_bbox=loop_bbox
         )
+        s['overlap_ratio'] = overlap
+        thres = CONFIG.qc.yolo_post_processing.overlap_threshold
         if overlap > CONFIG.qc.yolo_post_processing.overlap_threshold:
-            s['overlap_ratio'] = overlap
             sections_in_loop.append(s)
         else:
             sections_outside_loop.append(s)
 
     # Case 3: Loop present but section is outside
     if len(sections_in_loop) == 0 and len(sections_outside_loop) > 0:
-        return False, "Section detected outside loop", []
+        filtered_detections = [loop_detection] + sections_outside_loop
+        ratio = [round(s['overlap_ratio'], 2) for s in sections_outside_loop]
+        msg = f"Section detected outside loop. IoA for section(s): {ratio} (threshold: {thres})"
+        return False, msg, sections_outside_loop
 
     # Case 4: Multiple Sections in Loop
     if len(sections_in_loop) > 1:
-        return False, f"Multiple sections ({len(sections_in_loop)}) detected in loop", []
+        filtered_detections = [loop_detection] + sections_in_loop
+        msg = f"Multiple sections ({len(sections_in_loop)}) detected in loop"
+        return False, msg, filtered_detections
 
     # Case 5: Success (Exactly one section in loop)
     filtered_detections = [loop_detection, sections_in_loop[0]]
