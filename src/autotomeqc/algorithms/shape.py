@@ -30,7 +30,7 @@ class ShapeQC:
         try:
             # 1. Validation
             if image is None:
-                return {"pass": False, "error": "Input image is None", "label": "Error"}
+                return {"pass_status": False, "error": "Input image is None", "label": "Error"}
 
             # 2. Preprocessing (Grayscale + Threshold)
             if len(image.shape) == 3:
@@ -45,7 +45,7 @@ class ShapeQC:
 
             if not contours:
                 self.log.warning("ShapeQC: No contours found.")
-                return {"pass": False, "error": "No contours found", "label": "Empty"}
+                return {"pass_status": False, "error": "No contours found", "label": "Empty"}
 
             # Assume largest contour is the section
             cnt = max(contours, key=cv2.contourArea)
@@ -68,7 +68,7 @@ class ShapeQC:
 
             # 6. Pass/Fail Logic (Noise filter)
             if cv2.contourArea(cnt) < 100:
-                return {"pass": False, "error": "Contour too small", "label": "Noise"}
+                return {"pass_status": False, "error": "Contour too small", "label": "Noise"}
 
             self.log.debug(f"ShapeQC: Detected {shape_label} (v={num_vertices})")
 
@@ -100,9 +100,9 @@ class ShapeQC:
                 "label": shape_label,
                 "metric": num_vertices,
                 "message": f"Detected {shape_label} (vertices={num_vertices})",
-                "pass": True,
+                "pass_status": True,
             }
 
         except Exception as e:
             self.log.error(f"ShapeQC crashed: {e}")
-            return {"pass": False, "error": str(e), "label": "Error"}
+            return {"pass_status": False, "error": str(e), "label": "Error"}

@@ -27,7 +27,6 @@ class ShapeSettings(BaseModel):
     save_debug_img: bool = True
 
 class QCSettings(BaseModel):
-    fps: int = 1
     output_dir: str = "example/output"
     save_segmented_images: bool = True
     save_input_images: bool = True
