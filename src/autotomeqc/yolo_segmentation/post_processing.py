@@ -84,7 +84,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
             section_bbox=s.get('bbox', [0,0,0,0]),
             loop_bbox=loop_bbox
         )
-        if overlap > 0.5:
+        if overlap > CONFIG.qc.yolo_post_processing.overlap_threshold:
             s['overlap_ratio'] = overlap
             sections_in_loop.append(s)
         else:
