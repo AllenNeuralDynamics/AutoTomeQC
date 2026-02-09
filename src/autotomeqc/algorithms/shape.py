@@ -6,16 +6,15 @@ from pathlib import Path
 from autotomeqc.utils.io import save_debug_image
 
 class ShapeQC:
-    def __init__(self, config):
+    def __init__(self, config, output_dir: Path):
         """
         Args:
-            config (dict): The main QC configuration dictionary.
+            config: An instance of AlgorithmSettings (CONFIG.qc.shape).
+            output_dir (Path): The global output directory Path object.
         """
-        # Specific config for this module (thresholds, flags)
-        self.shape_config = config.get("shape", {})
-        
-        # Global output directory from the main QC config
-        self.output_dir = Path(config.get("output_dir", "output"))
+        self.shape_config = config
+        self.output_dir = output_dir
+        self.save_debug_img = getattr(config, "save_debug_img", True)
         
         self.log = logging.getLogger(self.__class__.__name__)
         self.log.info("ShapeQC initialized.")
@@ -31,7 +30,7 @@ class ShapeQC:
         try:
             # 1. Validation
             if image is None:
-                return {"pass": False, "error": "Input image is None", "label": "Error"}
+                return {"pass_status": False, "error": "Input image is None", "label": "Error"}
 
             # 2. Preprocessing (Grayscale + Threshold)
             if len(image.shape) == 3:
@@ -46,7 +45,7 @@ class ShapeQC:
 
             if not contours:
                 self.log.warning("ShapeQC: No contours found.")
-                return {"pass": False, "error": "No contours found", "label": "Empty"}
+                return {"pass_status": False, "error": "No contours found", "label": "Empty"}
 
             # Assume largest contour is the section
             cnt = max(contours, key=cv2.contourArea)
@@ -69,13 +68,13 @@ class ShapeQC:
 
             # 6. Pass/Fail Logic (Noise filter)
             if cv2.contourArea(cnt) < 100:
-                return {"pass": False, "error": "Contour too small", "label": "Noise"}
+                return {"pass_status": False, "error": "Contour too small", "label": "Noise"}
 
             self.log.debug(f"ShapeQC: Detected {shape_label} (v={num_vertices})")
 
             # 7. Visualization & Saving Logic
             # Check if saving is enabled in config
-            if self.shape_config.get("save_debug_img", False):
+            if self.save_debug_img:
                 vis_img = image.copy()
                 
                 # Draw the approximated polygon (Green)
@@ -93,9 +92,6 @@ class ShapeQC:
 
                 # Save the image if filename is provided
                 if filename:
-                    # Ensure directory exists (optional safety)
-                    self.output_dir.mkdir(parents=True, exist_ok=True)
-                    
                     save_path = self.output_dir / f"{filename}_shape.jpg"
                     save_debug_image(vis_img, save_path)
                     self.log.debug(f"Saved shape debug image to {save_path}")
@@ -104,9 +100,9 @@ class ShapeQC:
                 "label": shape_label,
                 "metric": num_vertices,
                 "message": f"Detected {shape_label} (vertices={num_vertices})",
-                "pass": True,
+                "pass_status": True,
             }
 
         except Exception as e:
             self.log.error(f"ShapeQC crashed: {e}")
-            return {"pass": False, "error": str(e), "label": "Error"}
+            return {"pass_status": False, "error": str(e), "label": "Error"}

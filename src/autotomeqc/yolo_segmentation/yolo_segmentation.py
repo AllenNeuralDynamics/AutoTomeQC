@@ -6,8 +6,9 @@ import time
 import logging
 from threading import Event
 from collections import deque
-
+import cv2
 from threading import Thread # Using Event for better thread signaling
+from autotomeqc.config.schemas import YoloSettings
 from ultralytics import YOLO
 import torch
 
@@ -15,18 +16,16 @@ import torch
 class YoloSegmentation:
     """YOLO segmentation worker that runs in its own thread"""
     
-    def __init__(self, config: dict, detection_callback: Optional[Callable] = None):
+    def __init__(self, config: YoloSettings, detection_callback: Optional[Callable] = None):
         """
         :param config: Configuration dictionary.
         :param detection_callback: A function to call with the list of detections.
         """
-        self.weights_path = config.get('weights_path', r'weights\seg_fast.pt')
-        self.conf_thresh = config.get('conf_thresh', 0.25)
-        self.iou_thresh = config.get('iou_thresh', 0.45)
-        self.img_size = config.get('img_size', 640)
-        self.img_dim = config.get('img_dim', [640, 480])  # input image dimension for YOLO (w, h)
-        self.max_det = config.get('max_det', 30)
-        self.loop_bbox_margin = config.get('loop_bbox_margin', 30)
+        self.weights_path = config.weights_path
+        self.conf_thresh = config.conf_thresh
+        self.img_size = config.img_size
+        self.img_dim = config.img_dim
+        self.max_det = config.max_det
         self.log = logging.getLogger(self.__class__.__name__)
 
         # State
@@ -104,13 +103,26 @@ class YoloSegmentation:
         """Add frame to processing queue"""
         if not self.running:
             return
-        
+
         try:
+            frame = self._resize_frame(frame)
             self.frame_queue.append((frame, id, filename, ts))
         except Exception as e:
             self.log.error(f"Error queuing frame: {e}")
             pass
-            
+
+    def _resize_frame(self, frame: np.ndarray) -> np.ndarray:
+        """
+        Ensures the input frame matches the model's required dimensions.
+        """
+        target_h, target_w = self.img_dim[1], self.img_dim[0]
+        current_h, current_w = frame.shape[:2]
+
+        if current_h != target_h or current_w != target_w:
+            self.log.debug(f"Resizing frame from ({current_w}x{current_h}) to ({target_w}x{target_h}). ")
+            return cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        return frame
+
     def _process_frames(self):
         """Process frames from the queue"""
         while self.running:
@@ -135,10 +147,10 @@ class YoloSegmentation:
                             frame, 
                             persist=True,
                             conf=self.conf_thresh,
-                            iou=self.iou_thresh,
                             imgsz=self.img_size,
                             max_det=self.max_det,
-                            verbose=False
+                            retina_masks=True,
+                            verbose=False,
                         )
 
                         # Convert results to detection format
@@ -170,7 +182,6 @@ class YoloSegmentation:
                                         'confidence': conf,
                                         'id': search_id,
                                         'mask': masks_data.get(i, []),
-                                        'loop_bbox_margin': self.loop_bbox_margin
                                     }
                                     detections.append(detection)
                     
