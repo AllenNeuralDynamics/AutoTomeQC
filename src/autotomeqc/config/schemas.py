@@ -14,6 +14,7 @@ class PostProcessingSettings(BaseModel):
     out_dim: List[int] = [640, 640]
     loop_bbox_margin: int = 30
     allow_no_loop: bool = True
+    overlap_threshold: float = 0.5
 
 class AlgorithmSettings(BaseModel):
     weights_path: Optional[str] = None
