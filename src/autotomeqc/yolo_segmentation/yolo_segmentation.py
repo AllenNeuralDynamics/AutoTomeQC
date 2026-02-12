@@ -80,7 +80,7 @@ class YoloSegmentation:
             # Run several warmup inferences
             for i in range(3):
                 # Using predict for simple warmup instead of track if tracking is not essential here
-                _ = self.model.track(dummy_frame, persist=True) 
+                _ = self.model.track(dummy_frame, persist=False)
 
             # Additional GPU warmup if using CUDA
             if torch.cuda.is_available():
@@ -145,7 +145,7 @@ class YoloSegmentation:
                         # Run YOLO inference
                         results = self.model.track(
                             frame, 
-                            persist=True,
+                            persist=False,
                             conf=self.conf_thresh,
                             imgsz=self.img_size,
                             max_det=self.max_det,

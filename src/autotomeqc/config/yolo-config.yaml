@@ -12,6 +12,7 @@ qc:
     out_dim: [640, 640]
     loop_bbox_margin: 30
     allow_no_loop: true
+    overlap_threshold: 0.5
   section_coverage:
     weights_path: "weights/section_coverage_v1.pt"
     img_size: 224

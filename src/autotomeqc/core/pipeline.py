@@ -133,26 +133,28 @@ class AutoTomePipeline:
         # 1. Validation
         is_valid, error_reason, validated_detections = validate_detections(detections)
         if not is_valid:
-            self._handle_pipeline_failure(frame, filename, timestamp_str, error_reason, future_ticket)
+            self._handle_pipeline_failure(frame, validated_detections, filename, timestamp_str, error_reason, future_ticket)
             return
 
         # 2. Pre-processing for QC (Segmentation & Cropping)
         qc_input_image = cropped_segmented(frame, validated_detections)
         if qc_input_image is None:
-            self._handle_pipeline_failure(frame, filename, timestamp_str, "Segmentation Failed", future_ticket)
+            self._handle_pipeline_failure(frame, validated_detections, filename, timestamp_str, "Segmentation Failed", future_ticket)
             return
 
         # 3. Execution for QC Algorithms
         self._handle_pipeline_success(frame, qc_input_image, validated_detections, filename, timestamp_str, ts, future_ticket)
 
-    def _handle_pipeline_failure(self, frame: np.ndarray, filename: str, timestamp: str, reason: str, future_ticket):
+    def _handle_pipeline_failure(self, frame: np.ndarray, detections: list[Dict[str, Any]], filename: str, timestamp: str, reason: str, future_ticket):
         """Standardized reporting for any rejection or failure in the pipeline."""
         self.log.warning(f"[{filename}] Pipeline Rejected: {reason}")
+        highest_ratio = round(max((d.get('overlap_ratio', 0.0) for d in detections), default=0.0), 2)
         result = PipelineResult(
             filename=filename,
             timestamp=timestamp,
             qc_summary="FAIL",
-            error_reason=reason
+            error_reason=reason,
+            overlap_ratio=highest_ratio
         )
         output = result.model_dump(exclude_none=True)
         save_json_results(output, self.output_path / f"{filename}_qc.json")
@@ -166,7 +168,7 @@ class AutoTomePipeline:
         # Extract metadata
         best_section = get_best_section_detection(detections)
         section_conf = round(best_section.get('confidence', 0.0), 2) if best_section else 0.0
-        section_ratio = best_section.get('overlap_ratio', 0.0) if best_section else 0.0
+        section_ratio = round(best_section.get('overlap_ratio', 0.0), 2) if best_section else 0.0
 
         # Run Algorithms
         qc_results = self._run_all_checks(qc_image)
