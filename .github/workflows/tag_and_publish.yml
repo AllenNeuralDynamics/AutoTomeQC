@@ -28,16 +28,19 @@ jobs:
       - name: Get Version and Branch Info
         id: meta
         run: |
-          # Extract version directly from __init__.py to avoid sync issues
-          # This looks for __version__ = "X.X.X" in your project file
+          # Extract version from __init__.py
           VERSION=$(python3 -c "import re; print(re.search(r'__version__\s*=\s*[\"\']([^\"\']+)[\"\']', open('src/autotomeqc/__init__.py').read()).group(1))")
           
-          # Determine if we are on a feature branch
-          if [[ "${{ github.ref_name }}" == feat/* ]]; then
-            # Clean branch name: feat/my-fix -> feat-my-fix
-            BRANCH_CLEAN=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
-            FULL_TAG="v${VERSION}-${BRANCH_CLEAN}"
+          # Check if we are on a feature branch for SemVer pre-release
+          if [[ "${{ github.ref_name }}" =~ ^feat ]]; then
+            # SemVer Rule: Only [0-9A-Za-z-] allowed.
+            # Replace slashes and underscores with hyphens.
+            BRANCH_SEMVER=$(echo "${{ github.ref_name }}" | sed 's/[/_]/-/g')
+
+            # SemVer Format: <version>-<pre-release>
+            FULL_TAG="v${VERSION}-${BRANCH_SEMVER}"
           else
+            # Standard Release Version
             FULL_TAG="v${VERSION}"
           fi
           
