@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
+"""
 class QCCriteria(BaseModel):
     # Standard Pydantic V2 configuration
     model_config = ConfigDict(populate_by_name=True)
@@ -23,4 +24,29 @@ class PipelineResult(BaseModel):
     segmentation_conf: float = 0.0
     overlap_ratio: float = 0.0
     criteria: Dict[str, QCCriteria] = Field(default_factory=dict)
-    error_reason: Optional[str] = None
+    fail_reason: Optional[str] = None
+
+"""
+
+class QCCriteria(BaseModel):
+    pass_status: bool
+    label: str
+    conf: Optional[float] = None
+    metric: Optional[Any] = None
+    message: Optional[str] = None
+    reason: Optional[str] = None
+
+class SectionResult(BaseModel):
+    qc_result: str  # "PASS" or "FAIL"
+    segmentation_conf: float
+    area_in_pixels: int
+    overlap_ratio: float
+    criteria: Dict[str, QCCriteria]
+
+class PipelineResult(BaseModel):
+    filename: str
+    timestamp: str
+    qc_summary: str
+    fail_reason: str = "N/A"
+    processing_time_sec: Optional[float] = None
+    sections: Dict[str, SectionResult] = Field(default_factory=dict)  # "sections": { "0": {...} } structure
