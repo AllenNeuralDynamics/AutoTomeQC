@@ -1,14 +1,25 @@
 # example/example_import.py
-import json
 from autotomeqc.core.autotome_service import AutoTomeService
+
+def print_result(result):
+    print(f"Processing: {result['filename']}")
+    print(f"Status:     {result['qc_summary']}")
+    if result['qc_summary'] == "FAIL":
+        print(f"Reason:     {result.get('fail_reason', 'N/A')}")
+    # Access the new nested sections
+    for sec_id, data in result.get('sections', {}).items():
+        print(f" -> Section {sec_id}: {data['qc_result']} | Area: {data['area_in_pixels']}px")
+        # Loop through the specific QC criteria inside each section
+        for crit, res in data.get('criteria', {}).items():
+            icon = "✅" if res['pass_status'] else "❌"
+            print(f"    {icon} {crit}: {res['label']}")
+    print("-" * 40)
 
 def main():
     service = AutoTomeService()
     if not service.start():
         return
-
     print("Service Ready! Starting processing...")
-
     try:
         for i in range(11):
             path = f"example/input_images/img{i}.jpg"
@@ -29,8 +40,7 @@ def main():
             
             # Print output
             result = future.result()
-            print(f"Status: {result.get('qc_summary')}")
-            print(json.dumps(result.get('criteria', {}), indent=4, default=str))
+            print_result(result)
 
     except KeyboardInterrupt:
         pass
