@@ -92,27 +92,35 @@ def run_interactive_cli():
         service.stop()
         logger.info("Bye!")
 
-
 def _print_result(result):
-    """Helper to pretty-print results for humans"""
-    status = result.get("qc_summary", "UNKNOWN")
-    if status == "PASS":
-        logger.info(f"✅ PASS: {status}")
-    else:
-        top_level_error = result.get("error_reason", result.get("error"))
-        if top_level_error:
-            reason = top_level_error
-        else:
-            # Check for specific QC criteria failures
-            failed_criteria = []
-            criteria = result.get("criteria", {})
-            for name, data in criteria.items():
-                if data.get("pass_status") is False:
-                    msg = data.get("reason", data.get("label", "Failed"))
-                    failed_criteria.append(f"{name} ({msg})")
-            reason = ", ".join(failed_criteria) if failed_criteria else "Unknown Failure"
-        logger.info(f"❌ FAIL: {reason}")
-    logger.info(f"   Details:\n{json.dumps(result.get('criteria', {}), indent=4, default=str)}")
+    """Helper to pretty-print results using the logger to match example_import.py output."""
+    filename = result.get("filename", "Unknown")
+    summary = result.get("qc_summary", "UNKNOWN")
+    fail_reason = result.get("fail_reason", "N/A")
+
+    # Header section
+    logger.info(f"Processing: {filename}")
+    logger.info(f"Status:     {summary}")
+    if summary == "FAIL":
+        logger.info(f"Reason:     {fail_reason}")
+
+    # Section-level iteration
+    sections = result.get("sections", {})
+    for sec_id, sec_data in sections.items():
+        sec_status = sec_data.get("qc_result", "UNKNOWN")
+        area = sec_data.get("area_in_pixels", 0)
+        logger.info(f" -> Section {sec_id}: {sec_status} | Area: {area}px")
+
+        # qc criteria level iteration
+        criteria = sec_data.get("criteria", {})
+        for crit_name, crit_data in criteria.items():
+            pass_status = crit_data.get("pass_status", False)
+            icon = "✅" if pass_status else "❌"
+            label = crit_data.get("label", "N/A")
+            # Using 4 spaces for the indentation to match your required look
+            logger.info(f"    {icon} {crit_name}: {label}")
+
+    logger.info("-" * 40)
 
 if __name__ == "__main__":
     run_interactive_cli()
