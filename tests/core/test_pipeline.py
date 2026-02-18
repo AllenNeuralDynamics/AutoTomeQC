@@ -1,9 +1,8 @@
 import pytest
 import numpy as np
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from concurrent.futures import TimeoutError, Future
-from pathlib import Path
 
 # Import the class and config
 from autotomeqc.core.pipeline import AutoTomePipeline
@@ -209,7 +208,7 @@ def test_process_raw_frame_success(pipeline, mock_external_deps):
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
     # ACT
-    future = pipeline.process(frame=frame)
+    _future = pipeline.process(frame=frame)
     
     # ASSERT
     # Check that it generated a timestamped filename (since none was provided)
