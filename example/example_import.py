@@ -6,13 +6,17 @@ def print_result(result):
     print(f"Status:     {result['qc_summary']}")
     if result['qc_summary'] == "FAIL":
         print(f"Reason:     {result.get('fail_reason', 'N/A')}")
-    # Access the new nested sections
-    for sec_id, data in result.get('sections', {}).items():
-        print(f" -> Section {sec_id}: {data['qc_result']} | Area: {data['area_in_pixels']}px")
-        # Loop through the specific QC criteria inside each section
-        for crit, res in data.get('criteria', {}).items():
-            icon = "✅" if res['pass_status'] else "❌"
-            print(f"    {icon} {crit}: {res['label']}")
+
+    sections = result.get('sections', [])
+    for i, data in enumerate(sections):
+        qc_status = data.get('qc_result', 'UNKNOWN')
+        area = data.get('area_in_pixels', 0)
+        print(f" -> Section {i}: {qc_status} | Area: {area}px")
+        criteria = data.get('criteria', {})
+        for crit, res in criteria.items():
+            icon = "✅" if res.get('pass_status') else "❌"
+            label = res.get('label', 'N/A')
+            print(f"    {icon} {crit}: {label}")
     print("-" * 40)
 
 def main():
