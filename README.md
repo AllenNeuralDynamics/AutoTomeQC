@@ -68,7 +68,7 @@ Ready > example/input_images/img1.jpg
 Processing: img1
 Status:     FAIL
 Reason:     Section failed QC criteria
- -> Section 0: FAIL | Area: 61464px | Conf: 0.92
+ -> Section 0: FAIL | Area: 61464px
     ✅ coverage: full_section
     ❌ knife_mark: knifemark_shredding
     ✅ thickness_consistency: Consistent
@@ -80,7 +80,7 @@ Ready > example/input_images/img2.jpg
 Processing: img2
 Status:     PASS
 Reason:     N/A
- -> Section 0: PASS | Area: 58210px | Conf: 0.95
+ -> Section 0: PASS | Area: 58210px
     ✅ coverage: full_section
     ✅ knife_mark: none
     ✅ thickness_consistency: Consistent
