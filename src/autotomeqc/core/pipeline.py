@@ -153,16 +153,22 @@ class AutoTomePipeline:
                 future_ticket=future_ticket
             )
 
-    def _handle_pipeline_failure(self, frame: np.ndarray, detections: list[Dict[str, Any]], filename: str, timestamp: str, reason: str, future_ticket):
+    def _handle_pipeline_failure(
+        self,
+        frame: Optional[np.ndarray],
+        detections: list[Dict[str, Any]],
+        filename: str,
+        timestamp: str,
+        reason: str,
+        future_ticket: Future
+    ) -> None:
         """Standardized reporting for any rejection or failure in the pipeline."""
         self.log.warning(f"[{filename}] Pipeline Rejected: {reason}")
-        highest_ratio = round(max((d.get('overlap_ratio', 0.0) for d in detections), default=0.0), 2)
         result = PipelineResult(
             filename=filename,
             timestamp=timestamp,
             qc_summary="FAIL",
             fail_reason=reason,
-            overlap_ratio=highest_ratio,
             sections=[]
         )
         output = result.model_dump(exclude_none=True)

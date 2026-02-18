@@ -156,7 +156,7 @@ def cropped_segmented(frame: np.ndarray, detections: list[dict], filename="") ->
             if poly_array.ndim == 2:
                 poly_array = poly_array.reshape((-1, 1, 2))
             # Fill the mask and apply it
-            cv2.fillPoly(polygon_mask, [poly_array], color=255)
+            cv2.fillPoly(polygon_mask, [poly_array], color=(255,))
             temp_frame = cv2.bitwise_and(temp_frame, temp_frame, mask=polygon_mask)
         else:
             logger.warning(f"[{filename}] Section missing mask. No segmentation applied.")
