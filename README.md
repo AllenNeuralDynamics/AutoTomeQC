@@ -64,19 +64,29 @@ And, you can view the results directly in the terminal:
 
 **Example Output:**
 ```bash
-Ready > example/input_images/img0.jpg
-Processing... Done.
-✅ PASS: PASS
-   Details:
-   {
-       "shape": { "label": "Hexagon", "pass": true },
-       "coverage": { "label": "full_section", "conf": 0.99, "pass": true },
-       "knife_mark": { "label": "knifemark_none", "pass": true },
-       ...
-   }
+Ready > example/input_images/img1.jpg
+Processing: img1
+Status:     FAIL
+Reason:     Section failed QC criteria
+ -> Section 0: FAIL | Area: 61464px | Conf: 0.92
+    ✅ coverage: full_section
+    ❌ knife_mark: knifemark_shredding
+    ✅ thickness_consistency: Consistent
+    ✅ thickness: 80
+    ✅ shape: Hexagon (vertices: 6)
+
+----------------------------------------
+Ready > example/input_images/img2.jpg
+Processing: img2
+Status:     PASS
+Reason:     N/A
+ -> Section 0: PASS | Area: 58210px | Conf: 0.95
+    ✅ coverage: full_section
+    ✅ knife_mark: none
+    ✅ thickness_consistency: Consistent
+    ✅ thickness: 70
+    ✅ shape: Hexagon (vertices: 6)
 ```
-
-
 
 
 ## Tools
