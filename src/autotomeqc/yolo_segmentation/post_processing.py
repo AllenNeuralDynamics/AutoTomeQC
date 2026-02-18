@@ -108,14 +108,6 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
     filtered_detections = [loop_detection, sections_in_loop[0]]
     return True, "N/A", filtered_detections
 
-def get_area(mask_poly: list) -> int:
-    """Calculate pixel area of a polygon mask."""
-    area = 0
-    if mask_poly and len(mask_poly) > 0:
-        poly_array = np.array(mask_poly, dtype=np.int32).reshape((-1, 1, 2))
-        area = int(cv2.contourArea(poly_array))
-    return area
-
 def cropped_segmented(frame: np.ndarray, detections: list[dict], filename="") -> list[dict]:
     """
     Processes each section in detections:
