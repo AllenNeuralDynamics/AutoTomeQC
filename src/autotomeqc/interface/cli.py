@@ -105,19 +105,22 @@ def _print_result(result):
         logger.info(f"Reason:     {fail_reason}")
 
     # Section-level iteration
-    sections = result.get("sections", {})
-    for sec_id, sec_data in sections.items():
+    sections = result.get("sections", [])
+    for i, sec_data in enumerate(sections):
         sec_status = sec_data.get("qc_result", "UNKNOWN")
         area = sec_data.get("area_in_pixels", 0)
-        logger.info(f" -> Section {sec_id}: {sec_status} | Area: {area}px")
 
-        # qc criteria level iteration
+        # Using index 'i' to identify the section
+        logger.info(f" -> Section {i}: {sec_status} | Area: {area}px")
+
+        # QC criteria level iteration (This remains a dictionary)
         criteria = sec_data.get("criteria", {})
         for crit_name, crit_data in criteria.items():
             pass_status = crit_data.get("pass_status", False)
             icon = "✅" if pass_status else "❌"
             label = crit_data.get("label", "N/A")
-            # Using 4 spaces for the indentation to match your required look
+
+            # 4-space indentation for scannability
             logger.info(f"    {icon} {crit_name}: {label}")
 
     logger.info("-" * 40)
