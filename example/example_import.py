@@ -25,7 +25,7 @@ def main():
         return
     print("Service Ready! Starting processing...")
     try:
-        for i in range(11):
+        for i in range(17):
             path = f"example/input_images/img{i}.jpg"
             print(f"\nProcessing: {path}")
 
