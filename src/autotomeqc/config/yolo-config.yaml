@@ -4,7 +4,7 @@ qc:
   save_input_images: true
   yolo:
     weights_path: "weights/seg_fast_yolo26_640.pt"
-    conf_thresh: 0.25
+    conf_thresh: 0.5
     img_size: 640
     img_dim: [640, 640]
     max_det: 10

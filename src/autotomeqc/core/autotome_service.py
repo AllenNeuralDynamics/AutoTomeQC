@@ -1,6 +1,5 @@
 # autotomeqc/core/autotomeService.py
 import logging
-from pathlib import Path
 import numpy as np
 from concurrent.futures import Future
 from typing import Optional
@@ -62,45 +61,8 @@ class AutoTomeService:
             return False
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
-        """
-        PROCESS IMAGE - Submits either a file path OR a raw frame to the pipeline.
-
-        Args:
-            img_path (str, optional): Path to the image file.
-            frame (np.ndarray, optional): Raw image data (e.g., from cv2.imread).
-
-        Returns:
-            Future: A Future object representing the pending result.
-        """
         if not self.running:
             raise RuntimeError("Service is stopped")
 
-       # Validate Input
-        if img_path is not None and frame is not None:
-            raise ValueError("Ambiguous input: Provide either 'img_path' OR 'frame', not both.")
-        if img_path is None and frame is None:
-            raise ValueError("Missing input: Must provide either 'img_path' or 'frame'.")
-
-        try:
-            # Handle File Path
-            if img_path:
-                path = Path(img_path.strip('"').strip("'"))
-                if not path.exists():
-                    raise FileNotFoundError(f"File not found: {path}")
-                self.log.info(f">>> EVENT: PROCESS_FILE | File: {path.name}")
-                return self.pipeline.process(img_path=path)
-
-            # Handle Numpy Frame
-            elif frame is not None:
-                if frame.size == 0:
-                    raise ValueError("Frame is empty.")
-                self.log.info(f">>> EVENT: PROCESS_FRAME | Shape: {frame.shape}")
-                return self.pipeline.process(frame=frame)
-
-            raise ValueError("Input provided but did not match path or frame criteria.")
-
-        except Exception as e:
-            self.log.error(f"Submission Failed: {e}")
-            f: Future[dict] = Future()
-            f.set_exception(e)
-            return f
+        # The Service just hands it off to the Pipeline
+        return self.pipeline.process(img_path=img_path, frame=frame)

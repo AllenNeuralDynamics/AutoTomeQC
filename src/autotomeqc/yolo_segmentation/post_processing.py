@@ -102,72 +102,78 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
     if len(sections_in_loop) > 1:
         filtered_detections = [loop_detection] + sections_in_loop
         msg = f"Multiple sections ({len(sections_in_loop)}) detected in loop"
-        return False, msg, filtered_detections
+        return True, msg, filtered_detections
 
     # Case 5: Success (Exactly one section in loop)
     filtered_detections = [loop_detection, sections_in_loop[0]]
     return True, "N/A", filtered_detections
-    
-def cropped_segmented(frame: np.ndarray, detections: list, filename="") -> Optional[np.ndarray]:
+
+def cropped_segmented(frame: np.ndarray, detections: list[dict], filename="") -> list[dict]:
     """
-    Processing logic:
-    1. Finds the 'loop' detection (global context).
-    2. Finds the 'best' section (highest confidence).
-    3. Masks that specific section (blacking out background).
-    4. Crops to the 'loop' bounding box.
-    5. Returns the processed image for QC.
+    Processes each section in detections:
+    1. If a loop exists, it is used as the global cropping frame.
+    2. If no loop exists (and allowed), the section's own BBox is used for cropping.
+    3. Masks the section, crops, resizes, and attaches to 'section_image'.
     """
     if not detections:
-        return None
+        return []
 
-    # Find the 'loop' detection (Global for the frame)
+    margin = CONFIG.qc.yolo_post_processing.loop_bbox_margin
+    output_dim = tuple(CONFIG.qc.yolo_post_processing.out_dim)
+    # Check for a global loop context
     loop_detection = next((d for d in detections if d['class_name'] == 'loop'), None)
-    best_section = get_best_section_detection(detections)
-    if best_section is None:
-        logger.warning(f"[{filename}] No valid 'section' found. Skipping.")
-        return None
 
-    # Processing
-    process_frame = frame.copy()
-    mask_poly = best_section.get("mask", [])
+    # Iterate through all detections to find 'sections'
+    for d in detections:
+        if d['class_name'] != 'section':
+            continue
 
-    if mask_poly and len(mask_poly) > 0:
-        h, w = process_frame.shape[:2]
-        polygon_mask = np.zeros((h, w), dtype=np.uint8)
-
-        polygons = []
-        if len(mask_poly) > 0:
-            # If mask_poly is a flat list [x1, y1, x2, y2...] or [[x1, y1], [x2, y2]]
+        # Work on a fresh copy of the frame for each section
+        temp_frame = frame.copy()
+        mask_poly = d.get("mask", [])
+        if mask_poly and len(mask_poly) > 0:
             poly_array = np.array(mask_poly, dtype=np.int32)
-            # Ensure shape is (N, 1, 2)
             if poly_array.ndim == 2:
                 poly_array = poly_array.reshape((-1, 1, 2))
-            polygons.append(poly_array)
+            d["area_in_pixels"] = int(cv2.contourArea(poly_array))
+        else:
+            d["area_in_pixels"] = 0
 
-        # Fill the polygon on the mask
-        cv2.fillPoly(polygon_mask, polygons, color=255)  # type: ignore
+        # --- STEP A: Masking (Section Specific) ---
+        if mask_poly and len(mask_poly) > 0:
+            h, w = temp_frame.shape[:2]
+            polygon_mask = np.zeros((h, w), dtype=np.uint8)
+            # Convert polygon to required numpy format
+            poly_array = np.array(mask_poly, dtype=np.int32)
+            if poly_array.ndim == 2:
+                poly_array = poly_array.reshape((-1, 1, 2))
+            # Fill the mask and apply it
+            cv2.fillPoly(polygon_mask, [poly_array], color=(255,))
+            temp_frame = cv2.bitwise_and(temp_frame, temp_frame, mask=polygon_mask)
+        else:
+            logger.warning(f"[{filename}] Section missing mask. No segmentation applied.")
 
-        # Apply mask: Keep only the section, black out everything else
-        process_frame = cv2.bitwise_and(process_frame, process_frame, mask=polygon_mask)
-    else:
-        logger.warning(f"[{filename}] Best section has no mask polygon. Skipping masking.")
-
-    # Crop to 'loop' BBox ---
-    if loop_detection:
-        bbox = loop_detection.get('bbox', [])
-        margin = CONFIG.qc.yolo_post_processing.loop_bbox_margin
-
-        if len(bbox) == 4:
-            x1, y1, x2, y2 = map(int, bbox)
+        # --- STEP B: Cropping (Handling allow_no_loop) ---
+        # Priority: Loop BBox > Section BBox
+        target_bbox = loop_detection.get('bbox') if loop_detection else d.get('bbox')
+        if target_bbox and len(target_bbox) == 4:
+            x1, y1, x2, y2 = map(int, target_bbox)
+            # Apply margins and constrain to frame boundaries
             x1 = max(0, x1 - margin)
             y1 = max(0, y1 - margin)
-            x2 = min(process_frame.shape[1], x2 + margin)
-            y2 = min(process_frame.shape[0], y2 + margin)
-
+            x2 = min(frame.shape[1], x2 + margin)
+            y2 = min(frame.shape[0], y2 + margin)
+            # Slice the image
             if x2 > x1 and y2 > y1:
-                process_frame = process_frame[y1:y2, x1:x2]
+                temp_frame = temp_frame[y1:y2, x1:x2]
 
-    # Resize (Standardize input for QC models)
-    output_dim = CONFIG.qc.yolo_post_processing.out_dim
-    process_frame = cv2.resize(process_frame, tuple(output_dim))
-    return process_frame
+        # --- STEP C: Standardization & Injection ---
+        if temp_frame.size > 0:
+            # Resize to ensure the QC algorithm receives expected dimensions
+            temp_frame = cv2.resize(temp_frame, output_dim)
+            d['section_image'] = temp_frame
+        else:
+            d['section_image'] = None
+            logger.error(f"[{filename}] Resulting crop for section is empty.")
+
+    return detections
