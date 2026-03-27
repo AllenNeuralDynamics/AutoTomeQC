@@ -20,7 +20,7 @@ dependencies = [
     "PyYAML>=6.0",
     "lapx>=0.5.5",
 
-    # Development/Testing Tools (kept from original)
+    # Development/Testing Tools
     "pytest>=8.3.5",
     "ruff>=0.9.9",
     "mypy>=1.10.0",
