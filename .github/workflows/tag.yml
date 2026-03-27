@@ -1,0 +1,41 @@
+name: Tag Bump
+
+on:
+  workflow_call:
+    inputs: 
+      runner_label: 
+        description: 'Runner to use'
+        type: string
+        default: 'ubuntu-latest'
+
+jobs:
+  tag: 
+    runs-on: ${{ inputs.runner_label }}
+    steps: 
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with: 
+          #repository: ${{ github.event.pull_request.head.repo.full_name }}
+          #ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.ref }}
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          #append_to_pre_release_tag: 'dev'
+          #pre_release_branches: dev
+          # custom_release_rules: 'fix:patch,feat:minor,breaking:major'
+          dry_run: true
+          release_branches: ${{ github.ref_name }}
+
+      - name: Install UV 
+        uses: astral-sh/setup-uv@v5
+      - name: Update Version in pyproject.toml
+        run: uvx --from=toml-cli toml set --toml-path=pyproject.toml project.version ${{ steps.tag_version.outputs.new_version }}
+      - name: Commit and push pyproject.toml version bump
+        uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          message: "ci: version bump"
+          push: true
