@@ -1,0 +1,21 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - feat-cicd
+
+jobs:
+  # 1. Run your Linter and Tests first
+  lint-and-test:
+    uses: ./.github/workflows/test_lint_type.yml
+
+  # 2. Run the Tagging logic ONLY if the tests pass
+  tag-and-release:
+    needs: lint-and-test
+    uses: ./.github/workflows/tag.yml
+    secrets: inherit
+    with:
+      runner_label: 'ubuntu-latest'
