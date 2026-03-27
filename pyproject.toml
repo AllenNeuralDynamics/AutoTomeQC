@@ -40,6 +40,3 @@ packages = ["src/autotomeqc"]
 
 [tool.pytest.ini_options]
 pythonpath = ["tests"]
-
-[tool.hatch.version]
-path = "src/autotomeqc/__init__.py"
