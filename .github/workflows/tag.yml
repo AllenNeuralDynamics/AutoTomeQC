@@ -24,7 +24,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           append_to_pre_release_tag: 'dev'
-          pre_release_branches: dev,feat-cicd
+          pre_release_branches: dev
           # custom_release_rules: 'fix:patch,feat:minor,breaking:major'
       - name: Install UV 
         uses: astral-sh/setup-uv@v5
