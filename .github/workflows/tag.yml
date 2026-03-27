@@ -24,7 +24,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           append_to_pre_release_tag: 'dev'
-          pre_release_branches: dev, feat-cicd
+          pre_release_branches: dev,feat-cicd
           # custom_release_rules: 'fix:patch,feat:minor,breaking:major'
       - name: Install UV 
         uses: astral-sh/setup-uv@v5
@@ -33,6 +33,7 @@ jobs:
       - name: Commit and push pyproject.toml version bump
         uses: EndBug/add-and-commit@v9
         with:
+          add: 'pyproject.toml'
           default_author: github_actions
-          message: "ci: version bump"
+          message: "ci: version bump to ${{ steps.tag_version.outputs.new_version }}"
           push: true
