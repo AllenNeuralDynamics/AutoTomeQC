@@ -25,7 +25,8 @@ def main():
         return
     print("Service Ready! Starting processing...")
     try:
-        for i in range(17):
+        futures = []
+        for i in range(5):
             path = f"example/input_images/img{i}.jpg"
             print(f"\nProcessing: {path}")
 
@@ -33,6 +34,7 @@ def main():
             # WAY 1: Pass by File Path (Service loads the file)
             # ---------------------------------------------------------
             future = service.process(img_path=path)
+            futures.append(future)
 
             # ---------------------------------------------------------
             # WAY 2: Pass by Raw Frame (You load the file)
@@ -42,7 +44,9 @@ def main():
             #future = service.process(frame=frame)
             # ---------------------------------------------------------
             
-            # Print output
+        # Print output
+        print("Length of futures:", len(futures))
+        for future in futures:
             result = future.result()
             print_result(result)
 

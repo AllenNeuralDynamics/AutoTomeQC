@@ -6,6 +6,8 @@ import logging
 import cv2
 import numpy as np
 import uuid
+import queue
+import threading
 from typing import Dict, Optional, Any
 from concurrent.futures import ThreadPoolExecutor, Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
@@ -33,11 +35,12 @@ class AutoTomePipeline:
         # Registry to connect requests to results
         self.pending_results = {}
 
+        self.input_queue = queue.Queue()
+        self.worker_thread = None
+        self.is_running = False
+
         # Preprocessing - Segmentation via YOLO
-        self.segmenter = YoloSegmentation(
-            config=CONFIG.qc.yolo,
-            detection_callback=self._handle_detection
-        )
+        self.segmenter = YoloSegmentation(config=CONFIG.qc.yolo)
 
         self.log.info("Initializing QC Models...")
         self.qc_modules = {
@@ -59,25 +62,103 @@ class AutoTomePipeline:
             if self.segmenter.model is None:
                  self.log.error("Pipeline Start Failed: YOLO Model is None (Load failed).")
                  return False
-            # Start the Segmenter Thread
-            if self.segmenter.start():
-                self.log.info("Pipeline started successfully.")
-                return True
-            else:
-                self.log.error("YOLO Segmentation refused to start.")
-                return False
-
+            self.is_running = True
+            self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
+            self.worker_thread.start()
+            return True
         except Exception as e:
             self.log.error(f"Critical error starting pipeline: {e}")
             return False
 
     def stop(self):
         self.log.info("Stopping Pipeline...")
-        if self.segmenter:
-            self.segmenter.stop()
+        self.is_running = False
+        if self.worker_thread is not None:
+            self.worker_thread.join()
         self.executor.shutdown(wait=False)  # Cleanup threads
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
+        """Entry point for processing a single file."""
+        filename = "Unknown"
+        future_ticket: Future[Dict[str, Any]] = Future()
+        ts = time.time()
+        timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            # 1. Validate Input (XOR logic)
+            if (img_path is None) == (frame is None):
+                msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
+                self._handle_pipeline_failure(None, [], filename, timestamp_str, msg, future_ticket)
+                return future_ticket
+
+            # 2. Handle Image Loading/Naming
+            if img_path is not None:
+                path_obj = Path(img_path)
+                filename = path_obj.stem
+                if not path_obj.exists():
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File not found: {img_path}", future_ticket)
+                    return future_ticket
+                frame = cv2.imread(str(img_path))
+                if frame is None:
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File load failed: {img_path}", future_ticket)
+                    return future_ticket
+            else:
+                ts_dt = datetime.fromtimestamp(ts)
+                filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
+
+            # 3. Package and Enqueue Task
+            task = {
+                "frame": frame,
+                "filename": filename,
+                "timestamp": timestamp_str,
+                "start_ts": ts,
+                "future": future_ticket
+            }
+            self.input_queue.put(task)
+            self.log.info(f"[{filename}] Task enqueued. Queue size: {self.input_queue.qsize()}")
+            
+            return future_ticket
+
+        except Exception as e:
+            self._handle_pipeline_failure(None, [], filename, timestamp_str, f"Process Error: {str(e)}", future_ticket)
+            return future_ticket
+    
+    def _worker_loop(self):
+        """The 'Heavy Lifter': Consumes tasks and runs AI + QC logic."""
+        while self.is_running:
+            try:
+                # Retrieve task (block for 1s to allow clean shutdown check)
+                task = self.input_queue.get(timeout=1.0)
+                
+                frame = task["frame"]
+                filename = task["filename"]
+                future_ticket = task["future"]
+
+                try:
+                    # Execute YOLO
+                    detections = self.segmenter.process_frame(frame)
+                    
+                    # Validate Detections
+                    is_valid, error_reason, detections = validate_detections(detections)
+                    if not is_valid:
+                        self._handle_pipeline_failure(frame, detections, filename, task["timestamp"], error_reason, future_ticket)
+                    else:
+                        # Crop and Run QC Modules
+                        detections = cropped_segmented(frame, detections)
+                        self._handle_pipeline_valid_input(
+                            frame, detections, filename, task["timestamp"], task["start_ts"], 
+                            future_ticket=future_ticket,
+                            validation_msg=error_reason
+                        )
+                except Exception as e:
+                    self.log.error(f"Worker Error on {filename}: {e}")
+                    self._handle_pipeline_failure(frame, [], filename, task["timestamp"], str(e), future_ticket)
+                
+                self.input_queue.task_done()
+            except queue.Empty:
+                continue
+
+    def process_(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
         """Entry point for processing a single file."""
         filename = "Unknown"
         future_ticket: Future[Dict[str, Any]] = Future()
@@ -111,8 +192,18 @@ class AutoTomePipeline:
                 filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
 
             # Register Ticket and Dispatch
-            self.pending_results[request_id] = future_ticket
-            self.segmenter.process_frame(frame, id=request_id, filename=filename, ts=ts)
+            #self.pending_results[request_id] = future_ticket
+            detections = self.segmenter.process_frame(frame)
+            is_valid, error_reason, detections = validate_detections(detections)
+            if not is_valid:
+                self._handle_pipeline_failure(frame, detections, filename, timestamp_str, error_reason, future_ticket)
+                return future_ticket
+            detections = cropped_segmented(frame, detections)
+            self._handle_pipeline_valid_input(
+                frame, detections, filename, timestamp_str, ts, 
+                future_ticket=future_ticket,
+                validation_msg=error_reason
+            )
             return future_ticket
 
         except Exception as e:
@@ -178,7 +269,16 @@ class AutoTomePipeline:
         if future_ticket:
             future_ticket.set_result(output)
 
-    def _handle_pipeline_valid_input(self, frame: np.ndarray, detections: list, filename: str, timestamp: str, start_ts: float, future_ticket, validation_msg: str = "N/A"):
+    def _handle_pipeline_valid_input(
+            self,
+            frame: np.ndarray,
+            detections: list,
+            filename: str,
+            timestamp: str,
+            start_ts: float,
+            future_ticket,
+            validation_msg: str = "N/A"
+        ) -> Future:
         """
         Executes QC checks on all sections and compiles the final result using Pydantic models.
         """
@@ -241,6 +341,7 @@ class AutoTomePipeline:
         # Resolve the Future
         if future_ticket:
             future_ticket.set_result(output)
+
 
     def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
         """Submits QC tasks and resolves them with robust error handling."""
