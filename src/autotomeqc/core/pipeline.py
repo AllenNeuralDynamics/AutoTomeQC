@@ -5,7 +5,6 @@ import time
 import logging
 import cv2
 import numpy as np
-import uuid
 import queue
 import threading
 from typing import Dict, Optional, Any
@@ -85,6 +84,8 @@ class AutoTomePipeline:
         timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
         try:
+            # check queue size
+            print(f"Current queue size: {self.input_queue.qsize()}" )
             # 1. Validate Input (XOR logic)
             if (img_path is None) == (frame is None):
                 msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
@@ -107,6 +108,7 @@ class AutoTomePipeline:
                 filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
 
             # 3. Package and Enqueue Task
+            frame = self.segmenter.resize_frame(frame)
             task = {
                 "frame": frame,
                 "filename": filename,
@@ -116,7 +118,7 @@ class AutoTomePipeline:
             }
             self.input_queue.put(task)
             self.log.info(f"[{filename}] Task enqueued. Queue size: {self.input_queue.qsize()}")
-            
+
             return future_ticket
 
         except Exception as e:
@@ -143,12 +145,14 @@ class AutoTomePipeline:
                     if not is_valid:
                         self._handle_pipeline_failure(frame, detections, filename, task["timestamp"], error_reason, future_ticket)
                     else:
-                        # Crop and Run QC Modules
+                        # Pre-processing for QC (Segmentation & Cropping)
                         detections = cropped_segmented(frame, detections)
+
+                        # Execution for QC Algorithms
                         self._handle_pipeline_valid_input(
-                            frame, detections, filename, task["timestamp"], task["start_ts"], 
+                            frame, detections, filename, task["timestamp"], task["start_ts"],
+                            validation_msg=error_reason,
                             future_ticket=future_ticket,
-                            validation_msg=error_reason
                         )
                 except Exception as e:
                     self.log.error(f"Worker Error on {filename}: {e}")
@@ -157,92 +161,6 @@ class AutoTomePipeline:
                 self.input_queue.task_done()
             except queue.Empty:
                 continue
-
-    def process_(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
-        """Entry point for processing a single file."""
-        filename = "Unknown"
-        future_ticket: Future[Dict[str, Any]] = Future()
-        ts = time.time()
-        timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-
-        try:
-            # Validate Input (XOR logic)
-            if (img_path is None) == (frame is None):
-                msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
-                self.log.error(msg)
-                self._handle_pipeline_failure(None, [], filename, timestamp_str, msg, future_ticket)
-                return future_ticket
-
-            # Setup Identifiers
-            request_id = str(uuid.uuid4())
-
-            # Handle Image Loading
-            if img_path is not None:
-                path_obj = Path(img_path)
-                filename = path_obj.stem
-                if not path_obj.exists():
-                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File not found: {img_path}", future_ticket)
-                    return future_ticket
-                frame = cv2.imread(str(img_path))
-                if frame is None:
-                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File load failed: {img_path}", future_ticket)
-                    return future_ticket
-            elif frame is not None:
-                ts_dt = datetime.fromtimestamp(ts)
-                filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
-
-            # Register Ticket and Dispatch
-            #self.pending_results[request_id] = future_ticket
-            detections = self.segmenter.process_frame(frame)
-            is_valid, error_reason, detections = validate_detections(detections)
-            if not is_valid:
-                self._handle_pipeline_failure(frame, detections, filename, timestamp_str, error_reason, future_ticket)
-                return future_ticket
-            detections = cropped_segmented(frame, detections)
-            self._handle_pipeline_valid_input(
-                frame, detections, filename, timestamp_str, ts, 
-                future_ticket=future_ticket,
-                validation_msg=error_reason
-            )
-            return future_ticket
-
-        except Exception as e:
-            # Handle any unexpected errors (Corrupt files, invalid types, etc.)
-            self._handle_pipeline_failure(
-                frame=None, detections=[], filename=filename,
-                timestamp=timestamp_str, reason=str(e),
-                future_ticket=future_ticket
-            )
-            return future_ticket
-
-    def _handle_detection(self, frame: np.ndarray, detections: list[Dict[str, Any]], filename: str, id: str, ts: float):
-        """Callback triggered when YOLO finishes."""
-        future_ticket = self.pending_results.pop(id, None)
-        timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-        if future_ticket is None:
-            self.log.warning(f"Received detection for unknown or already-handled ID: {id}")
-            return
-
-        try:
-            # Validation
-            is_valid, error_reason, detections = validate_detections(detections)
-            if not is_valid:
-                self._handle_pipeline_failure(frame, detections, filename, timestamp_str, error_reason, future_ticket)
-                return
-            # Pre-processing for QC (Segmentation & Cropping)
-            detections = cropped_segmented(frame, detections)
-            # Execution for QC Algorithms
-            self._handle_pipeline_valid_input(frame, detections, filename, timestamp_str, ts, future_ticket, validation_msg=error_reason)
-        except Exception as e:
-            self.log.error(f"CRITICAL ERROR in detection callback for {filename}: {e}")
-            self._handle_pipeline_failure(
-                frame=frame,
-                detections=[],
-                filename=filename,
-                timestamp=timestamp_str,
-                reason=f"Callback Thread Error: {str(e)}",
-                future_ticket=future_ticket
-            )
 
     def _handle_pipeline_failure(
         self,
@@ -278,7 +196,7 @@ class AutoTomePipeline:
             start_ts: float,
             future_ticket,
             validation_msg: str = "N/A"
-        ) -> Future:
+        ) -> None:
         """
         Executes QC checks on all sections and compiles the final result using Pydantic models.
         """
@@ -341,7 +259,6 @@ class AutoTomePipeline:
         # Resolve the Future
         if future_ticket:
             future_ticket.set_result(output)
-
 
     def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
         """Submits QC tasks and resolves them with robust error handling."""

@@ -74,7 +74,7 @@ class YoloSegmentation:
         except Exception as e:
             self.log.error(f"Warmup failed: {e}")
 
-    def _resize_frame(self, frame: np.ndarray) -> np.ndarray:
+    def resize_frame(self, frame: np.ndarray) -> np.ndarray:
         """
         Ensures the input frame matches the model's required dimensions.
         """
@@ -89,7 +89,6 @@ class YoloSegmentation:
     def process_frame(self, frame: np.ndarray) -> list[dict[str, Any]]:
         """Process frames from the queue"""
         try:
-            frame = self._resize_frame(frame)
             detections = []
         
             if self.model is None:
