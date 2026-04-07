@@ -8,7 +8,7 @@ import numpy as np
 import queue
 import threading
 from typing import Dict, Optional, Any
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
@@ -27,9 +27,6 @@ class AutoTomePipeline:
         self.output_path = Path(CONFIG.qc.output_dir)
         self.save_segmented_img = CONFIG.qc.save_segmented_images
         self.save_input_img = CONFIG.qc.save_input_images
-
-        # Reuse threads for QC criteria
-        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="QC_Worker")
 
         # Registry to connect requests to results
         self.pending_results = {}
@@ -74,7 +71,6 @@ class AutoTomePipeline:
         self.is_running = False
         if self.worker_thread is not None:
             self.worker_thread.join()
-        self.executor.shutdown(wait=False)  # Cleanup threads
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
         """Entry point for processing a single file."""
@@ -261,24 +257,15 @@ class AutoTomePipeline:
             future_ticket.set_result(output)
 
     def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
-        """Submits QC tasks and resolves them with robust error handling."""
-        futures = {
-            name: self.executor.submit(module.check, qc_image)
-            for name, module in self.qc_modules.items()
-        }
         results = {}
-        for name, future in futures.items():
+        for name, module in self.qc_modules.items():
             try:
-                raw_res = future.result(timeout=2.0)
+                # Execution in the worker thread
+                raw_res = module.check(qc_image)
                 results[name] = QCCriteria(**raw_res)
             except Exception as e:
-                self.log.error(f"QC Check {name} failed or timed out: {e}")
-                # Ensure consistent field naming in fallback
-                results[name] = QCCriteria(
-                    pass_status=False,
-                    label="Error",
-                    message=str(e)
-                )
+                self.log.error(f"QC Check {name} failed: {e}")
+                results[name] = QCCriteria(pass_status=False, label="Error", message=str(e))
         return results
 
 
