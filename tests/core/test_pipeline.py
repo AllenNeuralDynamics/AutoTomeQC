@@ -68,9 +68,6 @@ def pipeline(mock_config):
         test_config_obj = AppConfig(**mock_config)
         with patch("autotomeqc.core.pipeline.CONFIG", test_config_obj):
             pipe = AutoTomePipeline()
-            # Default mock behavior for QC modules
-            for mod in pipe.qc_modules.values():
-                mod.check.return_value = {"pass_status": True, "label": "Pass", "conf": 0.9}
             yield pipe
             pipe.stop()
 
@@ -79,30 +76,63 @@ def pipeline(mock_config):
 def test_process_flow(pipeline, mock_external_deps, tmp_path):
     """Test the happy path from process() -> YOLO."""
     # ARRANGE: Create a dummy file so the path exists check passes
+    pipeline.start()  # Start the pipeline so the worker thread runs
     image_path = tmp_path / "sample.jpg"
     image_path.write_text("dummy data") 
     
     # ACT
-    pipeline.process(img_path=str(image_path))
+    future = pipeline.process(img_path=str(image_path))
+    result = future.result(timeout=2.0) # Wait for the worker thread to finish the task
     
     # ASSERT
-    mock_external_deps["cv2"].imread.assert_called_once()
+    assert result["qc_summary"] in ["PASS", "FAIL"]
     pipeline.segmenter.process_frame.assert_called_once()
 
-def test_handle_detection_runs_qc(pipeline, mock_external_deps):
-    """Test that valid detection triggers QC and JSON saving."""
-    # ARRANGE: Pre-register the ID so the pipeline accepts it
-    dummy_id = "dummy_uuid"
-    pipeline.pending_results[dummy_id] = Future()
-    
     # ACT
-    detections = [{'class_name': 'section', 'confidence': 0.9, 'section_image': np.zeros((5,5))}]
-    pipeline._handle_detection(np.zeros((10,10)), detections, "test_file", dummy_id, time.time())
+    pipeline.stop()
 
     # ASSERT
+    assert pipeline.is_running is False
+    assert not pipeline.worker_thread.is_alive()
+
+def test_handle_pipeline_valid_input_runs_qc(pipeline, mock_external_deps):
+    """Test that valid detection triggers QC and JSON saving."""
+    # ARRANGE
+    future_ticket = Future()
+    timestamp = "2026-04-07 12:00:00"
+    start_ts = time.time()
+    
+    # Create a dummy detection from yolo segmentation
+    detections = [{
+        'class_name': 'section', 
+        'confidence': 0.9, 
+        'section_image': np.zeros((100, 100, 3), dtype=np.uint8),
+        'area_in_pixels': 5000,
+        'overlap_ratio': 0.0
+    }]
+    
+    # ACT
+    pipeline._handle_pipeline_valid_input(
+        frame=np.zeros((640, 640, 3), dtype=np.uint8),
+        detections=detections,
+        filename="test_file",
+        timestamp=timestamp,
+        start_ts=start_ts,
+        future_ticket=future_ticket
+    )
+
+    # ASSERT
+    # 1. Verify IO was called
     mock_external_deps["save_json"].assert_called_once()
-    saved_data = mock_external_deps["save_json"].call_args[0][0]
-    assert saved_data["qc_summary"] == "PASS"
+    
+    # 2. Verify the Future was resolved
+    assert future_ticket.done()
+    result = future_ticket.result()
+    print("QC Result:", result)
+    
+    # 3. Verify the logic
+    assert result["qc_summary"] == "PASS"
+    assert len(result["sections"]) == 1
 
 def test_qc_timeout_handling(pipeline, mock_external_deps):
     """Simulate a QC check timing out."""

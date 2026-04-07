@@ -10,9 +10,9 @@ import threading
 from typing import Dict, Optional, Any
 from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
-from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
 from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult
+from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.yolo_segmentation.post_processing import cropped_segmented, validate_detections
 from autotomeqc.algorithms.coverage import SectionCoverageQC
 from autotomeqc.algorithms.knife_mark import KnifeMarksQC
@@ -80,8 +80,6 @@ class AutoTomePipeline:
         timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
         try:
-            # check queue size
-            print(f"Current queue size: {self.input_queue.qsize()}" )
             # 1. Validate Input (XOR logic)
             if (img_path is None) == (frame is None):
                 msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
@@ -205,7 +203,7 @@ class AutoTomePipeline:
         for i, section_dict in enumerate(sections):
             target_img = section_dict['section_image']
 
-            # Run the parallelized QC checks (Returns Dict[str, dict])
+            # Run the QC checks (Returns Dict[str, dict])
             qc_results = self._run_all_checks(target_img)
 
             # Determine if this specific section passed
