@@ -277,12 +277,7 @@ def test_process_raw_frame_success(pipeline, mock_external_deps):
 
     # ACT
     future = pipeline.process(frame=frame)
-    
-    try:
-        # result() will block until the worker thread actually calls process_frame
-        future.result(timeout=2.0)
-    except Exception:
-        pass
+    future.result(timeout=2.0)
 
     # ASSERT
     # Accessing the segmenter instance from the mock created in the fixture
