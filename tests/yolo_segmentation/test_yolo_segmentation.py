@@ -37,8 +37,6 @@ def server(mock_config, mock_yolo_class):
     with patch("torch.cuda.is_available", return_value=False):
         server = YoloSegmentation(config=mock_config)
         yield server
-        server.stop()
-
 # --- TESTS ---
 
 def test_initialization(server, mock_config, mock_yolo_class):
