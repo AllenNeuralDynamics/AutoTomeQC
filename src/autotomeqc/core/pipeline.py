@@ -28,9 +28,6 @@ class AutoTomePipeline:
         self.save_segmented_img = CONFIG.qc.save_segmented_images
         self.save_input_img = CONFIG.qc.save_input_images
 
-        # Registry to connect requests to results
-        self.pending_results = {}
-
         self.input_queue = queue.Queue()
         self.worker_thread = None
         self.is_running = False
