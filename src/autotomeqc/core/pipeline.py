@@ -138,7 +138,6 @@ class AutoTomePipeline:
         while self.is_running:
             task = None
             try:
-                # Retrieve task (block for 1s to allow clean shutdown check)
                 with self.queue_lock:
                     if self.input_queue:
                         task = self.input_queue.popleft()  # Retrieve oldest task
