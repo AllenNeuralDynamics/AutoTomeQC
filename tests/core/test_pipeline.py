@@ -93,7 +93,7 @@ def test_process_flow(pipeline, mock_external_deps, tmp_path):
 
     # ASSERT
     assert pipeline.is_running is False
-    assert not pipeline.worker_thread.is_alive()
+    assert pipeline.worker_thread is None  # Verify worker thread has been cleaned up
 
 def test_handle_pipeline_valid_input_runs_qc(pipeline, mock_external_deps):
     """Test that valid detection triggers QC and JSON saving."""
