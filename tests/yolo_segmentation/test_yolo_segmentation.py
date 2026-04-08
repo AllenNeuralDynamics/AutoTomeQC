@@ -35,7 +35,9 @@ def server(mock_config, mock_yolo_class):
     """
     # Force CPU to avoid CUDA dependency in CI/test environments
     with patch("torch.cuda.is_available", return_value=False):
-        return YoloSegmentation(config=mock_config)
+        server = YoloSegmentation(config=mock_config)
+        yield server
+        server.stop()
 
 # --- TESTS ---
 
