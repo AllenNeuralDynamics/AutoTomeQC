@@ -122,40 +122,49 @@ class AutoTomePipeline:
     
     def _worker_loop(self):
         """The 'Heavy Lifter': Consumes tasks and runs AI + QC logic."""
+        self.log.info("Worker thread active.")
         while self.is_running:
             try:
                 # Retrieve task (block for 1s to allow clean shutdown check)
-                task = self.input_queue.get(timeout=1.0)
-                
-                frame = task["frame"]
-                filename = task["filename"]
-                future_ticket = task["future"]
-
                 try:
+                    task = self.input_queue.get(timeout=1.0)
+                except queue.Empty:
+                    continue
+                
+                try:
+                    frame = task.get("frame")
+                    filename = task.get("filename", "unknown")
+                    future_ticket = task.get("future")
+                    timestamp = task.get("timestamp", "N/A")
+                    start_ts = task.get("start_ts", time.time())
+                    if frame is None or future_ticket is None:
+                        raise KeyError("Task missing 'frame' or 'future' ticket.")
+
                     # Execute YOLO
                     detections = self.segmenter.process_frame(frame)
-                    
+
                     # Validate Detections
                     is_valid, error_reason, detections = validate_detections(detections)
                     if not is_valid:
-                        self._handle_pipeline_failure(frame, detections, filename, task["timestamp"], error_reason, future_ticket)
+                        self._handle_pipeline_failure(
+                            frame, detections, filename, timestamp, error_reason, future_ticket
+                        )
                     else:
                         # Pre-processing for QC (Segmentation & Cropping)
                         detections = cropped_segmented(frame, detections)
-
                         # Execution for QC Algorithms
                         self._handle_pipeline_valid_input(
-                            frame, detections, filename, task["timestamp"], task["start_ts"],
+                            frame, detections, filename, timestamp, start_ts,
                             validation_msg=error_reason,
                             future_ticket=future_ticket,
                         )
                 except Exception as e:
                     self.log.error(f"Worker Error on {filename}: {e}")
-                    self._handle_pipeline_failure(frame, [], filename, task["timestamp"], str(e), future_ticket)
-                
-                self.input_queue.task_done()
-            except queue.Empty:
-                continue
+                    self._handle_pipeline_failure(frame, [], filename, timestamp, str(e), future_ticket)
+                finally:
+                    self.input_queue.task_done()
+            except Exception as e:
+                self.log.error(f"Worker Loop Error: {e}")
 
     def _handle_pipeline_failure(
         self,
