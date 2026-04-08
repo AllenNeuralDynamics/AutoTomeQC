@@ -11,7 +11,7 @@ import torch
 
 
 class YoloSegmentation:
-    """YOLO segmentation worker that runs in its own thread"""
+    """Synchronous YOLO segmentation component for loading the model and processing frames."""
     
     def __init__(self, config: YoloSettings):
         """
@@ -97,7 +97,7 @@ class YoloSegmentation:
                     'bbox': [w*0.2, h*0.2, w*0.8, h*0.8],
                     'confidence': 0.95,
                     'class_name': 'dummy_object',
-                    'class_id': 0
+                    'class': 0
                 }]
 
             # Run YOLO inference
@@ -125,7 +125,7 @@ class YoloSegmentation:
                         bbox = boxes.xyxy[i].cpu().numpy()  # x1, y1, x2, y2
                         conf = float(boxes.conf[i].cpu().numpy())
                         cls_id = int(boxes.cls[i].cpu().numpy())
-                        class_name = self.model.names[cls_id] if cls_id < len(self.model.names) else f"class_{cls_id}"
+                        class_name = self.model.names.get(cls_id, f"unknown_{cls_id}")
                         # Get tracking ID if available      
                         if hasattr(boxes, 'id') and boxes.id is not None:
                             search_id = int(boxes.id[i].cpu().numpy())
