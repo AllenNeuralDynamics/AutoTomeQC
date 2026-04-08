@@ -28,23 +28,22 @@ class YoloSegmentation:
         # State
         self.model = None
         self.ready: Event = Event()
-
         self._load_model()
 
     def _load_model(self):
         """Encapsulate model loading logic"""
         try:
             self.model = YOLO(self.weights_path)
-            self.log.info(f"YOLO model loaded from: {self.weights_path}")
+            self.log.info(f"YOLO segmentation model loaded from: {self.weights_path}")
 
             # Check device availability
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
             self.model.to(device)
-            self.log.info(f"Model is running on: {device}")
+            self.log.info(f"YOLO segmentation model is running on: {device}")
             self._warmup_model()
             self.ready.set()
         except Exception as e:
-            self.log.error(f"Failed to load YOLO model: {e}. Running in DUMMY mode.")
+            self.log.error(f"Failed to load YOLO segmentation model: {e}. Running in DUMMY mode.")
             self.model = None
     
     def _warmup_model(self):
