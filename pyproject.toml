@@ -19,12 +19,6 @@ dependencies = [
     "opencv-python>=4.9.0",
     "PyYAML>=6.0",
     "lapx>=0.5.5",
-
-    # Development/Testing Tools
-    "pytest>=8.3.5",
-    "ruff>=0.9.9",
-    "mypy>=1.10.0",
-    "types-PyYAML>=6.0",
 ]
 
 [project.scripts]
@@ -38,8 +32,16 @@ docs = [
     'docutils'
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.9.9",
+    "mypy>=1.10.0",
+    "types-PyYAML>=6.0",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/autotomeqc"]
 
 [tool.pytest.ini_options]
-pythonpath = ["tests"]
+pythonpath = ["src", "tests"]
