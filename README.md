@@ -6,7 +6,7 @@ Sectioning Quality Control
 - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 ```bash
 uv sync
-uv run python -m autotomeqc
+uv run autotomeqc
 ```
 
 ## Usage 1. Interactive Mode (CLI)
@@ -15,7 +15,7 @@ Use this mode to quickly test your saved section images. It launches the service
 
 Run the service:
 ```bash
-uv run python -m autotomeqc
+uv run autotomeqc
 ```
 
 Once the service says `Ready >`, you can:
