@@ -54,7 +54,7 @@ class AutoTomePipeline:
         try:
             is_ready = self.segmenter.ready.wait(timeout=60.0)  # Wait
             if not is_ready or self.segmenter.model is None:
-                self.log.error("Pipeline Start Failed: YOLO Model initialization timed out.")
+                self.log.error("Pipeline Start Failed: YOLO Model initialization timed out or model is None.")
                 return False
 
             self.is_running = True
@@ -203,7 +203,7 @@ class AutoTomePipeline:
         save_json_results(output, self.output_path / f"{filename}_qc.json")
         if self.save_input_img and frame is not None:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
-        if future_ticket:
+        if future_ticket and not future_ticket.done():
             future_ticket.set_result(output)
 
     def _handle_pipeline_valid_input(
@@ -213,7 +213,7 @@ class AutoTomePipeline:
             filename: str,
             timestamp: str,
             start_ts: float,
-            future_ticket,
+            future_ticket: Future,
             validation_msg: str = "N/A"
         ) -> None:
         """
@@ -276,7 +276,7 @@ class AutoTomePipeline:
                 img_to_save = section_dict['section_image']
                 save_debug_image(img_to_save, self.output_path / f"{filename}_section_{i}.jpg")
         # Resolve the Future
-        if future_ticket:
+        if future_ticket and not future_ticket.done():
             future_ticket.set_result(output)
 
     def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
