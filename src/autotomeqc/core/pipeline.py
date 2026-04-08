@@ -5,8 +5,8 @@ import time
 import logging
 import cv2
 import numpy as np
-import queue
 import threading
+from collections import deque
 from typing import Dict, Optional, Any
 from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
@@ -28,7 +28,8 @@ class AutoTomePipeline:
         self.save_segmented_img = CONFIG.qc.save_segmented_images
         self.save_input_img = CONFIG.qc.save_input_images
 
-        self.input_queue = queue.Queue()
+        self.input_queue = deque(maxlen=20)  # 20 frames 640x640 RGB is ~24MB
+        self.queue_lock = threading.Lock()
         self.worker_thread = None
         self.is_running = False
 
@@ -111,8 +112,19 @@ class AutoTomePipeline:
                 "start_ts": ts,
                 "future": future_ticket
             }
-            self.input_queue.put(task)
-            self.log.info(f"[{filename}] Task enqueued. Queue size: {self.input_queue.qsize()}")
+            with self.queue_lock:
+                # Check if we are about to drop the oldest frame
+                if len(self.input_queue) >= self.input_queue.maxlen:
+                    dropped_task = self.input_queue.popleft()
+                    self._handle_pipeline_failure(
+                        frame=None, detections=[],
+                        filename=dropped_task["filename"],
+                        timestamp=dropped_task["timestamp"],
+                        reason="Dropped: Buffer full (System Overloaded)",
+                        future_ticket=dropped_task["future"]
+                    )
+                self.input_queue.append(task)
+                self.log.info(f"[{filename}] Task enqueued. Queue size: {len(self.input_queue)}")
 
             return future_ticket
 
@@ -124,13 +136,16 @@ class AutoTomePipeline:
         """The 'Heavy Lifter': Consumes tasks and runs AI + QC logic."""
         self.log.info("Worker thread active.")
         while self.is_running:
+            task = None
             try:
                 # Retrieve task (block for 1s to allow clean shutdown check)
-                try:
-                    task = self.input_queue.get(timeout=1.0)
-                except queue.Empty:
+                with self.queue_lock:
+                    if self.input_queue:
+                        task = self.input_queue.popleft()  # Retrieve oldest task
+                if task is None:
+                    time.sleep(0.01) # 10ms sleep to save CPU cycles
                     continue
-                
+
                 try:
                     frame = task.get("frame")
                     filename = task.get("filename", "unknown")
@@ -161,8 +176,6 @@ class AutoTomePipeline:
                 except Exception as e:
                     self.log.error(f"Worker Error on {filename}: {e}")
                     self._handle_pipeline_failure(frame, [], filename, timestamp, str(e), future_ticket)
-                finally:
-                    self.input_queue.task_done()
             except Exception as e:
                 self.log.error(f"Worker Loop Error: {e}")
 
