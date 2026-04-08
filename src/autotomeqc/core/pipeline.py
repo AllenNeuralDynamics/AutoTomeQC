@@ -116,6 +116,7 @@ class AutoTomePipeline:
                 # Check if we are about to drop the oldest frame
                 if len(self.input_queue) >= self.input_queue.maxlen:
                     dropped_task = self.input_queue.popleft()
+                    # Set result on the dropped task's future ticket
                     self._handle_pipeline_failure(
                         frame=None, detections=[],
                         filename=dropped_task["filename"],
@@ -123,10 +124,12 @@ class AutoTomePipeline:
                         reason="Dropped: Buffer full (System Overloaded)",
                         future_ticket=dropped_task["future"]
                     )
+
+                # Add the current task
                 self.input_queue.append(task)
                 self.log.info(f"[{filename}] Task enqueued. Queue size: {len(self.input_queue)}")
 
-            return future_ticket
+            return future_ticket  # Return the ticket so the user can await result
 
         except Exception as e:
             self._handle_pipeline_failure(None, [], filename, timestamp_str, f"Process Error: {str(e)}", future_ticket)
