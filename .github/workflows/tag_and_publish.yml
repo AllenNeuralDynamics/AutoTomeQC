@@ -4,7 +4,6 @@ on:
     branches:
       - main
       - dev
-      - 'feat*'
 
 jobs:
   test-lint-and-type-check:
