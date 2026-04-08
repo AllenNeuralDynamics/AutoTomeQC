@@ -45,7 +45,7 @@ class YoloSegmentation:
         except Exception as e:
             self.log.error(f"Failed to load YOLO segmentation model: {e}. Running in DUMMY mode.")
             self.model = None
-    
+
     def _warmup_model(self):
         """Warm up the model with dummy inference to avoid first-frame delay"""
         if self.model is None:
@@ -88,7 +88,7 @@ class YoloSegmentation:
     def process_frame(self, frame: np.ndarray) -> list[dict[str, Any]]:
         """Process frames from the queue"""
         try:
-            detections = []
+            detections: list[dict[str, Any]] = []
         
             if self.model is None:
                 # Dummy model for debugging
