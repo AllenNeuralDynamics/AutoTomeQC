@@ -45,19 +45,22 @@ class AutoTomePipeline:
         }
 
     def start(self):
+        if self.is_running:
+            self.log.warning("Pipeline.start() called, but pipeline is already running.")
+            return True
+
         self.log.info("Starting Pipeline...")
         try:
             is_ready = self.segmenter.ready.wait(timeout=60.0)  # Wait
-            if not is_ready:
+            if not is_ready or self.segmenter.model is None:
                 self.log.error("Pipeline Start Failed: YOLO Model initialization timed out.")
                 return False
-            # Check if the model actually loaded correctly
-            if self.segmenter.model is None:
-                 self.log.error("Pipeline Start Failed: YOLO Model is None (Load failed).")
-                 return False
+
             self.is_running = True
             self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
             self.worker_thread.start()
+
+            self.log.info("Pipeline started successfully.")
             return True
         except Exception as e:
             self.log.error(f"Critical error starting pipeline: {e}")
@@ -67,7 +70,8 @@ class AutoTomePipeline:
         self.log.info("Stopping Pipeline...")
         self.is_running = False
         if self.worker_thread is not None:
-            self.worker_thread.join()
+            self.worker_thread.join(timeout=2.0)
+            self.worker_thread = None
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
         """Entry point for processing a single file."""
