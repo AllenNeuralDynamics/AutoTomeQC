@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - 'feat-**'
 
 jobs:
   # 1. Run your Linter and Tests first
@@ -14,7 +15,7 @@ jobs:
   # 2. Run the Tagging logic ONLY if the tests pass
   tag-and-release:
     needs: lint-and-test
-    uses: ./.github/workflows/tag.yml
+    uses: AllenNeuralDynamics/.github/.github/workflows/tag.yml@main
     secrets: inherit
     with:
       runner_label: 'ubuntu-latest'
