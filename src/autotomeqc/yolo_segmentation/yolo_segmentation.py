@@ -16,7 +16,6 @@ class YoloSegmentation:
     def __init__(self, config: YoloSettings):
         """
         :param config: Configuration dictionary.
-        :param detection_callback: A function to call with the list of detections.
         """
         self.weights_path = config.weights_path
         self.conf_thresh = config.conf_thresh

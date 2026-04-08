@@ -71,7 +71,7 @@ class AutoTomePipeline:
         self.log.info("Stopping Pipeline...")
         self.is_running = False
         if self.worker_thread is not None:
-            self.worker_thread.join(timeout=2.0)
+            self.worker_thread.join(timeout=5.0)
             self.worker_thread = None
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
