@@ -6,7 +6,6 @@ on:
     branches:
       - main
       - dev
-      - 'feat-**'
 
 jobs:
   # 1. Run your Linter and Tests first
@@ -20,3 +19,4 @@ jobs:
     secrets: inherit
     with:
       runner_label: 'ubuntu-latest'
+      # custom_release_rules: 'fix:patch,feat:minor,breaking:major'
