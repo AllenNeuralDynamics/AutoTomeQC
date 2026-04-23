@@ -128,7 +128,8 @@ class AutoTomePipeline:
                     dropped_task = self.input_queue.popleft()
                     # Set result on the dropped task's future ticket
                     self._handle_pipeline_failure(
-                        frame=None, detections=[],
+                        frame=None,
+                        detections=[],
                         filename=dropped_task.filename,
                         timestamp=dropped_task.timestamp,
                         reason="Dropped: Buffer full (System Overloaded)",
