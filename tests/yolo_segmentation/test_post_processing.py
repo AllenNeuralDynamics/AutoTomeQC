@@ -6,6 +6,7 @@ from autotomeqc.yolo_segmentation.post_processing import (
     get_overlap_ratio, 
     validate_detections
 )
+from autotomeqc.core.models import Detection
 
 # --- GLOBAL FIXTURES ---
 
@@ -26,17 +27,21 @@ class TestYoloPostProcessing:
     def sample_detections(self):
         """Standard detections for image processing tests."""
         return [
-            {
-                'bbox': [100, 100, 400, 400], 
-                'class_name': 'loop', 
-                'mask': [[100, 100], [400, 100], [400, 400], [100, 400]]
-            },
-            {
-                'bbox': [150, 150, 250, 250], 
-                'class_name': 'section', 
-                'mask': [[150, 150], [250, 150], [250, 250], [150, 250]],
-                'area_in_pixels': 10000
-            }
+            Detection(
+                bbox=[100, 100, 400, 400], 
+                class_name='loop', 
+                class_id=1,
+                confidence=0.9,
+                mask=[[100, 100], [400, 100], [400, 400], [100, 400]]
+            ),
+            Detection(
+                bbox=[150, 150, 250, 250], 
+                class_name='section', 
+                class_id=0,
+                confidence=0.9,
+                mask=[[150, 150], [250, 150], [250, 250], [150, 250]],
+                area_in_pixels=10000
+            )
         ]
 
     # --- SECTION 1: GEOMETRIC & OVERLAP TESTS ---
@@ -68,7 +73,9 @@ class TestYoloPostProcessing:
 
     def test_validate_detections_case_1_no_section(self, mock_config):
         """Case 1: No section in frame (FAIL)."""
-        detections = [{'class_name': 'loop', 'mask': [[0,0]], 'bbox': [0,0,10,10]}]
+        detections = [Detection(
+            class_name='loop', class_id=1, confidence=0.9, mask=[[0.0,0.0]], bbox=[0.0,0.0,10.0,10.0]
+        )]
         with patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config):
             is_valid, msg, _ = validate_detections(detections)
             assert not is_valid
@@ -76,7 +83,9 @@ class TestYoloPostProcessing:
 
     def test_validate_detections_case_2_no_loop(self, mock_config):
         """Case 2: No loop found. Logic depends on 'allow_no_loop' config."""
-        detections = [{'class_name': 'section', 'mask': [[0,0]], 'bbox': [0,0,10,10]}]
+        detections = [Detection(
+            class_name='section', class_id=0, confidence=0.9, mask=[[0.0,0.0]], bbox=[0.0,0.0,10.0,10.0]
+        )]
         with patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config):
             # Branch A: Allowed (PASS)
             mock_config.qc.yolo_post_processing.allow_no_loop = True
@@ -91,8 +100,12 @@ class TestYoloPostProcessing:
     def test_validate_detections_case_3_outside_loop(self, mock_config):
         """Case 3: Section exists but does not overlap with loop (FAIL)."""
         detections = [
-            {'class_name': 'loop', 'mask': [[0,0], [10,0], [10,10], [0,10]], 'bbox': [0,0,10,10]},
-            {'class_name': 'section', 'mask': [[20,20], [30,20], [30,30], [20,30]], 'bbox': [20,20,30,30]}
+            Detection(class_name='loop', class_id=1, confidence=0.9, 
+                      mask=[[0.0,0.0], [10.0,0.0], [10.0,10.0], [0.0,10.0]], 
+                      bbox=[0.0,0.0,10.0,10.0]),
+            Detection(class_name='section', class_id=0, confidence=0.9, 
+                      mask=[[20.0,20.0], [30.0,20.0], [30.0,30.0], [20.0,30.0]], 
+                      bbox=[20.0,20.0,30.0,30.0])
         ]
         with patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config):
             is_valid, msg, _ = validate_detections(detections)
@@ -102,9 +115,11 @@ class TestYoloPostProcessing:
     def test_validate_detections_case_4_multiple_sections(self, mock_config):
         """Case 4: Multiple sections in loop (WARNING/PASS)."""
         detections = [
-            {'class_name': 'loop', 'mask': [[0,0], [100,0], [100,100], [0,100]], 'bbox': [0,0,100,100]},
-            {'class_name': 'section', 'mask': [[10,10]], 'bbox': [10,10,20,20]},
-            {'class_name': 'section', 'mask': [[40,40]], 'bbox': [40,40,50,50]}
+            Detection(class_name='loop', class_id=1, confidence=0.9, 
+                      mask=[[0.0,0.0], [100.0,0.0], [100.0,100.0], [0.0,100.0]], 
+                      bbox=[0.0,0.0,100.0,100.0]),
+            Detection(class_name='section', class_id=0, confidence=0.9, mask=[[10.0,10.0]], bbox=[10.0,10.0,20.0,20.0]),
+            Detection(class_name='section', class_id=0, confidence=0.9, mask=[[40.0,40.0]], bbox=[40.0,40.0,50.0,50.0])
         ]
         with patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config):
             is_valid, msg, _ = validate_detections(detections)
@@ -114,8 +129,10 @@ class TestYoloPostProcessing:
     def test_validate_detections_case_5_success(self, mock_config):
         """Case 5: Exactly one section inside the loop (HAPPY PATH)."""
         detections = [
-            {'class_name': 'loop', 'mask': [[0,0], [100,0], [100,100], [0,100]], 'bbox': [0,0,100,100]},
-            {'class_name': 'section', 'mask': [[25,25]], 'bbox': [25,25,75,75]}
+            Detection(class_name='loop', class_id=1, confidence=0.9, 
+                      mask=[[0.0,0.0], [100.0,0.0], [100.0,100.0], [0.0,100.0]], 
+                      bbox=[0.0,0.0,100.0,100.0]),
+            Detection(class_name='section', class_id=0, confidence=0.9, mask=[[25.0,25.0]], bbox=[25.0,25.0,75.0,75.0])
         ]
         with patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config):
             is_valid, msg, filtered = validate_detections(detections)
@@ -130,21 +147,23 @@ class TestYoloPostProcessing:
         dummy_frame = np.zeros((1000, 1000, 3), dtype=np.uint8)
         with patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config):
             result_list = cropped_segmented(dummy_frame, sample_detections)
-            section_det = next((d for d in result_list if d['class_name'] == 'section'), None)
-            assert section_det['section_image'].shape == (640, 640, 3)
+            section_det = next((d for d in result_list if d.class_name == 'section'), None)
+            assert section_det.section_image.shape == (640, 640, 3)
 
     def test_cropped_segmented_masking_applied(self, mock_config):
         """Ensure pixels outside the section mask are blacked out."""
         # Create a white frame
         dummy_frame = (np.ones((200, 200, 3), dtype=np.uint8) * 255)
-        detections = [{
-            'class_name': 'section',
-            'bbox': [50, 50, 150, 150],
-            'mask': [[80, 80], [120, 80], [120, 120], [80, 120]] # Small square in center
-        }]
+        detections = [Detection(
+            class_name='section',
+            class_id=0,
+            confidence=0.9,
+            bbox=[50.0, 50.0, 150.0, 150.0],
+            mask=[[80.0, 80.0], [120.0, 80.0], [120.0, 120.0], [80.0, 120.0]] # Small square in center
+        )]
         with patch("autotomeqc.yolo_segmentation.post_processing.CONFIG", mock_config):
             result = cropped_segmented(dummy_frame, detections)
-            img = result[0]['section_image']
+            img = result[0].section_image
             # Corner of standardized image should be black
             assert np.all(img[0, 0] == 0)
             # Center of standardized image should be white
