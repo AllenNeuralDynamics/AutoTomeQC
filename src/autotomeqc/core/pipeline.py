@@ -115,8 +115,11 @@ class AutoTomePipeline:
                 "future": future_ticket
             }
             with self.queue_lock:
-                # Check if we are about to drop the oldest frame
-                if len(self.input_queue) >= self.input_queue.maxlen:
+                try:
+                    self.input_queue.insert(-1, task)
+                    self.log.info(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
+                except IndexError:
+                    # Check if we are about to drop the oldest frame
                     dropped_task = self.input_queue.popleft()
                     # Set result on the dropped task's future ticket
                     self._handle_pipeline_failure(
