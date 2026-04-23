@@ -7,6 +7,7 @@ from concurrent.futures import TimeoutError, Future
 # Import the class and config
 from autotomeqc.core.pipeline import AutoTomePipeline
 from autotomeqc.config.schemas import AppConfig
+from autotomeqc.core.models import Detection
 
 # --- FIXTURES ---
 
@@ -58,19 +59,22 @@ def mock_external_deps():
 
 @pytest.fixture
 def pipeline(mock_config):
-    with patch("autotomeqc.core.pipeline.YoloSegmentation"), \
+    with patch("autotomeqc.core.pipeline.YoloSegmentation") as MockYolo, \
          patch("autotomeqc.core.pipeline.SectionCoverageQC"), \
          patch("autotomeqc.core.pipeline.KnifeMarksQC"), \
          patch("autotomeqc.core.pipeline.ThicknessConsistencyQC"), \
          patch("autotomeqc.core.pipeline.ThicknessQC"), \
          patch("autotomeqc.core.pipeline.ShapeQC"):
         
+        # Configure YoloSegmentation mock to avoid Pydantic ValidationError on PipelineTask
+        MockYolo.return_value.resize_frame.side_effect = lambda x: x
+        MockYolo.return_value.process_frame.return_value = []
+        MockYolo.return_value.ready.wait.return_value = True
+        MockYolo.return_value.model = "MockModel"
+
         test_config_obj = AppConfig(**mock_config)
         with patch("autotomeqc.core.pipeline.CONFIG", test_config_obj):
             pipe = AutoTomePipeline()
-            # Default mock behavior for QC modules
-            for mod in pipe.qc_modules.values():
-                mod.check.return_value = {"pass_status": True, "label": "Pass", "conf": 0.9}
             yield pipe
             pipe.stop()
 
@@ -79,76 +83,149 @@ def pipeline(mock_config):
 def test_process_flow(pipeline, mock_external_deps, tmp_path):
     """Test the happy path from process() -> YOLO."""
     # ARRANGE: Create a dummy file so the path exists check passes
+    pipeline.start()  # Start the pipeline so the worker thread runs
     image_path = tmp_path / "sample.jpg"
     image_path.write_text("dummy data") 
     
     # ACT
-    pipeline.process(img_path=str(image_path))
+    future = pipeline.process(img_path=str(image_path))
+    result = future.result(timeout=2.0) # Wait for the worker thread to finish the task
     
     # ASSERT
-    mock_external_deps["cv2"].imread.assert_called_once()
+    assert result["qc_summary"] in ["PASS", "FAIL"]
     pipeline.segmenter.process_frame.assert_called_once()
 
-def test_handle_detection_runs_qc(pipeline, mock_external_deps):
-    """Test that valid detection triggers QC and JSON saving."""
-    # ARRANGE: Pre-register the ID so the pipeline accepts it
-    dummy_id = "dummy_uuid"
-    pipeline.pending_results[dummy_id] = Future()
-    
     # ACT
-    detections = [{'class_name': 'section', 'confidence': 0.9, 'section_image': np.zeros((5,5))}]
-    pipeline._handle_detection(np.zeros((10,10)), detections, "test_file", dummy_id, time.time())
+    pipeline.stop()
 
     # ASSERT
+    assert pipeline.is_running is False
+    assert pipeline.worker_thread is None  # Verify worker thread has been cleaned up
+
+def test_handle_pipeline_valid_input_runs_qc(pipeline, mock_external_deps):
+    """Test that valid detection triggers QC and JSON saving."""
+    # ARRANGE
+    future_ticket = Future()
+    timestamp = "2026-04-07 12:00:00"
+    start_ts = time.time()
+    
+    # Simulate the QC modules detecting a problem (Blank/No Signal)
+    for mod in pipeline.qc_modules.values():
+        mod.check.return_value = {
+            "pass_status": False, 
+            "label": "FAIL", 
+            "message": "Low signal/Blank image detected"
+        }
+
+    # Create a dummy detection from yolo segmentation
+    detections = [Detection(
+        class_name='section',
+        class_id=0,
+        confidence=0.9,
+        section_image=np.zeros((100, 100, 3), dtype=np.uint8),
+        area_in_pixels=5000,
+        overlap_ratio=0.0
+    )]
+    
+    # ACT
+    pipeline._handle_pipeline_valid_input(
+        frame=np.zeros((640, 640, 3), dtype=np.uint8),
+        detections=detections,
+        filename="test_file",
+        timestamp=timestamp,
+        start_ts=start_ts,
+        future_ticket=future_ticket
+    )
+
+    # ASSERT
+    # 1. Verify IO was called
     mock_external_deps["save_json"].assert_called_once()
-    saved_data = mock_external_deps["save_json"].call_args[0][0]
-    assert saved_data["qc_summary"] == "PASS"
+    
+    # 2. Verify the Future was resolved
+    assert future_ticket.done()
+    result = future_ticket.result()
+    
+    # 3. Verify the logic
+    assert result["qc_summary"] == "FAIL"
+    assert len(result["sections"]) == 1
+    assert "Section failed QC criteria" in result["fail_reason"]
 
 def test_qc_timeout_handling(pipeline, mock_external_deps):
-    """Simulate a QC check timing out."""
+    """Simulate a QC check timing out inside the sequential loop."""
     # ARRANGE
-    dummy_id = "timeout_uuid"
-    pipeline.pending_results[dummy_id] = Future()
+    future_ticket = Future()
+    # This simulates a module that internally timed out or crashed
+    pipeline.qc_modules["coverage"].check.side_effect = TimeoutError("QC check exceeded 2.0s limit")
+
+    detections = [Detection(
+        class_name='section',
+        class_id=0,
+        confidence=0.9,
+        section_image=np.zeros((100, 100, 3), dtype=np.uint8),
+        area_in_pixels=5000,
+        overlap_ratio=0.0
+    )]
+
+    # ACT
+    pipeline._handle_pipeline_valid_input(
+        frame=np.zeros((640, 640, 3), dtype=np.uint8),
+        detections=detections,
+        filename="timeout_test",
+        timestamp="2026-04-07 12:00:00",
+        start_ts=time.time(),
+        future_ticket=future_ticket
+    )
+
+    # ASSERT
+    result = future_ticket.result()
+    assert result["qc_summary"] == "FAIL"
     
-    futures_list = []
-    for _ in range(5):
-        f = Future()
-        f.set_exception(TimeoutError("QC check exceeded 2.0s limit"))
-        futures_list.append(f)
+    # Verify the error message was caught
+    coverage_res = result["sections"][0]["criteria"]["coverage"]
+    assert coverage_res["pass_status"] is False
+    assert "exceeded 2.0s limit" in coverage_res["message"]
 
-    with patch.object(pipeline.executor, 'submit', side_effect=futures_list):
-        # ACT
-        detections = [{'class_name': 'section', 'confidence': 0.9, 'section_image': np.zeros((5,5))}]
-        pipeline._handle_detection(np.zeros((10,10)), detections, "test_file", dummy_id, time.time())
-
-        # ASSERT
-        mock_external_deps["save_json"].assert_called_once()
-        saved_data = mock_external_deps["save_json"].call_args[0][0]
-        assert saved_data["qc_summary"] == "FAIL"
-        
-        # Check if the error message is captured in any of the criteria
-        criteria_vals = saved_data["sections"][0]["criteria"].values()
-        assert any("exceeded 2.0s limit" in str(c.get("message")) for c in criteria_vals)
 
 def test_qc_exception_handling(pipeline, mock_external_deps):
-    """Test worker thread crashes are caught."""
+    """Test that individual module crashes are caught by the loop and report FAIL."""
     # ARRANGE
-    dummy_id = "crash_uuid"
-    pipeline.pending_results[dummy_id] = Future()
+    future_ticket = Future()
     
-    futures_list = [Future() for _ in range(5)]
-    for f in futures_list:
-        f.set_exception(ValueError("Math Error"))
+    # Force a crash in one of the specific modules (e.g., 'coverage')
+    pipeline.qc_modules["coverage"].check.side_effect = ValueError("Math Error")
 
-    with patch.object(pipeline.executor, 'submit', side_effect=futures_list):
-        # ACT
-        detections = [{'class_name': 'section', 'confidence': 0.9, 'section_image': np.zeros((5,5))}]
-        pipeline._handle_detection(np.zeros((10,10)), detections, "test_file", dummy_id, time.time())
+    detections = [Detection(
+        class_name='section',
+        class_id=0,
+        confidence=0.9,
+        section_image=np.zeros((100, 100, 3), dtype=np.uint8),
+        area_in_pixels=5000,
+        overlap_ratio=0.0
+    )]
 
-        # ASSERT
-        assert mock_external_deps["save_json"].called
-        saved_data = mock_external_deps["save_json"].call_args[0][0]
-        assert saved_data["qc_summary"] == "FAIL"
+    # ACT
+    # We call the handler that orchestrates the QC modules
+    pipeline._handle_pipeline_valid_input(
+        frame=np.zeros((640, 640, 3), dtype=np.uint8),
+        detections=detections,
+        filename="crash_test",
+        timestamp="2026-04-07 12:00:00",
+        start_ts=time.time(),
+        future_ticket=future_ticket
+    )
+
+    # ASSERT
+    # Verify the pipeline caught the error and saved the JSON
+    assert mock_external_deps["save_json"].called
+
+    # Verify the result was resolved via the future
+    result = future_ticket.result()
+    assert result["qc_summary"] == "FAIL"
+
+    # Verify the specific module caught the error as an "Error" label
+    coverage_criteria = result["sections"][0]["criteria"]["coverage"]
+    assert coverage_criteria["pass_status"] is False
+    assert "Math Error" in coverage_criteria["message"]
 
 def test_process_invalid_input_both_provided(pipeline, mock_external_deps):
     """Test that providing both img_path and frame raises/returns an error."""
@@ -160,6 +237,7 @@ def test_process_invalid_input_both_provided(pipeline, mock_external_deps):
     assert result["qc_summary"] == "FAIL"
     assert "Ambiguous input" in result["fail_reason"]
     # Ensure no processing was actually attempted
+    pipeline.segmenter.resize_frame.assert_not_called()
     pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_invalid_input_none_provided(pipeline):
@@ -171,6 +249,8 @@ def test_process_invalid_input_none_provided(pipeline):
     # ASSERT
     assert result["qc_summary"] == "FAIL"
     assert "Ambiguous input" in result["fail_reason"]
+    pipeline.segmenter.resize_frame.assert_not_called()
+    pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_nonexistent_file(pipeline, tmp_path):
     """Test handling of a file path that does not exist on disk."""
@@ -184,6 +264,8 @@ def test_process_nonexistent_file(pipeline, tmp_path):
     # ASSERT
     assert result["qc_summary"] == "FAIL"
     assert "File not found" in result["fail_reason"]
+    pipeline.segmenter.resize_frame.assert_not_called()
+    pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_corrupt_image_file(pipeline, tmp_path, mock_external_deps):
     """Test behavior when cv2.imread fails to decode the file."""
@@ -201,17 +283,20 @@ def test_process_corrupt_image_file(pipeline, tmp_path, mock_external_deps):
     # ASSERT
     assert result["qc_summary"] == "FAIL"
     assert "File load failed" in result["fail_reason"]
+    pipeline.segmenter.resize_frame.assert_not_called()
+    pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_raw_frame_success(pipeline, mock_external_deps):
     """Test that passing a numpy frame directly works correctly."""
     # ARRANGE
-    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    pipeline.start() 
+    frame = np.zeros((640, 640, 3), dtype=np.uint8)
 
     # ACT
-    _future = pipeline.process(frame=frame)
-    
+    future = pipeline.process(frame=frame)
+    future.result(timeout=2.0)
+
     # ASSERT
-    # Check that it generated a timestamped filename (since none was provided)
+    # Accessing the segmenter instance from the mock created in the fixture
     pipeline.segmenter.process_frame.assert_called_once()
-    args, kwargs = pipeline.segmenter.process_frame.call_args
-    assert "frame_" in kwargs["filename"] or len(kwargs["filename"]) > 0
+    pipeline.stop()

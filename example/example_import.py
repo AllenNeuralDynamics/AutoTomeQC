@@ -41,7 +41,7 @@ def main():
             #if frame is None: continue 
             #future = service.process(frame=frame)
             # ---------------------------------------------------------
-            
+
             # Print output
             result = future.result()
             print_result(result)

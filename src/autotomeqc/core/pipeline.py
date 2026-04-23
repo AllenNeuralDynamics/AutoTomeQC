@@ -5,13 +5,15 @@ import time
 import logging
 import cv2
 import numpy as np
-import uuid
+import threading
+from collections import deque
 from typing import Dict, Optional, Any
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
-from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.config.config_loader import CONFIG
-from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult
+from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask, Detection, ProcessInput
+from pydantic import ValidationError
+from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.yolo_segmentation.post_processing import cropped_segmented, validate_detections
 from autotomeqc.algorithms.coverage import SectionCoverageQC
 from autotomeqc.algorithms.knife_mark import KnifeMarksQC
@@ -21,23 +23,21 @@ from autotomeqc.algorithms.shape import ShapeQC
 
 
 class AutoTomePipeline:
+    DEFAULT_MAX_QUEUE_SIZE = 20   # 20 frames 640x640 RGB is ~24MB
+
     def __init__(self):
         self.log = logging.getLogger(self.__class__.__name__)
         self.output_path = Path(CONFIG.qc.output_dir)
         self.save_segmented_img = CONFIG.qc.save_segmented_images
         self.save_input_img = CONFIG.qc.save_input_images
 
-        # Reuse threads for QC criteria
-        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="QC_Worker")
-
-        # Registry to connect requests to results
-        self.pending_results = {}
+        self.input_queue = deque(maxlen=self.DEFAULT_MAX_QUEUE_SIZE)
+        self.queue_lock = threading.Lock()
+        self.worker_thread = None
+        self.is_running = False
 
         # Preprocessing - Segmentation via YOLO
-        self.segmenter = YoloSegmentation(
-            config=CONFIG.qc.yolo,
-            detection_callback=self._handle_detection
-        )
+        self.segmenter = YoloSegmentation(config=CONFIG.qc.yolo)
 
         self.log.info("Initializing QC Models...")
         self.qc_modules = {
@@ -49,33 +49,33 @@ class AutoTomePipeline:
         }
 
     def start(self):
+        if self.is_running:
+            self.log.warning("Pipeline.start() called, but pipeline is already running.")
+            return True
+
         self.log.info("Starting Pipeline...")
         try:
             is_ready = self.segmenter.ready.wait(timeout=60.0)  # Wait
-            if not is_ready:
-                self.log.error("Pipeline Start Failed: YOLO Model initialization timed out.")
-                return False
-            # Check if the model actually loaded correctly
-            if self.segmenter.model is None:
-                 self.log.error("Pipeline Start Failed: YOLO Model is None (Load failed).")
-                 return False
-            # Start the Segmenter Thread
-            if self.segmenter.start():
-                self.log.info("Pipeline started successfully.")
-                return True
-            else:
-                self.log.error("YOLO Segmentation refused to start.")
+            if not is_ready or self.segmenter.model is None:
+                self.log.error("Pipeline Start Failed: YOLO Model initialization timed out or model is None.")
                 return False
 
+            self.is_running = True
+            self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
+            self.worker_thread.start()
+
+            self.log.info("Pipeline started successfully.")
+            return True
         except Exception as e:
             self.log.error(f"Critical error starting pipeline: {e}")
             return False
 
     def stop(self):
         self.log.info("Stopping Pipeline...")
-        if self.segmenter:
-            self.segmenter.stop()
-        self.executor.shutdown(wait=False)  # Cleanup threads
+        self.is_running = False
+        if self.worker_thread is not None:
+            self.worker_thread.join(timeout=5.0)
+            self.worker_thread = None
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
         """Entry point for processing a single file."""
@@ -85,78 +85,116 @@ class AutoTomePipeline:
         timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
         try:
-            # Validate Input (XOR logic)
-            if (img_path is None) == (frame is None):
+            # Validate Input via Pydantic
+            try:
+                valid_input = ProcessInput(img_path=img_path, frame=frame)
+            except ValidationError:
                 msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
-                self.log.error(msg)
                 self._handle_pipeline_failure(None, [], filename, timestamp_str, msg, future_ticket)
                 return future_ticket
 
-            # Setup Identifiers
-            request_id = str(uuid.uuid4())
-
-            # Handle Image Loading
-            if img_path is not None:
-                path_obj = Path(img_path)
+            # 2. Handle Image Loading/Naming
+            if valid_input.img_path is not None:
+                path_obj = Path(valid_input.img_path)
                 filename = path_obj.stem
                 if not path_obj.exists():
-                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File not found: {img_path}", future_ticket)
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File not found: {valid_input.img_path}", future_ticket)
                     return future_ticket
-                frame = cv2.imread(str(img_path))
+                frame = cv2.imread(valid_input.img_path)
                 if frame is None:
-                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File load failed: {img_path}", future_ticket)
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File load failed: {valid_input.img_path}", future_ticket)
                     return future_ticket
-            elif frame is not None:
+            else:
+                frame = valid_input.frame
                 ts_dt = datetime.fromtimestamp(ts)
                 filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
 
-            # Register Ticket and Dispatch
-            self.pending_results[request_id] = future_ticket
-            self.segmenter.process_frame(frame, id=request_id, filename=filename, ts=ts)
-            return future_ticket
-
-        except Exception as e:
-            # Handle any unexpected errors (Corrupt files, invalid types, etc.)
-            self._handle_pipeline_failure(
-                frame=None, detections=[], filename=filename,
-                timestamp=timestamp_str, reason=str(e),
-                future_ticket=future_ticket
-            )
-            return future_ticket
-
-    def _handle_detection(self, frame: np.ndarray, detections: list[Dict[str, Any]], filename: str, id: str, ts: float):
-        """Callback triggered when YOLO finishes."""
-        future_ticket = self.pending_results.pop(id, None)
-        timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-        if future_ticket is None:
-            self.log.warning(f"Received detection for unknown or already-handled ID: {id}")
-            return
-
-        try:
-            # Validation
-            is_valid, error_reason, detections = validate_detections(detections)
-            if not is_valid:
-                self._handle_pipeline_failure(frame, detections, filename, timestamp_str, error_reason, future_ticket)
-                return
-            # Pre-processing for QC (Segmentation & Cropping)
-            detections = cropped_segmented(frame, detections)
-            # Execution for QC Algorithms
-            self._handle_pipeline_valid_input(frame, detections, filename, timestamp_str, ts, future_ticket, validation_msg=error_reason)
-        except Exception as e:
-            self.log.error(f"CRITICAL ERROR in detection callback for {filename}: {e}")
-            self._handle_pipeline_failure(
+            # 3. Package and Enqueue Task
+            frame = self.segmenter.resize_frame(frame)
+            task = PipelineTask(
                 frame=frame,
-                detections=[],
                 filename=filename,
                 timestamp=timestamp_str,
-                reason=f"Callback Thread Error: {str(e)}",
-                future_ticket=future_ticket
+                start_ts=ts,
+                future=future_ticket
             )
+            with self.queue_lock:
+                try:
+                    # insert() raises IndexError if the deque is full
+                    self.input_queue.insert(len(self.input_queue), task)
+                    self.log.info(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
+                except IndexError:
+                    # Catch the error, make room by dropping the oldest task
+                    dropped_task = self.input_queue.popleft()
+                    # Set result on the dropped task's future ticket
+                    self._handle_pipeline_failure(
+                        frame=None,
+                        detections=[],
+                        filename=dropped_task.filename,
+                        timestamp=dropped_task.timestamp,
+                        reason="Dropped: Buffer full (System Overloaded)",
+                        future_ticket=dropped_task.future
+                    )
+                    # NOW add the new task since there is room
+                    self.input_queue.append(task)
+                    self.log.info(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
+
+            return future_ticket  # Return the ticket so the user can await result
+
+        except Exception as e:
+            self._handle_pipeline_failure(None, [], filename, timestamp_str, f"Process Error: {str(e)}", future_ticket)
+            return future_ticket
+    
+    def _worker_loop(self):
+        """The 'Heavy Lifter': Consumes tasks and runs AI + QC logic."""
+        self.log.info("Worker thread active.")
+        while self.is_running:
+            task = None
+            try:
+                with self.queue_lock:
+                    if self.input_queue:
+                        task = self.input_queue.popleft()  # Retrieve oldest task
+                if task is None:
+                    time.sleep(0.01) # 10ms sleep to save CPU cycles
+                    continue
+
+                try:
+                    frame = task.frame
+                    filename = task.filename
+                    future_ticket = task.future
+                    timestamp = task.timestamp
+                    start_ts = task.start_ts
+                    if frame is None or future_ticket is None:
+                        raise KeyError("Task missing 'frame' or 'future' ticket.")
+
+                    # Execute YOLO
+                    detections = self.segmenter.process_frame(frame)
+
+                    # Validate Detections
+                    is_valid, error_reason, detections = validate_detections(detections)
+                    if not is_valid:
+                        self._handle_pipeline_failure(
+                            frame, detections, filename, timestamp, error_reason, future_ticket
+                        )
+                    else:
+                        # Pre-processing for QC (Segmentation & Cropping)
+                        detections = cropped_segmented(frame, detections)
+                        # Execution for QC Algorithms
+                        self._handle_pipeline_valid_input(
+                            frame, detections, filename, timestamp, start_ts,
+                            validation_msg=error_reason,
+                            future_ticket=future_ticket,
+                        )
+                except Exception as e:
+                    self.log.error(f"Worker Error on {filename}: {e}")
+                    self._handle_pipeline_failure(frame, [], filename, timestamp, str(e), future_ticket)
+            except Exception as e:
+                self.log.error(f"Worker Loop Error: {e}")
 
     def _handle_pipeline_failure(
         self,
         frame: Optional[np.ndarray],
-        detections: list[Dict[str, Any]],
+        detections: list[Detection],
         filename: str,
         timestamp: str,
         reason: str,
@@ -175,23 +213,34 @@ class AutoTomePipeline:
         save_json_results(output, self.output_path / f"{filename}_qc.json")
         if self.save_input_img and frame is not None:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
-        if future_ticket:
+        if future_ticket and not future_ticket.done():
             future_ticket.set_result(output)
 
-    def _handle_pipeline_valid_input(self, frame: np.ndarray, detections: list, filename: str, timestamp: str, start_ts: float, future_ticket, validation_msg: str = "N/A"):
+    def _handle_pipeline_valid_input(
+            self,
+            frame: np.ndarray,
+            detections: list[Detection],
+            filename: str,
+            timestamp: str,
+            start_ts: float,
+            future_ticket: Future,
+            validation_msg: str = "N/A"
+        ) -> None:
         """
         Executes QC checks on all sections and compiles the final result using Pydantic models.
         """
         # Filter out valid sections
-        sections = [d for d in detections if d.get('class_name') == 'section' and d.get('section_image') is not None]
+        sections = [d for d in detections if d.class_name == 'section' and d.section_image is not None]
         sections_list = []
         all_qc_passed = True
 
         # Iterate through each section and run QC
-        for i, section_dict in enumerate(sections):
-            target_img = section_dict['section_image']
+        for i, section_obj in enumerate(sections):
+            target_img = section_obj.section_image
+            if target_img is None:
+                continue
 
-            # Run the parallelized QC checks (Returns Dict[str, dict])
+            # Run the QC checks (Returns Dict[str, dict])
             qc_results = self._run_all_checks(target_img)
 
             # Determine if this specific section passed
@@ -202,9 +251,9 @@ class AutoTomePipeline:
             # Instantiate SectionResult model
             sections_list.append(SectionResult(
                 qc_result="PASS" if section_passed else "FAIL",
-                segmentation_conf=round(section_dict.get('confidence', 0.0), 2),
-                area_in_pixels=section_dict.get("area_in_pixels", 0),
-                overlap_ratio=round(section_dict.get('overlap_ratio', 0.0), 2),
+                segmentation_conf=round(section_obj.confidence, 2),
+                area_in_pixels=section_obj.area_in_pixels,
+                overlap_ratio=round(section_obj.overlap_ratio, 2),
                 criteria=qc_results
             ))
 
@@ -235,32 +284,21 @@ class AutoTomePipeline:
         if self.save_input_img:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
         if self.save_segmented_img:
-            for i, section_dict in enumerate(sections):
-                img_to_save = section_dict['section_image']
+            for i, section_obj in enumerate(sections):
+                img_to_save = section_obj.section_image
                 save_debug_image(img_to_save, self.output_path / f"{filename}_section_{i}.jpg")
         # Resolve the Future
-        if future_ticket:
+        if future_ticket and not future_ticket.done():
             future_ticket.set_result(output)
 
     def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
-        """Submits QC tasks and resolves them with robust error handling."""
-        futures = {
-            name: self.executor.submit(module.check, qc_image)
-            for name, module in self.qc_modules.items()
-        }
         results = {}
-        for name, future in futures.items():
+        for name, module in self.qc_modules.items():
             try:
-                raw_res = future.result(timeout=2.0)
+                # Execution in the worker thread
+                raw_res = module.check(qc_image)
                 results[name] = QCCriteria(**raw_res)
             except Exception as e:
-                self.log.error(f"QC Check {name} failed or timed out: {e}")
-                # Ensure consistent field naming in fallback
-                results[name] = QCCriteria(
-                    pass_status=False,
-                    label="Error",
-                    message=str(e)
-                )
+                self.log.error(f"QC Check {name} failed: {e}")
+                results[name] = QCCriteria(pass_status=False, label="Error", message=str(e))
         return results
-
-
