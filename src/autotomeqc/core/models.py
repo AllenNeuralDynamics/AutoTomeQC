@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import Any, Dict, Optional, List
 from concurrent.futures import Future
 import numpy as np
@@ -46,3 +46,14 @@ class PipelineTask(BaseModel):
     timestamp: str = "N/A"
     start_ts: float
     future: Future
+
+class ProcessInput(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    img_path: Optional[str] = None
+    frame: Optional[np.ndarray] = None
+
+    @model_validator(mode='after')
+    def check_exclusive_input(self) -> 'ProcessInput':
+        if (self.img_path is None) == (self.frame is None):
+            raise ValueError("Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither.")
+        return self

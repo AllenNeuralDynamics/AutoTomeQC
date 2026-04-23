@@ -11,7 +11,8 @@ from typing import Dict, Optional, Any
 from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
 from autotomeqc.config.config_loader import CONFIG
-from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask, Detection
+from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask, Detection, ProcessInput
+from pydantic import ValidationError
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.yolo_segmentation.post_processing import cropped_segmented, validate_detections
 from autotomeqc.algorithms.coverage import SectionCoverageQC
@@ -84,24 +85,27 @@ class AutoTomePipeline:
         timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
         try:
-            # 1. Validate Input (XOR logic)
-            if (img_path is None) == (frame is None):
+            # Validate Input via Pydantic
+            try:
+                valid_input = ProcessInput(img_path=img_path, frame=frame)
+            except ValidationError:
                 msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
                 self._handle_pipeline_failure(None, [], filename, timestamp_str, msg, future_ticket)
                 return future_ticket
 
             # 2. Handle Image Loading/Naming
-            if img_path is not None:
-                path_obj = Path(img_path)
+            if valid_input.img_path is not None:
+                path_obj = Path(valid_input.img_path)
                 filename = path_obj.stem
                 if not path_obj.exists():
-                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File not found: {img_path}", future_ticket)
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File not found: {valid_input.img_path}", future_ticket)
                     return future_ticket
-                frame = cv2.imread(str(img_path))
+                frame = cv2.imread(valid_input.img_path)
                 if frame is None:
-                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File load failed: {img_path}", future_ticket)
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File load failed: {valid_input.img_path}", future_ticket)
                     return future_ticket
             else:
+                frame = valid_input.frame
                 ts_dt = datetime.fromtimestamp(ts)
                 filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
 
@@ -116,10 +120,11 @@ class AutoTomePipeline:
             )
             with self.queue_lock:
                 try:
-                    self.input_queue.insert(-1, task)
+                    # insert() raises IndexError if the deque is full
+                    self.input_queue.insert(len(self.input_queue), task)
                     self.log.info(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
                 except IndexError:
-                    # Check if we are about to drop the oldest frame
+                    # Catch the error, make room by dropping the oldest task
                     dropped_task = self.input_queue.popleft()
                     # Set result on the dropped task's future ticket
                     self._handle_pipeline_failure(
@@ -129,6 +134,9 @@ class AutoTomePipeline:
                         reason="Dropped: Buffer full (System Overloaded)",
                         future_ticket=dropped_task.future
                     )
+                    # NOW add the new task since there is room
+                    self.input_queue.append(task)
+                    self.log.info(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
 
             return future_ticket  # Return the ticket so the user can await result
 
