@@ -91,7 +91,7 @@ def test_process_frame_logic(server):
 
     # Assertions
     assert len(detections) == 1
-    assert detections[0]['class_name'] == "section"
-    assert detections[0]['confidence'] == 0.95
-    assert detections[0]['id'] == 0  # Default if id is None
-    assert isinstance(detections[0]['mask'], list)
+    assert detections[0].class_name == "section"
+    assert detections[0].confidence == 0.95
+    assert detections[0].track_id == 0  # Default if id is None
+    assert isinstance(detections[0].mask, list)

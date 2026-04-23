@@ -7,6 +7,7 @@ from concurrent.futures import TimeoutError, Future
 # Import the class and config
 from autotomeqc.core.pipeline import AutoTomePipeline
 from autotomeqc.config.schemas import AppConfig
+from autotomeqc.core.models import Detection
 
 # --- FIXTURES ---
 
@@ -58,13 +59,19 @@ def mock_external_deps():
 
 @pytest.fixture
 def pipeline(mock_config):
-    with patch("autotomeqc.core.pipeline.YoloSegmentation"), \
+    with patch("autotomeqc.core.pipeline.YoloSegmentation") as MockYolo, \
          patch("autotomeqc.core.pipeline.SectionCoverageQC"), \
          patch("autotomeqc.core.pipeline.KnifeMarksQC"), \
          patch("autotomeqc.core.pipeline.ThicknessConsistencyQC"), \
          patch("autotomeqc.core.pipeline.ThicknessQC"), \
          patch("autotomeqc.core.pipeline.ShapeQC"):
         
+        # Configure YoloSegmentation mock to avoid Pydantic ValidationError on PipelineTask
+        MockYolo.return_value.resize_frame.side_effect = lambda x: x
+        MockYolo.return_value.process_frame.return_value = []
+        MockYolo.return_value.ready.wait.return_value = True
+        MockYolo.return_value.model = "MockModel"
+
         test_config_obj = AppConfig(**mock_config)
         with patch("autotomeqc.core.pipeline.CONFIG", test_config_obj):
             pipe = AutoTomePipeline()
@@ -111,13 +118,14 @@ def test_handle_pipeline_valid_input_runs_qc(pipeline, mock_external_deps):
         }
 
     # Create a dummy detection from yolo segmentation
-    detections = [{
-        'class_name': 'section',
-        'confidence': 0.9,
-        'section_image': np.zeros((100, 100, 3), dtype=np.uint8),
-        'area_in_pixels': 5000,
-        'overlap_ratio': 0.0
-    }]
+    detections = [Detection(
+        class_name='section',
+        class_id=0,
+        confidence=0.9,
+        section_image=np.zeros((100, 100, 3), dtype=np.uint8),
+        area_in_pixels=5000,
+        overlap_ratio=0.0
+    )]
     
     # ACT
     pipeline._handle_pipeline_valid_input(
@@ -149,13 +157,14 @@ def test_qc_timeout_handling(pipeline, mock_external_deps):
     # This simulates a module that internally timed out or crashed
     pipeline.qc_modules["coverage"].check.side_effect = TimeoutError("QC check exceeded 2.0s limit")
 
-    detections = [{
-        'class_name': 'section',
-        'confidence': 0.9,
-        'section_image': np.zeros((100, 100, 3), dtype=np.uint8),
-        'area_in_pixels': 5000,
-        'overlap_ratio': 0.0
-    }]
+    detections = [Detection(
+        class_name='section',
+        class_id=0,
+        confidence=0.9,
+        section_image=np.zeros((100, 100, 3), dtype=np.uint8),
+        area_in_pixels=5000,
+        overlap_ratio=0.0
+    )]
 
     # ACT
     pipeline._handle_pipeline_valid_input(
@@ -185,13 +194,14 @@ def test_qc_exception_handling(pipeline, mock_external_deps):
     # Force a crash in one of the specific modules (e.g., 'coverage')
     pipeline.qc_modules["coverage"].check.side_effect = ValueError("Math Error")
 
-    detections = [{
-        'class_name': 'section',
-        'confidence': 0.9,
-        'section_image': np.zeros((100, 100, 3), dtype=np.uint8),
-        'area_in_pixels': 5000,
-        'overlap_ratio': 0.0
-    }]
+    detections = [Detection(
+        class_name='section',
+        class_id=0,
+        confidence=0.9,
+        section_image=np.zeros((100, 100, 3), dtype=np.uint8),
+        area_in_pixels=5000,
+        overlap_ratio=0.0
+    )]
 
     # ACT
     # We call the handler that orchestrates the QC modules
@@ -227,6 +237,7 @@ def test_process_invalid_input_both_provided(pipeline, mock_external_deps):
     assert result["qc_summary"] == "FAIL"
     assert "Ambiguous input" in result["fail_reason"]
     # Ensure no processing was actually attempted
+    pipeline.segmenter.resize_frame.assert_not_called()
     pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_invalid_input_none_provided(pipeline):
@@ -238,6 +249,8 @@ def test_process_invalid_input_none_provided(pipeline):
     # ASSERT
     assert result["qc_summary"] == "FAIL"
     assert "Ambiguous input" in result["fail_reason"]
+    pipeline.segmenter.resize_frame.assert_not_called()
+    pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_nonexistent_file(pipeline, tmp_path):
     """Test handling of a file path that does not exist on disk."""
@@ -251,6 +264,8 @@ def test_process_nonexistent_file(pipeline, tmp_path):
     # ASSERT
     assert result["qc_summary"] == "FAIL"
     assert "File not found" in result["fail_reason"]
+    pipeline.segmenter.resize_frame.assert_not_called()
+    pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_corrupt_image_file(pipeline, tmp_path, mock_external_deps):
     """Test behavior when cv2.imread fails to decode the file."""
@@ -268,6 +283,8 @@ def test_process_corrupt_image_file(pipeline, tmp_path, mock_external_deps):
     # ASSERT
     assert result["qc_summary"] == "FAIL"
     assert "File load failed" in result["fail_reason"]
+    pipeline.segmenter.resize_frame.assert_not_called()
+    pipeline.segmenter.process_frame.assert_not_called()
 
 def test_process_raw_frame_success(pipeline, mock_external_deps):
     """Test that passing a numpy frame directly works correctly."""
