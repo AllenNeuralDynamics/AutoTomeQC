@@ -237,6 +237,8 @@ class AutoTomePipeline:
         # Iterate through each section and run QC
         for i, section_obj in enumerate(sections):
             target_img = section_obj.section_image
+            if target_img is None:
+                continue
 
             # Run the QC checks (Returns Dict[str, dict])
             qc_results = self._run_all_checks(target_img)

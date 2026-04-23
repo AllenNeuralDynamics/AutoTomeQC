@@ -21,10 +21,10 @@ class SectionResult(BaseModel):
 class Detection(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
     class_name: str
-    class_id: int = Field(alias="class")
+    class_id: int
     confidence: float
     bbox: List[float] = Field(default_factory=list)
-    track_id: int = Field(default=0, alias="id")
+    track_id: int = 0
     mask: List[List[float]] = Field(default_factory=list)
     overlap_ratio: float = 0.0
     area_in_pixels: int = 0
