@@ -11,7 +11,7 @@ from typing import Dict, Optional, Any
 from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
 from autotomeqc.config.config_loader import CONFIG
-from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask
+from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask, Detection
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.yolo_segmentation.post_processing import cropped_segmented, validate_detections
 from autotomeqc.algorithms.coverage import SectionCoverageQC
@@ -185,7 +185,7 @@ class AutoTomePipeline:
     def _handle_pipeline_failure(
         self,
         frame: Optional[np.ndarray],
-        detections: list[Dict[str, Any]],
+        detections: list[Detection],
         filename: str,
         timestamp: str,
         reason: str,
@@ -210,7 +210,7 @@ class AutoTomePipeline:
     def _handle_pipeline_valid_input(
             self,
             frame: np.ndarray,
-            detections: list,
+            detections: list[Detection],
             filename: str,
             timestamp: str,
             start_ts: float,
@@ -221,13 +221,13 @@ class AutoTomePipeline:
         Executes QC checks on all sections and compiles the final result using Pydantic models.
         """
         # Filter out valid sections
-        sections = [d for d in detections if d.get('class_name') == 'section' and d.get('section_image') is not None]
+        sections = [d for d in detections if d.class_name == 'section' and d.section_image is not None]
         sections_list = []
         all_qc_passed = True
 
         # Iterate through each section and run QC
-        for i, section_dict in enumerate(sections):
-            target_img = section_dict['section_image']
+        for i, section_obj in enumerate(sections):
+            target_img = section_obj.section_image
 
             # Run the QC checks (Returns Dict[str, dict])
             qc_results = self._run_all_checks(target_img)
@@ -240,9 +240,9 @@ class AutoTomePipeline:
             # Instantiate SectionResult model
             sections_list.append(SectionResult(
                 qc_result="PASS" if section_passed else "FAIL",
-                segmentation_conf=round(section_dict.get('confidence', 0.0), 2),
-                area_in_pixels=section_dict.get("area_in_pixels", 0),
-                overlap_ratio=round(section_dict.get('overlap_ratio', 0.0), 2),
+                segmentation_conf=round(section_obj.confidence, 2),
+                area_in_pixels=section_obj.area_in_pixels,
+                overlap_ratio=round(section_obj.overlap_ratio, 2),
                 criteria=qc_results
             ))
 
@@ -273,8 +273,8 @@ class AutoTomePipeline:
         if self.save_input_img:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
         if self.save_segmented_img:
-            for i, section_dict in enumerate(sections):
-                img_to_save = section_dict['section_image']
+            for i, section_obj in enumerate(sections):
+                img_to_save = section_obj.section_image
                 save_debug_image(img_to_save, self.output_path / f"{filename}_section_{i}.jpg")
         # Resolve the Future
         if future_ticket and not future_ticket.done():

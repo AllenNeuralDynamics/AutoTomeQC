@@ -4,14 +4,15 @@ from typing import Optional
 import cv2
 import numpy as np
 from autotomeqc.config.config_loader import CONFIG
+from autotomeqc.core.models import Detection
 
 logger = logging.getLogger(__name__)
 
-def get_best_section_detection(detections: list) -> Optional[dict]:
+def get_best_section_detection(detections: list[Detection]) -> Optional[Detection]:
     # Find ALL 'section' detections with high confidence
     valid_sections = [
         d for d in detections
-        if d['class_name'] == 'section'
+        if d.class_name == 'section'
     ]
     if not valid_sections:
         return None
@@ -21,7 +22,7 @@ def get_best_section_detection(detections: list) -> Optional[dict]:
         return valid_sections[0]
 
     # If multiple exist (e.g., debugging/global mode), pick the highest confidence
-    return max(valid_sections, key=lambda x: x.get('confidence', 0.0))
+    return max(valid_sections, key=lambda x: x.confidence)
 
 def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, loop_bbox: list) -> float:
     # Quick BBox Check (Cheap)
@@ -52,13 +53,13 @@ def get_overlap_ratio(section_poly: list, loop_poly: list, section_bbox: list, l
     except Exception:
         return 0.0
 
-def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
+def validate_detections(detections: list[Detection]) -> tuple[bool, str, list[Detection]]:
     """
     Validates detections against AutoTomeQC logic cases (1-5).
     Returns: (is_valid, error_reason)
     """
-    loop_detection = next((d for d in detections if d['class_name'] == 'loop'), None)
-    all_sections = [d for d in detections if d['class_name'] == 'section']
+    loop_detection = next((d for d in detections if d.class_name == 'loop'), None)
+    all_sections = [d for d in detections if d.class_name == 'section']
     allow_no_loop = CONFIG.qc.yolo_post_processing.allow_no_loop
 
     # Case 1: No Section detected in the whole frame
@@ -74,17 +75,17 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
     # --- Identify Sections relative to the Loop ---
     sections_in_loop = []
     sections_outside_loop = []
-    loop_mask = loop_detection.get('mask', [])
-    loop_bbox = loop_detection.get('bbox', [0,0,0,0])
+    loop_mask = loop_detection.mask if loop_detection else []
+    loop_bbox = loop_detection.bbox if loop_detection else [0,0,0,0]
     for s in all_sections:
         # Check overlap ratio
         overlap = get_overlap_ratio(
-            section_poly=s.get('mask', []),
+            section_poly=s.mask,
             loop_poly=loop_mask,
-            section_bbox=s.get('bbox', [0,0,0,0]),
+            section_bbox=s.bbox,
             loop_bbox=loop_bbox
         )
-        s['overlap_ratio'] = overlap
+        s.overlap_ratio = overlap
         thres = CONFIG.qc.yolo_post_processing.overlap_threshold
         if overlap > thres:
             sections_in_loop.append(s)
@@ -94,7 +95,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
     # Case 3: Loop present but section is outside
     if len(sections_in_loop) == 0 and len(sections_outside_loop) > 0:
         filtered_detections = [loop_detection] + sections_outside_loop
-        ratio = [round(s['overlap_ratio'], 2) for s in sections_outside_loop]
+        ratio = [round(s.overlap_ratio, 2) for s in sections_outside_loop]
         msg = f"Section detected outside loop. IoA for section(s): {ratio} (threshold: {thres})"
         return False, msg, filtered_detections
 
@@ -108,7 +109,7 @@ def validate_detections(detections: list[dict]) -> tuple[bool, str, list[dict]]:
     filtered_detections = [loop_detection, sections_in_loop[0]]
     return True, "N/A", filtered_detections
 
-def cropped_segmented(frame: np.ndarray, detections: list[dict], filename="") -> list[dict]:
+def cropped_segmented(frame: np.ndarray, detections: list[Detection], filename="") -> list[Detection]:
     """
     Processes each section in detections:
     1. If a loop exists, it is used as the global cropping frame.
@@ -121,23 +122,23 @@ def cropped_segmented(frame: np.ndarray, detections: list[dict], filename="") ->
     margin = CONFIG.qc.yolo_post_processing.loop_bbox_margin
     output_dim = tuple(CONFIG.qc.yolo_post_processing.out_dim)
     # Check for a global loop context
-    loop_detection = next((d for d in detections if d['class_name'] == 'loop'), None)
+    loop_detection = next((d for d in detections if d.class_name == 'loop'), None)
 
     # Iterate through all detections to find 'sections'
     for d in detections:
-        if d['class_name'] != 'section':
+        if d.class_name != 'section':
             continue
 
         # Work on a fresh copy of the frame for each section
         temp_frame = frame.copy()
-        mask_poly = d.get("mask", [])
+        mask_poly = d.mask
         if mask_poly and len(mask_poly) > 0:
             poly_array = np.array(mask_poly, dtype=np.int32)
             if poly_array.ndim == 2:
                 poly_array = poly_array.reshape((-1, 1, 2))
-            d["area_in_pixels"] = int(cv2.contourArea(poly_array))
+            d.area_in_pixels = int(cv2.contourArea(poly_array))
         else:
-            d["area_in_pixels"] = 0
+            d.area_in_pixels = 0
 
         # --- STEP A: Masking (Section Specific) ---
         if mask_poly and len(mask_poly) > 0:
@@ -155,7 +156,7 @@ def cropped_segmented(frame: np.ndarray, detections: list[dict], filename="") ->
 
         # --- STEP B: Cropping (Handling allow_no_loop) ---
         # Priority: Loop BBox > Section BBox
-        target_bbox = loop_detection.get('bbox') if loop_detection else d.get('bbox')
+        target_bbox = loop_detection.bbox if loop_detection else d.bbox
         if target_bbox and len(target_bbox) == 4:
             x1, y1, x2, y2 = map(int, target_bbox)
             # Apply margins and constrain to frame boundaries
@@ -171,9 +172,9 @@ def cropped_segmented(frame: np.ndarray, detections: list[dict], filename="") ->
         if temp_frame.size > 0:
             # Resize to ensure the QC algorithm receives expected dimensions
             temp_frame = cv2.resize(temp_frame, output_dim)
-            d['section_image'] = temp_frame
+            d.section_image = temp_frame
         else:
-            d['section_image'] = None
+            d.section_image = None
             logger.error(f"[{filename}] Resulting crop for section is empty.")
 
     return detections

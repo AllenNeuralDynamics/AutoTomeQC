@@ -18,6 +18,18 @@ class SectionResult(BaseModel):
     overlap_ratio: float
     criteria: Dict[str, QCCriteria]
 
+class Detection(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
+    class_name: str
+    class_id: int = Field(alias="class")
+    confidence: float
+    bbox: List[float] = Field(default_factory=list)
+    track_id: int = Field(default=0, alias="id")
+    mask: List[List[float]] = Field(default_factory=list)
+    overlap_ratio: float = 0.0
+    area_in_pixels: int = 0
+    section_image: Optional[np.ndarray] = None
+
 class PipelineResult(BaseModel):
     filename: str
     timestamp: str

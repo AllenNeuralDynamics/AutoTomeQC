@@ -6,6 +6,7 @@ import logging
 from threading import Event
 import cv2
 from autotomeqc.config.schemas import YoloSettings
+from autotomeqc.core.models import Detection
 from ultralytics import YOLO
 import torch
 
@@ -84,20 +85,20 @@ class YoloSegmentation:
             return cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_AREA)
         return frame
 
-    def process_frame(self, frame: np.ndarray) -> list[dict[str, Any]]:
+    def process_frame(self, frame: np.ndarray) -> list[Detection]:
         """Process frames from the queue"""
         try:
-            detections: list[dict[str, Any]] = []
+            detections: list[Detection] = []
         
             if self.model is None:
                 # Dummy model for debugging
                 h, w = frame.shape[:2]
-                return [{
-                    'bbox': [w*0.2, h*0.2, w*0.8, h*0.8],
-                    'confidence': 0.95,
-                    'class_name': 'dummy_object',
-                    'class': 0
-                }]
+                return [Detection(
+                    bbox=[w*0.2, h*0.2, w*0.8, h*0.8],
+                    confidence=0.95,
+                    class_name='dummy_object',
+                    class_id=0
+                )]
 
             # Run YOLO inference
             results = self.model.track(
@@ -130,14 +131,15 @@ class YoloSegmentation:
                             search_id = int(boxes.id[i].cpu().numpy())
                         else:
                             search_id = 0
-                        detection = {
-                            'bbox': bbox.tolist(),
-                            'class': int(cls_id),
-                            'class_name': class_name,
-                            'confidence': conf,
-                            'id': search_id,
-                            'mask': masks_data.get(i, []),
-                        }
+
+                        detection = Detection(
+                            bbox=bbox.tolist(),
+                            class_id=int(cls_id),
+                            class_name=class_name,
+                            confidence=conf,
+                            track_id=search_id,
+                            mask=masks_data.get(i, [])
+                        )
                         detections.append(detection)
             return detections
         except Exception as e:
