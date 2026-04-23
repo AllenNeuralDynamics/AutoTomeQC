@@ -22,13 +22,15 @@ from autotomeqc.algorithms.shape import ShapeQC
 
 
 class AutoTomePipeline:
+    DEFAULT_MAX_QUEUE_SIZE = 20   # 20 frames 640x640 RGB is ~24MB
+
     def __init__(self):
         self.log = logging.getLogger(self.__class__.__name__)
         self.output_path = Path(CONFIG.qc.output_dir)
         self.save_segmented_img = CONFIG.qc.save_segmented_images
         self.save_input_img = CONFIG.qc.save_input_images
 
-        self.input_queue = deque(maxlen=20)  # 20 frames 640x640 RGB is ~24MB
+        self.input_queue = deque(maxlen=self.DEFAULT_MAX_QUEUE_SIZE)
         self.queue_lock = threading.Lock()
         self.worker_thread = None
         self.is_running = False
