@@ -11,7 +11,7 @@ from typing import Dict, Optional, Any
 from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
 from autotomeqc.config.config_loader import CONFIG
-from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult
+from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
 from autotomeqc.yolo_segmentation.post_processing import cropped_segmented, validate_detections
 from autotomeqc.algorithms.coverage import SectionCoverageQC
@@ -107,13 +107,13 @@ class AutoTomePipeline:
 
             # 3. Package and Enqueue Task
             frame = self.segmenter.resize_frame(frame)
-            task = {
-                "frame": frame,
-                "filename": filename,
-                "timestamp": timestamp_str,
-                "start_ts": ts,
-                "future": future_ticket
-            }
+            task = PipelineTask(
+                frame=frame,
+                filename=filename,
+                timestamp=timestamp_str,
+                start_ts=ts,
+                future=future_ticket
+            )
             with self.queue_lock:
                 try:
                     self.input_queue.insert(-1, task)
@@ -124,10 +124,10 @@ class AutoTomePipeline:
                     # Set result on the dropped task's future ticket
                     self._handle_pipeline_failure(
                         frame=None, detections=[],
-                        filename=dropped_task["filename"],
-                        timestamp=dropped_task["timestamp"],
+                        filename=dropped_task.filename,
+                        timestamp=dropped_task.timestamp,
                         reason="Dropped: Buffer full (System Overloaded)",
-                        future_ticket=dropped_task["future"]
+                        future_ticket=dropped_task.future
                     )
 
                 # Add the current task
@@ -154,11 +154,11 @@ class AutoTomePipeline:
                     continue
 
                 try:
-                    frame = task.get("frame")
-                    filename = task.get("filename", "unknown")
-                    future_ticket = task.get("future")
-                    timestamp = task.get("timestamp", "N/A")
-                    start_ts = task.get("start_ts", time.time())
+                    frame = task.frame
+                    filename = task.filename
+                    future_ticket = task.future
+                    timestamp = task.timestamp
+                    start_ts = task.start_ts
                     if frame is None or future_ticket is None:
                         raise KeyError("Task missing 'frame' or 'future' ticket.")
 
@@ -295,5 +295,3 @@ class AutoTomePipeline:
                 self.log.error(f"QC Check {name} failed: {e}")
                 results[name] = QCCriteria(pass_status=False, label="Error", message=str(e))
         return results
-
-

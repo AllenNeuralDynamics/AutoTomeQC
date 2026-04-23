@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Any, Dict, Optional, List
+from concurrent.futures import Future
+import numpy as np
 
 class QCCriteria(BaseModel):
     pass_status: bool
@@ -23,3 +25,12 @@ class PipelineResult(BaseModel):
     fail_reason: str = "N/A"
     processing_time_sec: Optional[float] = None
     sections: List[SectionResult] = Field(default_factory=list)
+
+class PipelineTask(BaseModel):
+    #  Allow non-primitive types like np.ndarray and Future
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    frame: Optional[np.ndarray] = None
+    filename: str = "unknown"
+    timestamp: str = "N/A"
+    start_ts: float
+    future: Future
