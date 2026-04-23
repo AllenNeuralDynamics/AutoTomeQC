@@ -130,10 +130,6 @@ class AutoTomePipeline:
                         future_ticket=dropped_task.future
                     )
 
-                # Add the current task
-                self.input_queue.append(task)
-                self.log.info(f"[{filename}] Task enqueued. Queue size: {len(self.input_queue)}")
-
             return future_ticket  # Return the ticket so the user can await result
 
         except Exception as e:
