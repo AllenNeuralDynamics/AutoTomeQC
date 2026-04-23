@@ -8,7 +8,7 @@ on:
       - dev
 
 jobs:
-  # 1. Run your Linter and Tests first
+  # 1. Run Linter and Tests first
   lint-and-test:
     uses: ./.github/workflows/test_lint_type.yml
 
