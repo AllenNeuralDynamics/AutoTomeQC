@@ -1,6 +1,8 @@
 # AutoTomeQC 
 AutoTomeQC is an automated pipeline designed for Sectioning Quality Control. It integrates YOLO segmentation models and algorithmic checks to validate the quality of sections.
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://allenneuraldynamics.github.io/AutoTomeQC/)
+
 
 ### Pipeline Overview
 | Input Image | Segmentation | QC Runs |
