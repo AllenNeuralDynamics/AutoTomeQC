@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - dev
+      - feat-docs
 
 jobs:
   # 1. Run Linter and Tests first
@@ -13,10 +14,10 @@ jobs:
     uses: ./.github/workflows/test_lint_type.yml
 
   # 2. Run the Tagging logic ONLY if the tests pass
-  tag-and-release:
-    needs: lint-and-test
-    uses: AllenNeuralDynamics/.github/.github/workflows/tag.yml@main
-    secrets: inherit
-    with:
-      runner_label: 'ubuntu-latest'
-      # custom_release_rules: 'fix:patch,feat:minor,breaking:major'
+  #tag-and-release:
+  #  needs: lint-and-test
+  #  uses: AllenNeuralDynamics/.github/.github/workflows/tag.yml@main
+  #  secrets: inherit
+  #  with:
+  #    runner_label: 'ubuntu-latest'
+  #    # custom_release_rules: 'fix:patch,feat:minor,breaking:major'
