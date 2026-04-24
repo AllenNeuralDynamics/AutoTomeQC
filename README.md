@@ -45,7 +45,7 @@ print(f"QC Status: {result['qc_summary']}")
 
 # Method B: Process by Raw Frame (e.g., from Camera)
 future_b = service.process(frame=frame)
-result = future_a.result()  # Wait for the result
+result = future_b.result()  # Wait for the result
 print(f"QC Status: {result['qc_summary']}")
 
 service.stop()
@@ -120,11 +120,10 @@ uv run mypy src
 ```
 
 ## Documentation
-To generate the rst files source files for documentation, run
+To install documentation dependencies, build and preview, run:
 ```bash
-sphinx-apidoc -o docs/source/ src
+uv sync --group docs
+uv run mkdocs build
+uv run mkdocs serve
 ```
-Then to create the documentation HTML files, run
-```bash
-sphinx-build -b html docs/source/ docs/build/html
-```
+
