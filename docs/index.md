@@ -1,12 +1,10 @@
 # Welcome to AutoTomeQC
 
-AutoTomeQC is a pipeline designed for Sectioning Quality Control. 
+AutoTomeQC is an automated pipeline designed for Sectioning Quality Control. It integrates YOLO segmentation models and algorithmic checks to validate the quality of biological sections dynamically.
 
-## Getting Started
+## Features
+- **Interactive CLI:** Quickly test and validate sections on the fly.
+- **Python API:** Integrate into your hardware acquisition loops.
+- **Comprehensive QC:** Checks for section coverage, knife marks, thickness, and shape.
 
-To get started using the CLI or the Python Library, please refer to the configuration and usage guides.
-
-
-## API Reference 
-
-::: autotomeqc.core.autotome_service.AutoTomeService
+Use the navigation menu on the left to learn how to install, use, and configure AutoTomeQC!
