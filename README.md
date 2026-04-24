@@ -2,6 +2,11 @@
 Sectioning Quality Control
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 
+### Example Pipeline
+| Input Image | Processed QC Output |
+| :---: | :---: |
+| ![Input](docs/assets/input.jpg) | ![Output](docs/assets/output.jpg) |
+
 ##  Getting Started
 - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 ```bash
@@ -53,12 +58,58 @@ service.stop()
 
 ## Output
 
-A full JSON report are also saved to disk.
+A full JSON report is also saved to disk.
 
-Directory: The location is defined in `src/autotomeqc/config/yolo-config.yaml` (see the output_dir setting).
+- **Directory:** The location is defined in `src/autotomeqc/config/yolo-config.yaml` (see the `output_dir` setting).
+- **Files:** `{filename}_qc.json`
 
-Files: {filename}_qc.json
-
+**Example JSON Report:**
+```json
+{
+    "filename": "img8",
+    "timestamp": "2026-04-23 20:49:57",
+    "qc_summary": "FAIL",
+    "fail_reason": "Section failed QC criteria",
+    "processing_time_sec": 0.5774,
+    "sections": [
+        {
+            "qc_result": "FAIL",
+            "segmentation_conf": 0.96,
+            "area_in_pixels": 24504,
+            "overlap_ratio": 1.0,
+            "criteria": {
+                "coverage": {
+                    "pass_status": true,
+                    "label": "full_section",
+                    "conf": 0.9958
+                },
+                "knife_mark": {
+                    "pass_status": false,
+                    "label": "knifemark_shredding",
+                    "conf": 0.9992,
+                    "reason": "Defect Detected: knifemark_shredding"
+                },
+                "thickness_consistency": {
+                    "pass_status": true,
+                    "label": "Consistent",
+                    "conf": 0.8967
+                },
+                "thickness": {
+                    "pass_status": true,
+                    "label": "60",
+                    "conf": 0.5589
+                },
+                "shape": {
+                    "pass_status": true,
+                    "label": "Diamond",
+                    "metric": 5,
+                    "message": "Detected Diamond (vertices=5)"
+                }
+            }
+        }
+    ]
+}
+```
 
 And, you can view the results directly in the terminal:
 
@@ -126,4 +177,3 @@ uv sync --group docs
 uv run mkdocs build
 uv run mkdocs serve
 ```
-

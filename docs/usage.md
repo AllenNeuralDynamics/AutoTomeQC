@@ -51,16 +51,64 @@ A full JSON report is also saved to disk.
 - **Directory:** Defined in `src/autotomeqc/config/yolo-config.yaml` (`output_dir` setting).
 - **Files:** `{filename}_qc.json`
 
+**Example JSON Report:**
+```json
+{
+    "filename": "img8",
+    "timestamp": "2026-04-23 20:49:57",
+    "qc_summary": "FAIL",
+    "fail_reason": "Section failed QC criteria",
+    "processing_time_sec": 0.5774,
+    "sections": [
+        {
+            "qc_result": "FAIL",
+            "segmentation_conf": 0.96,
+            "area_in_pixels": 24504,
+            "overlap_ratio": 1.0,
+            "criteria": {
+                "coverage": {
+                    "pass_status": true,
+                    "label": "full_section",
+                    "conf": 0.9958
+                },
+                "knife_mark": {
+                    "pass_status": false,
+                    "label": "knifemark_shredding",
+                    "conf": 0.9992,
+                    "reason": "Defect Detected: knifemark_shredding"
+                },
+                "thickness_consistency": {
+                    "pass_status": true,
+                    "label": "Consistent",
+                    "conf": 0.8967
+                },
+                "thickness": {
+                    "pass_status": true,
+                    "label": "60",
+                    "conf": 0.5589
+                },
+                "shape": {
+                    "pass_status": true,
+                    "label": "Diamond",
+                    "metric": 5,
+                    "message": "Detected Diamond (vertices=5)"
+                }
+            }
+        }
+    ]
+}
+```
+
 **Example Terminal Output:**
 ```text
 Ready > example/input_images/img1.jpg
-Processing: img1
-Status:     FAIL
-Reason:     Section failed QC criteria
- -> Section 0: FAIL | Area: 61464px
-    ✅ coverage: full_section
-    ❌ knife_mark: knifemark_shredding
-    ✅ thickness_consistency: Consistent
-    ✅ thickness: 80
-    ✅ shape: Hexagon (vertices: 6)
+autotomeqc.interface.cli - INFO - Processing: img8
+autotomeqc.interface.cli - INFO - Status:     FAIL
+autotomeqc.interface.cli - INFO - Reason:     Section failed QC criteria
+autotomeqc.interface.cli - INFO -  -> Section 0: FAIL | Area: 24504px
+autotomeqc.interface.cli - INFO -     ✅ coverage: full_section
+autotomeqc.interface.cli - INFO -     ❌ knife_mark: knifemark_shredding
+autotomeqc.interface.cli - INFO -     ✅ thickness_consistency: Consistent
+autotomeqc.interface.cli - INFO -     ✅ thickness: 60
+autotomeqc.interface.cli - INFO -     ✅ shape: Diamond
 ```
