@@ -22,23 +22,15 @@ jobs:
     - name: Type check with mypy 
       run: |
         uv run mypy src
-
-# Job 2: Build Documentation (DISABLED)
-  # build-docs:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Repository
-  #       uses: actions/checkout@v3
-  #
-  #     - name: Set up Python version
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: '3.11'
-  #
-#     - name: Install uv and dependencies
-  #       run: |
-#         pip install uv
-#         uv sync --group docs
-  #
-#     - name: Build MkDocs Documentation
-#       run: uv run mkdocs build
+        
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Install UV
+        uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --group docs
+      - name: Build MkDocs Documentation
+        run: uv run mkdocs build
