@@ -44,7 +44,7 @@ service = AutoTomeService()
 service.start()
 
 # Method A: Process by File Path
-future_a = service.process(img_path="data/sample_01.jpg")
+future_a = service.process(img_path="data/img1.jpg")
 result = future_a.result()  # Wait for the result
 print(f"QC Status: {result['qc_summary']}")
 
@@ -57,8 +57,23 @@ service.stop()
 ```
 
 ## Output
+You can view the results directly in the terminal:
 
-A full JSON report is also saved to disk.
+**Example Output:**
+```bash
+Ready > example/input_images/img1.jpg
+Processing: img1
+Status:     FAIL
+Reason:     Section failed QC criteria
+ -> Section 0: FAIL | Area: 24504px
+    ✅ coverage: full_section
+    ❌ knife_mark: knifemark_shredding
+    ✅ thickness_consistency: Consistent
+    ✅ thickness: 60
+    ✅ shape: Diamond
+```
+
+And, a full JSON report is also saved to disk.
 
 - **Directory:** The location is defined in `src/autotomeqc/config/yolo-config.yaml` (see the `output_dir` setting).
 - **Files:** `{filename}_qc.json`
@@ -66,7 +81,7 @@ A full JSON report is also saved to disk.
 **Example JSON Report:**
 ```json
 {
-    "filename": "img8",
+    "filename": "img1",
     "timestamp": "2026-04-23 20:49:57",
     "qc_summary": "FAIL",
     "fail_reason": "Section failed QC criteria",
@@ -109,34 +124,6 @@ A full JSON report is also saved to disk.
         }
     ]
 }
-```
-
-And, you can view the results directly in the terminal:
-
-**Example Output:**
-```bash
-Ready > example/input_images/img1.jpg
-Processing: img1
-Status:     FAIL
-Reason:     Section failed QC criteria
- -> Section 0: FAIL | Area: 61464px
-    ✅ coverage: full_section
-    ❌ knife_mark: knifemark_shredding
-    ✅ thickness_consistency: Consistent
-    ✅ thickness: 80
-    ✅ shape: Hexagon (vertices: 6)
-
-----------------------------------------
-Ready > example/input_images/img2.jpg
-Processing: img2
-Status:     PASS
-Reason:     N/A
- -> Section 0: PASS | Area: 58210px
-    ✅ coverage: full_section
-    ✅ knife_mark: none
-    ✅ thickness_consistency: Consistent
-    ✅ thickness: 70
-    ✅ shape: Hexagon (vertices: 6)
 ```
 
 
