@@ -3,9 +3,9 @@ Sectioning Quality Control
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 
 ### Example Pipeline
-| Input Image | Processed QC Output |
-| :---: | :---: |
-| ![Input](docs/assets/input.jpg) | ![Output](docs/assets/output.jpg) |
+| Input Image | Segmentation | QC Runs|
+| :---: | :---: | :---: |
+| ![Input](docs/assets/input.jpg) | ![Output](docs/assets/output.jpg) | <pre>Ready &gt; example/input_images/img1.jpg<br>Processing: img1<br>Status:     FAIL<br>Reason:     Section failed QC criteria<br> -&gt; Section 0: FAIL \| Area: 24504px<br>    ✅ coverage: full_section<br>    ❌ knife_mark: knifemark_shredding<br>    ✅ thickness_consistency: Consistent<br>    ✅ thickness: 60<br>    ✅ shape: Diamond</pre> |
 
 ##  Getting Started
 - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
