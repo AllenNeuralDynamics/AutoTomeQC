@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "autotomeqc"
-version = "0.10.1-dev.2"
+version = "0.10.1"
 description = "Sectioning quality control"
 
 readme = "README.md"
