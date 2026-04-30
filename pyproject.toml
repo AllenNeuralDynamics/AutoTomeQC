@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "autotomeqc"
-version = "0.10.0-dev.0"
+version = "0.10.1"
 description = "Sectioning quality control"
 
 readme = "README.md"
@@ -24,20 +24,17 @@ dependencies = [
 [project.scripts]
 autotomeqc = "autotomeqc.__main__:main"
 
-[project.optional-dependencies]
-docs = [
-    'Sphinx',
-    'sphinx-jinja',
-    'furo',
-    'docutils'
-]
-
 [dependency-groups]
 dev = [
     "pytest>=8.3.5",
     "ruff>=0.9.9",
     "mypy>=1.10.0",
     "types-PyYAML>=6.0",
+]
+docs = [
+    'mkdocs',
+    'mkdocs-material',
+    'mkdocstrings[python]'
 ]
 
 [tool.hatch.build.targets.wheel]
