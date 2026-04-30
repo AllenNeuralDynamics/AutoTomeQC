@@ -1,0 +1,22 @@
+site_name: AutoTomeQC Documentation
+site_description: Sectioning Quality Control User Manual
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+
+nav:
+  - Home: index.md
+  - Usage Guide: usage.md
+  - Configuration: configuration.md
+  - API Reference: api_reference.md

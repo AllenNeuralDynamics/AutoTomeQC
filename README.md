@@ -1,6 +1,13 @@
-# AutoTomeQC
-Sectioning Quality Control
+# AutoTomeQC 
+AutoTomeQC is an automated pipeline designed for Sectioning Quality Control. It integrates YOLO segmentation models and algorithmic checks to validate the quality of sections.
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://allenneuraldynamics.github.io/AutoTomeQC/)
+
+
+### Pipeline Overview
+| Input Image | Segmentation | QC Runs |
+| :---: | :---: | :--- |
+| ![Input](docs/assets/input.jpg) | ![Output](docs/assets/output.jpg) | <pre>Ready &gt; example/input_images/img1.jpg<br>Processing: img1<br>Status:     FAIL<br>Reason:     Section failed QC criteria<br> -&gt; Section 0: FAIL \| Area: 24504px<br>    ✅ coverage: full_section<br>    ❌ knife_mark: knifemark_shredding<br>    ✅ thickness_consistency: Consistent<br>    ✅ thickness: 60<br>    ✅ shape: Diamond</pre> |
 
 ##  Getting Started
 - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
@@ -20,7 +27,7 @@ uv run autotomeqc
 
 Once the service says `Ready >`, you can:
 
-Paste a file path: `example/input_images/img0.jpg`
+write a file path: `example/input_images/img1.jpg`
 
 Exit: Type `exit`, `stop`, or press `Ctrl+C`.
 
@@ -39,28 +46,20 @@ service = AutoTomeService()
 service.start()
 
 # Method A: Process by File Path
-future_a = service.process(img_path="data/sample_01.jpg")
+future_a = service.process(img_path="data/img1.jpg")
 result = future_a.result()  # Wait for the result
 print(f"QC Status: {result['qc_summary']}")
 
 # Method B: Process by Raw Frame (e.g., from Camera)
 future_b = service.process(frame=frame)
-result = future_a.result()  # Wait for the result
+result = future_b.result()  # Wait for the result
 print(f"QC Status: {result['qc_summary']}")
 
 service.stop()
 ```
 
 ## Output
-
-A full JSON report are also saved to disk.
-
-Directory: The location is defined in `src/autotomeqc/config/yolo-config.yaml` (see the output_dir setting).
-
-Files: {filename}_qc.json
-
-
-And, you can view the results directly in the terminal:
+You can view the results directly in the terminal:
 
 **Example Output:**
 ```bash
@@ -68,24 +67,65 @@ Ready > example/input_images/img1.jpg
 Processing: img1
 Status:     FAIL
 Reason:     Section failed QC criteria
- -> Section 0: FAIL | Area: 61464px
+ -> Section 0: FAIL | Area: 24504px
     ✅ coverage: full_section
     ❌ knife_mark: knifemark_shredding
     ✅ thickness_consistency: Consistent
-    ✅ thickness: 80
-    ✅ shape: Hexagon (vertices: 6)
+    ✅ thickness: 60
+    ✅ shape: Diamond
+```
 
-----------------------------------------
-Ready > example/input_images/img2.jpg
-Processing: img2
-Status:     PASS
-Reason:     N/A
- -> Section 0: PASS | Area: 58210px
-    ✅ coverage: full_section
-    ✅ knife_mark: none
-    ✅ thickness_consistency: Consistent
-    ✅ thickness: 70
-    ✅ shape: Hexagon (vertices: 6)
+And, a full JSON report is also saved to disk.
+
+- **Directory:** The location is defined in `src/autotomeqc/config/yolo-config.yaml` (see the `output_dir` setting).
+- **Files:** `{filename}_qc.json`
+
+**Example JSON Report:**
+```json
+{
+    "filename": "img1",
+    "timestamp": "2026-04-23 20:49:57",
+    "qc_summary": "FAIL",
+    "fail_reason": "Section failed QC criteria",
+    "processing_time_sec": 0.5774,
+    "sections": [
+        {
+            "qc_result": "FAIL",
+            "segmentation_conf": 0.96,
+            "area_in_pixels": 24504,
+            "overlap_ratio": 1.0,
+            "criteria": {
+                "coverage": {
+                    "pass_status": true,
+                    "label": "full_section",
+                    "conf": 0.9958
+                },
+                "knife_mark": {
+                    "pass_status": false,
+                    "label": "knifemark_shredding",
+                    "conf": 0.9992,
+                    "reason": "Defect Detected: knifemark_shredding"
+                },
+                "thickness_consistency": {
+                    "pass_status": true,
+                    "label": "Consistent",
+                    "conf": 0.8967
+                },
+                "thickness": {
+                    "pass_status": true,
+                    "label": "60",
+                    "conf": 0.5589
+                },
+                "shape": {
+                    "pass_status": true,
+                    "label": "Diamond",
+                    "metric": 5,
+                    "message": "Detected Diamond (vertices=5)"
+                }
+            }
+        }
+    ]
+}
 ```
 
 
@@ -120,11 +160,9 @@ uv run mypy src
 ```
 
 ## Documentation
-To generate the rst files source files for documentation, run
+To install documentation dependencies, build and preview, run:
 ```bash
-sphinx-apidoc -o docs/source/ src
-```
-Then to create the documentation HTML files, run
-```bash
-sphinx-build -b html docs/source/ docs/build/html
+uv sync --group docs
+uv run mkdocs build
+uv run mkdocs serve
 ```
