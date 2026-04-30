@@ -1,28 +1,8 @@
-name: Test Lint and Type Check
+name: buildj-deploy-docs
 on:
   workflow_call:
 
 jobs: 
-  tests-lint-and-type-check: 
-    runs-on: ubuntu-latest
-    strategy: 
-      matrix:
-        python-version: [ '3.11', '3.12' ]
-    steps: 
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Install UV - python version set to ${{ matrix.python-version }} 
-      uses: astral-sh/setup-uv@v5
-      with:
-        python-version: ${{ matrix.python-version }} 
-    - name: Unit test with PyTest  
-      run: uv run pytest tests/
-    - name: Lint with Ruff 
-      run: uv run ruff check
-    - name: Type check with mypy 
-      run: |
-        uv run mypy src
-        
   build-docs:
     runs-on: ubuntu-latest
     permissions:
