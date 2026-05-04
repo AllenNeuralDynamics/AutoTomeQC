@@ -1,0 +1,7 @@
+{
+    "filename": "img15",
+    "timestamp": "2026-05-04 14:51:46",
+    "qc_summary": "FAIL",
+    "fail_reason": "Section detected outside loop. IoA for section(s): [0.0] (threshold: 0.5)",
+    "sections": []
+}

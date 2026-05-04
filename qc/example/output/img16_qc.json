@@ -1,0 +1,43 @@
+{
+    "filename": "img16",
+    "timestamp": "2026-05-04 14:51:46",
+    "qc_summary": "PASS",
+    "fail_reason": "N/A",
+    "processing_time_sec": 0.1746,
+    "sections": [
+        {
+            "qc_result": "PASS",
+            "segmentation_conf": 0.68,
+            "area_in_pixels": 2534,
+            "overlap_ratio": 1.0,
+            "criteria": {
+                "coverage": {
+                    "pass_status": true,
+                    "label": "full_section",
+                    "conf": 1.0
+                },
+                "knife_mark": {
+                    "pass_status": true,
+                    "label": "knifemark_none",
+                    "conf": 0.9974
+                },
+                "thickness_consistency": {
+                    "pass_status": true,
+                    "label": "Consistent",
+                    "conf": 0.9594
+                },
+                "thickness": {
+                    "pass_status": true,
+                    "label": "80",
+                    "conf": 0.3722
+                },
+                "shape": {
+                    "pass_status": true,
+                    "label": "Diamond",
+                    "metric": 4,
+                    "message": "Detected Diamond (vertices=4)"
+                }
+            }
+        }
+    ]
+}

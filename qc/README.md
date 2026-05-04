@@ -58,12 +58,24 @@ print(f"QC Status: {result['qc_summary']}")
 service.stop()
 ```
 
+**Note: Installation in External Projects:**
+If you want to use the `autotomeqc` engine in another project, you can install it directly from GitHub using `uv`:
+
+```bash
+uv add "autotomeqc @ git+https://github.com/AllenNeuralDynamics/AutoTomeQC.git#subdirectory=qc"
+```
+
+Or by adding it to your `pyproject.toml` directly:
+```toml
+[tool.uv.sources]
+autotomeqc = { git = "https://github.com/AllenNeuralDynamics/AutoTomeQC.git", subdirectory = "qc" }
+```
+
 ## Output
 You can view the results directly in the terminal:
 
 **Example Output:**
-```bash
-Ready > example/input_images/img1.jpg
+```bashReady > example/input_images/img1.jpg
 Processing: img1
 Status:     FAIL
 Reason:     Section failed QC criteria
@@ -155,7 +167,7 @@ uv run ruff check
 
 - Type Check
 
-```bash
+```basht
 uv run mypy src
 ```
 

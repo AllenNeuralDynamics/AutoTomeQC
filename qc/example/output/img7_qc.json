@@ -1,0 +1,45 @@
+{
+    "filename": "img7",
+    "timestamp": "2026-05-04 14:51:45",
+    "qc_summary": "FAIL",
+    "fail_reason": "Section failed QC criteria",
+    "processing_time_sec": 0.1673,
+    "sections": [
+        {
+            "qc_result": "FAIL",
+            "segmentation_conf": 0.83,
+            "area_in_pixels": 8742,
+            "overlap_ratio": 1.0,
+            "criteria": {
+                "coverage": {
+                    "pass_status": false,
+                    "label": "partial_section",
+                    "conf": 1.0,
+                    "reason": "Defect Detected: partial_section"
+                },
+                "knife_mark": {
+                    "pass_status": false,
+                    "label": "knifemark_shredding",
+                    "conf": 0.9996,
+                    "reason": "Defect Detected: knifemark_shredding"
+                },
+                "thickness_consistency": {
+                    "pass_status": true,
+                    "label": "Consistent",
+                    "conf": 0.9981
+                },
+                "thickness": {
+                    "pass_status": true,
+                    "label": "60",
+                    "conf": 0.4274
+                },
+                "shape": {
+                    "pass_status": true,
+                    "label": "Diamond",
+                    "metric": 5,
+                    "message": "Detected Diamond (vertices=5)"
+                }
+            }
+        }
+    ]
+}

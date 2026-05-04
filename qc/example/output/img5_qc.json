@@ -1,0 +1,44 @@
+{
+    "filename": "img5",
+    "timestamp": "2026-05-04 14:51:44",
+    "qc_summary": "FAIL",
+    "fail_reason": "Section failed QC criteria",
+    "processing_time_sec": 0.1511,
+    "sections": [
+        {
+            "qc_result": "FAIL",
+            "segmentation_conf": 0.97,
+            "area_in_pixels": 56255,
+            "overlap_ratio": 1.0,
+            "criteria": {
+                "coverage": {
+                    "pass_status": true,
+                    "label": "full_section",
+                    "conf": 0.9998
+                },
+                "knife_mark": {
+                    "pass_status": false,
+                    "label": "knifemark_stillmark",
+                    "conf": 0.8839,
+                    "reason": "Defect Detected: knifemark_stillmark"
+                },
+                "thickness_consistency": {
+                    "pass_status": true,
+                    "label": "Consistent",
+                    "conf": 0.9819
+                },
+                "thickness": {
+                    "pass_status": true,
+                    "label": "70",
+                    "conf": 0.3883
+                },
+                "shape": {
+                    "pass_status": true,
+                    "label": "Hexagon",
+                    "metric": 7,
+                    "message": "Detected Hexagon (vertices=7)"
+                }
+            }
+        }
+    ]
+}

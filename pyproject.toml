@@ -1,44 +1,12 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "autotomeqc"
-version = "0.10.0"
-description = "Sectioning quality control"
-
-readme = "README.md"
+name = "autotomeqc-instrument"
+version = "0.1.0"
+description = "AutoTome monorepo workspace"
 requires-python = ">=3.11"
-dependencies = [
-    "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
-    "fastapi",
-    "ultralytics>=8.4.0",
-    "torch>=2.4.0",
-    "numpy>=1.26.0",
-    "opencv-python>=4.9.0",
-    "PyYAML>=6.0",
-    "lapx>=0.5.5",
-]
+dependencies = []
 
-[project.scripts]
-autotomeqc = "autotomeqc.__main__:main"
+[tool.uv.sources]
+autotomeqc = { workspace = true }
 
-[dependency-groups]
-dev = [
-    "pytest>=8.3.5",
-    "ruff>=0.9.9",
-    "mypy>=1.10.0",
-    "types-PyYAML>=6.0",
-]
-docs = [
-    'mkdocs',
-    'mkdocs-material',
-    'mkdocstrings[python]'
-]
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/autotomeqc"]
-
-[tool.pytest.ini_options]
-pythonpath = ["src", "tests"]
+[tool.uv.workspace]
+members = ["qc"]
