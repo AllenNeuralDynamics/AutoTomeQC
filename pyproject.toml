@@ -3,10 +3,17 @@ name = "autotomeqc-instrument"
 version = "0.1.0"
 description = "AutoTome monorepo workspace"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "autotomeqc[api]",
+    "autotome-ui"
+]
 
 [tool.uv.sources]
 autotomeqc = { workspace = true }
+autotome-ui = { workspace = true }
 
 [tool.uv.workspace]
-members = ["qc"]
+members = [
+    "qc",
+    "web-ui"
+]
