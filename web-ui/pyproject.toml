@@ -1,9 +1,0 @@
-[project]
-name = "autotome-ui"
-version = "0.1.0"
-description = "Frontend Web UI for AutoTomeQC"
-requires-python = ">=3.11"
-dependencies = [
-    "streamlit>=1.30.0",
-    "requests>=2.31.0",
-]

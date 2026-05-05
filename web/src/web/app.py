@@ -1,8 +1,9 @@
+import os
 import streamlit as st
 import requests
 
-# The URL where your qc FastAPI server is running
-BACKEND_URL = "http://localhost:8000/api/v1/process"
+# Read from environment variable, fallback to localhost for local development
+BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8080/api/v1/process")
 
 st.set_page_config(page_title="AutoTomeQC", layout="centered")
 st.title("AutoTomeQC Dashboard")
@@ -29,3 +30,15 @@ if uploaded_file is not None:
                     
             except requests.exceptions.ConnectionError:
                 st.error("Failed to connect to the backend. Is the FastAPI server running on port 8000?")
+
+def main():
+    """
+    Entry point for the 'web' command defined in pyproject.toml.
+    This allows running the UI by simply typing `uv run web` in the terminal.
+    """
+    import sys
+    from streamlit.web import cli as stcli
+    
+    script_path = os.path.abspath(__file__)
+    sys.argv = ["streamlit", "run", script_path]
+    sys.exit(stcli.main())

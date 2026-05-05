@@ -1,0 +1,23 @@
+
+[project]
+name = "autotome-ui"
+version = "0.1.0"
+description = "Frontend Web UI for AutoTomeQC"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.30.0",
+    "requests>=2.31.0",
+]
+
+[tool.uv.sources]
+autotome-ui = { workspace = true }
+
+[project.scripts]
+autotome-ui = "web.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/web"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

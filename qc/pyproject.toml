@@ -27,6 +27,9 @@ api = [
     "python-multipart"
 ]
 
+[tool.uv.sources]
+autotomeqc = { workspace = true }
+
 [project.scripts]
 autotomeqc = "autotomeqc.__main__:main"
 
