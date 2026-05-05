@@ -1,0 +1,23 @@
+# Services (Logic): Code that talks to the outside world. 
+# It shouldn't know about anything related to UI.
+
+import httpx
+from typing import Tuple
+from web.protocol.schemas import PipelineResult
+
+async def analyze_image(backend_url: str, file_name: str, file_bytes: bytes) -> Tuple[PipelineResult, dict]:
+    """
+    Sends the image to the FastAPI backend, validates the response, 
+    and returns both the Pydantic object and the raw JSON dictionary.
+    """
+    async with httpx.AsyncClient() as client:
+        files = {"file": (file_name, file_bytes, "image/jpeg")}
+        
+        # Send the POST request asynchronously
+        response = await client.post(backend_url, files=files, timeout=60.0)
+        
+        # Raise an exception if the status code is not 200 OK
+        response.raise_for_status()
+        
+        raw_json = response.json()
+        return PipelineResult.model_validate(raw_json), raw_json

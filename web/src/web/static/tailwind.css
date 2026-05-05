@@ -1,0 +1,7 @@
+/* 
+  Your custom compiled Tailwind CSS or raw CSS goes here.
+  For example:
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

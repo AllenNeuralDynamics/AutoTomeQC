@@ -1,19 +1,27 @@
-import os
-import base64
-import argparse
-import httpx
+#he "glue" that connects the Services to the Components when a user visits a URL or clicks a button.
 import asyncio
-from nicegui import ui
-import json
-from web.models.schemas import PipelineResult
+from nicegui import ui, app
+import httpx
+import os
+import argparse
+import base64
+from pathlib import Path
+
+from web.services.api import analyze_image
+from web.components.results_card import display_qc_result
 
 # Parse arguments for port mapping
 parser = argparse.ArgumentParser()
-parser.add_argument("--port", type=int, default=8501)
-args, _ = parser.parse_known_args()
+
+# Mount the static directory so the browser can access files inside it
+static_dir = Path(__file__).resolve().parent / "static"
+app.add_static_files("/static", str(static_dir))
 
 @ui.page('/')
 def index():
+    # Inject the custom Tailwind CSS from the static folder
+    ui.add_head_html('<link href="/static/tailwind.css" rel="stylesheet">')
+
     # Read from environment variable, fallback to localhost for local development
     BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000/api/v1/process")
 
@@ -56,42 +64,18 @@ def index():
         img_src = f"data:image/jpeg;base64,{base64_img}"
         
         try:
-            with httpx.Client() as client:
-                files = {"file": (file_name, file_bytes, "image/jpeg")}
-                response = client.post(BACKEND_URL, files=files, timeout=60.0)
+            # 1. Fetch Data (Service)
+            result, raw_json = await analyze_image(BACKEND_URL, file_name, file_bytes)
             
             results_container.clear()
             with results_container:
-                ui.image(img_src).style("max-width: 600px; margin-bottom: 1rem;")
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    # Client dynamically parses and validates the JSON!
-                    result = PipelineResult.model_validate(response.json())
+                # 2. Draw Data (Component)
+                display_qc_result(result, raw_json, img_src)
                     
-                    if result.qc_summary == "PASS":
-                        ui.label(f"QC Summary: {result.qc_summary}").classes('text-green-600 text-2xl font-bold')
-                    else:
-                        ui.label(f"QC Summary: {result.qc_summary} | Reason: {result.fail_reason}").classes('text-red-600 text-2xl font-bold')
-                    
-                    # Display nicely formatted sections breakdown
-                    if result.sections:
-                        with ui.card().classes('w-full mt-4'):
-                            ui.label("Section Breakdown").classes('text-xl font-bold mb-2')
-                            for i, sec in enumerate(result.sections):
-                                with ui.expansion(f"Section {i} ({sec.qc_result}) - Area: {sec.area_in_pixels}px", icon="science").classes('w-full bg-gray-50 font-semibold'):
-                                    for crit_name, crit_data in sec.criteria.items():
-                                        with ui.row().classes('items-center ml-4 mb-1'):
-                                            icon_name = "check_circle" if crit_data.pass_status else "cancel"
-                                            color = "green" if crit_data.pass_status else "red"
-                                            ui.icon(icon_name, color=color, size='sm')
-                                            ui.label(f"{crit_name}: {crit_data.label}").classes('text-base text-black font-medium')
-
-                    with ui.expansion("Raw JSON Report", icon="data_object").classes('w-full mt-4'):
-                        ui.code(json.dumps(response.json(), indent=2), language='json').classes('w-full')
-                else:
-                    ui.label(f"Backend Error: {response.text}").classes('text-red-600 font-bold')
-                    
+        except httpx.HTTPStatusError as exc:
+            results_container.clear()
+            with results_container:
+                ui.label(f"Backend Error: {exc.response.text}").classes('text-red-600 font-bold')
         except httpx.RequestError:
             results_container.clear()
             with results_container:
@@ -100,5 +84,10 @@ def index():
     ui.upload(on_upload=handle_upload, label="Upload a section image", auto_upload=True).props('accept=".jpg,.jpeg,.png,.tif,.tiff"')
     
 if __name__ in {"__main__", "__mp_main__"}:
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8080, help="Port to run the NiceGUI server on")
+    args = parser.parse_args()
+
     # Start the NiceGUI engine outside the page route
     ui.run(port=args.port, title="AutoTomeQC", show=False, reload=False)
