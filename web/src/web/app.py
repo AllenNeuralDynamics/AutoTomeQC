@@ -59,9 +59,8 @@ def main():
         log.info(f"        or http://{local_ip}:{args.ui_port}")
     
     script_path = Path(__file__).resolve().parent / "ui.py"
-    
     frontend_cmd = [
-        sys.executable,
+        "uv", "run", "python",
         str(script_path), 
         "--port", str(args.ui_port)
     ]

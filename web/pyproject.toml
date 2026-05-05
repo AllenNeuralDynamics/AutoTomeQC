@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "nicegui>=1.4.0",
     "httpx>=0.25.0",
+    "pydantic>=2.0.0",
 ]
 
 [tool.uv.sources]

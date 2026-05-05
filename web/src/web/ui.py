@@ -5,6 +5,7 @@ import httpx
 import asyncio
 from nicegui import ui
 import json
+from web.models.schemas import PipelineResult
 
 # Parse arguments for port mapping
 parser = argparse.ArgumentParser()
@@ -65,31 +66,29 @@ def index():
                 
                 if response.status_code == 200:
                     result = response.json()
+                    # Client dynamically parses and validates the JSON!
+                    result = PipelineResult.model_validate(response.json())
                     
-                    if result.get("qc_summary") == "PASS":
-                        ui.label(f"QC Summary: {result['qc_summary']}").classes('text-green-600 text-2xl font-bold')
+                    if result.qc_summary == "PASS":
+                        ui.label(f"QC Summary: {result.qc_summary}").classes('text-green-600 text-2xl font-bold')
                     else:
-                        ui.label(f"QC Summary: {result['qc_summary']} | Reason: {result['fail_reason']}").classes('text-red-600 text-2xl font-bold')
+                        ui.label(f"QC Summary: {result.qc_summary} | Reason: {result.fail_reason}").classes('text-red-600 text-2xl font-bold')
                     
                     # Display nicely formatted sections breakdown
-                    sections = result.get("sections", [])
-                    if sections:
+                    if result.sections:
                         with ui.card().classes('w-full mt-4'):
                             ui.label("Section Breakdown").classes('text-xl font-bold mb-2')
-                            for i, sec in enumerate(sections):
-                                sec_status = sec.get('qc_result', 'UNKNOWN')
-                                with ui.expansion(f"Section {i} ({sec_status}) - Area: {sec.get('area_in_pixels', 0)}px", icon="science").classes('w-full bg-gray-50 font-semibold'):
-                                    criteria = sec.get("criteria", {})
-                                    for crit_name, crit_data in criteria.items():
+                            for i, sec in enumerate(result.sections):
+                                with ui.expansion(f"Section {i} ({sec.qc_result}) - Area: {sec.area_in_pixels}px", icon="science").classes('w-full bg-gray-50 font-semibold'):
+                                    for crit_name, crit_data in sec.criteria.items():
                                         with ui.row().classes('items-center ml-4 mb-1'):
-                                            passed = crit_data.get('pass_status')
-                                            icon_name = "check_circle" if passed else "cancel"
-                                            color = "green" if passed else "red"
+                                            icon_name = "check_circle" if crit_data.pass_status else "cancel"
+                                            color = "green" if crit_data.pass_status else "red"
                                             ui.icon(icon_name, color=color, size='sm')
-                                            ui.label(f"{crit_name}: {crit_data.get('label', 'N/A')}").classes('text-base text-black font-medium')
+                                            ui.label(f"{crit_name}: {crit_data.label}").classes('text-base text-black font-medium')
 
                     with ui.expansion("Raw JSON Report", icon="data_object").classes('w-full mt-4'):
-                        ui.code(json.dumps(result, indent=2), language='json').classes('w-full')
+                        ui.code(json.dumps(response.json(), indent=2), language='json').classes('w-full')
                 else:
                     ui.label(f"Backend Error: {response.text}").classes('text-red-600 font-bold')
                     
