@@ -43,13 +43,11 @@ def main():
 
     # Backend) Start the Backend API in the background using the same python environment
     backend_cmd = [
-        "uv", "run", "uvicorn",
-        "autotomeqc.interface.server:app", 
-        "--host", "0.0.0.0", 
+        "uv", "run", "uvicorn", "autotomeqc.interface.server:app", "--host", "0.0.0.0",
         "--port", str(args.backend_port)
     ]
     if args.debug:
-        backend_cmd.extend(["--log-level", "debug"])  
+        backend_cmd.extend(["--log-level", "debug"])
     log.info(f"Launching Backend API on port {args.backend_port}...")
     backend_process = subprocess.Popen(backend_cmd)
 
@@ -60,11 +58,12 @@ def main():
     if local_ip != "127.0.0.1":
         log.info(f"        or http://{local_ip}:{args.ui_port}")
     
-    script_path = Path(__file__).resolve().parent / "streamlit_tmp.py"
+    script_path = Path(__file__).resolve().parent / "ui.py"
+    
     frontend_cmd = [
-        "uv", "run", "streamlit", "run", 
+        sys.executable,
         str(script_path), 
-        "--server.port", str(args.ui_port)
+        "--port", str(args.ui_port)
     ]
     frontend_process = subprocess.Popen(frontend_cmd)
 

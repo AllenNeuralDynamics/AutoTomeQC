@@ -5,7 +5,7 @@ version = "0.1.0"
 description = "Frontend Web UI for AutoTomeQC"
 requires-python = ">=3.11"
 dependencies = [
-    "streamlit>=1.30.0",
+    "nicegui>=1.4.0",
     "httpx>=0.25.0",
 ]
 
