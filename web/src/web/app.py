@@ -1,42 +1,9 @@
 import os
-import streamlit as st
-import requests
 import sys
 import argparse
 import logging
 import subprocess
-import logging
 from streamlit.web import cli as stcli
-
-def render_ui():
-    # Read from environment variable, fallback to localhost for local development
-    BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000/api/v1/process")
-
-    st.set_page_config(page_title="AutoTomeQC", layout="centered")
-    st.title("AutoTomeQC Dashboard")
-
-    uploaded_file = st.file_uploader("Upload a section image", type=["jpg", "jpeg", "png", "tif", "tiff"])
-
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Input Image", width="stretch")
-        
-        if st.button("Run QC", type="primary"):
-            with st.spinner("Processing in backend..."):
-                # We send the raw bytes of the image over the network!
-                files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "image/jpeg")}
-                
-                try:
-                    response = requests.post(BACKEND_URL, files=files)
-                    
-                    if response.status_code == 200:
-                        result = response.json()
-                        st.success(f"QC Summary: {result['qc_summary']} | Reason: {result['fail_reason']}")
-                        st.json(result)  # Display the full JSON report beautifully
-                    else:
-                        st.error(f"Backend Error: {response.text}")
-                        
-                except requests.exceptions.ConnectionError:
-                    st.error("Failed to connect to the backend. Is the FastAPI server running on port 8000?")
 
 def get_local_ip() -> str:
     """Helper to get the local IP address of the machine."""
@@ -73,7 +40,7 @@ def main():
 
     log.info("Starting AutoTomeQC Services...")
 
-    # Provide the Backend URL dynamically to the Streamlit code above
+    # Provide the Backend URL dynamically to the Streamlit UI
     os.environ["AUTOTOME_BACKEND_URL"] = f"http://localhost:{args.backend_port}/api/v1/process"
 
     # Backend) Start the Backend API in the background using the same python environment
@@ -86,7 +53,7 @@ def main():
     if args.debug:
         backend_cmd.extend(["--log-level", "debug"])  
     log.info(f"Launching Backend API on port {args.backend_port}...")
-    backend_process = subprocess.Popen(backend_cmd, cwd="qc")
+    backend_process = subprocess.Popen(backend_cmd)
 
     # Frontend) Launch the Web UI in the foreground
     local_ip = get_local_ip()
@@ -94,7 +61,7 @@ def main():
     log.info(f"Web UI: http://localhost:{args.ui_port}")
     if local_ip != "127.0.0.1":
         log.info(f"        or http://{local_ip}:{args.ui_port}")
-    script_path = os.path.abspath(__file__)
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "streamlit_tmp.py")
     sys.argv = ["streamlit", "run", script_path, "--server.port", str(args.ui_port)]
     
     try:
@@ -108,4 +75,4 @@ def main():
         backend_process.wait()
 
 if __name__ == "__main__":
-    render_ui()
+    main()
