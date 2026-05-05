@@ -1,6 +1,3 @@
-# Example output
-example/output/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -8,6 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
+
+# Example output files
+qc/example/output/
 
 # Distribution / packaging
 .Python

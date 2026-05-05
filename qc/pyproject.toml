@@ -32,6 +32,7 @@ autotomeqc = { workspace = true }
 
 [project.scripts]
 autotomeqc = "autotomeqc.__main__:main"
+autotomeqc-server = "autotomeqc.interface.server:main"
 
 [dependency-groups]
 dev = [
