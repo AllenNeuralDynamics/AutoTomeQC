@@ -49,4 +49,4 @@ if __name__ in {"__main__", "__mp_main__"}:
     args = parser.parse_args()
 
     # Start the NiceGUI engine outside the page route
-    ui.run(port=args.port, title="AutoTomeQC", show=False, reload=False)
+    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False)

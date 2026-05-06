@@ -9,7 +9,7 @@ def render_uploader_sidebar(BACKEND_URL, image_container, inspector_container):
         with ui.row().classes('sidebar-header'):
             with ui.row().classes('sidebar-title'):
                 ui.icon('monitor_heart').classes('text-accent text-xl')
-                ui.label('AutoTome-QC v2.4').classes('sidebar-title-text')
+                ui.label('AutoTome-QC').classes('sidebar-title-text')
             
             # Small icon button replacing the large upload dropzone
             upload_btn = ui.button(icon='upload', color=None).classes('btn-upload')
