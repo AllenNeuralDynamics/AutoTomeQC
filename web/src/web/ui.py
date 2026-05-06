@@ -23,8 +23,8 @@ def index():
     # Globally replace Quasar's default "Sky Blue" with our theme's Orange
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
     
-    # Connect to the external stylesheet
-    ui.add_head_html('<link href="/static/tailwind.css" rel="stylesheet">')
+    # Connect to the custom application stylesheet
+    ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')
 
     # Read from environment variable, fallback to localhost for local development
     BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000/api/v1/process")
