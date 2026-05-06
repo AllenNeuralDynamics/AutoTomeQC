@@ -4,19 +4,19 @@ from web.components.uploader_controller import UploaderController
 
 def render_uploader_sidebar(BACKEND_URL, image_container, inspector_container):
     """Renders the left sidebar and contains the upload logic."""
-    with ui.left_drawer(fixed=True).classes('sidebar bg-[#0A0A0A] flex flex-col border-r border-[#222222] p-0 w-80') as left_drawer:
+    with ui.left_drawer(fixed=True).classes('sidebar w-80 p-0') as left_drawer:
         
-        with ui.row().classes('p-4 border-b border-[#222222] flex items-center justify-between w-full m-0'):
-            with ui.row().classes('items-center gap-2 m-0'):
-                ui.icon('monitor_heart').classes('text-[#F27D26] text-xl')
-                ui.label('AutoTome-QC v2.4').classes('font-mono font-bold tracking-tight text-sm uppercase text-white')
+        with ui.row().classes('sidebar-header'):
+            with ui.row().classes('sidebar-title'):
+                ui.icon('monitor_heart').classes('text-accent text-xl')
+                ui.label('AutoTome-QC v2.4').classes('sidebar-title-text text-white')
             
             # Small icon button replacing the large upload dropzone
             upload_btn = ui.button(icon='upload', color=None) \
                 .props('flat dense') \
-                .classes('hover:bg-[#222222] rounded border border-[#333333] transition-colors text-white w-8 h-8')
+                .classes('btn-icon border border-[var(--border-light)] w-8 h-8')
         
-        queue_container = ui.column().classes('flex-1 overflow-y-auto w-full p-2 gap-1 custom-scrollbar flex-nowrap')
+        queue_container = ui.column().classes('sidebar-content custom-scrollbar gap-1 flex-nowrap overflow-y-auto')
         with queue_container:
             empty_state = ui.column().classes('h-full w-full flex flex-col items-center justify-center p-8 text-center gap-4 opacity-40')
             with empty_state:
@@ -31,7 +31,7 @@ def render_uploader_sidebar(BACKEND_URL, image_container, inspector_container):
         uploader = ui.upload(on_upload=controller.handle_upload, multiple=True, auto_upload=True).props('accept="image/*"').classes('hidden')
         upload_btn.on('click', lambda: uploader.run_method('pickFiles'))
         
-        with ui.row().classes('p-4 border-t border-[#222222] w-full m-0'):
-            ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=controller.process_batch).classes('w-full py-2 bg-[#F27D26] hover:bg-[#ff8c3a] text-white rounded font-mono text-xs font-bold transition-all flex items-center justify-center gap-2')
+        with ui.row().classes('sidebar-footer'):
+            ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=controller.process_batch).classes('btn-process flex items-center justify-center gap-2')
             
     return left_drawer
