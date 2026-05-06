@@ -14,7 +14,7 @@ def render_uploader_sidebar(BACKEND_URL, image_container, inspector_container):
             # Small icon button replacing the large upload dropzone
             upload_btn = ui.button(icon='upload', color=None).classes('btn-upload')
         
-        queue_container = ui.column().classes('queue-container custom-scrollbar')
+        queue_container = ui.column().classes('queue-container custom-scrollbar gap-0')
         with queue_container:
             empty_state = ui.column().classes('queue-empty-state')
             with empty_state:

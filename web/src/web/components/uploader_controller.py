@@ -82,7 +82,7 @@ class UploaderController:
     def build_file_row(self, file_id, file_name, file_path, img_src):
         self.empty_state.set_visibility(False)
         with self.queue_container:
-            with ui.row().classes('queue-item').on('click', lambda e, fid=file_id: self.load_result(fid)) as row_ui:
+            with ui.row().classes('queue-item shrink-0').on('click', lambda e, fid=file_id: self.load_result(fid)) as row_ui:
                 
                 with ui.element('div').classes('queue-thumb'):
                     ui.image(img_src).classes('queue-img')
