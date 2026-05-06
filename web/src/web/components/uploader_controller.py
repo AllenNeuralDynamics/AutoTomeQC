@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import httpx
+import json
 import tempfile
 import uuid
 from pathlib import Path
@@ -8,6 +9,7 @@ from nicegui import ui
 
 from web.services.api import analyze_image
 from web.components.results_card import display_qc_result
+from web.protocol.schemas import PipelineResult
 
 class UploaderController:
     """Handles the state and logic for the batch uploader and queue processing."""
@@ -26,33 +28,82 @@ class UploaderController:
     def remove_file(self, file_id):
         info = self.queued_files.pop(file_id, None)
         if info:
+            is_active = 'bg-[#1A1A1A]' in info['row_ui'].classes
             info['row_ui'].delete()
             info['path'].unlink(missing_ok=True)
+            if info.get('json_path'):
+                info['json_path'].unlink(missing_ok=True)
+                
+            # Clear the main workspace if we deleted the image we were actively viewing
+            if is_active or not self.queued_files:
+                self.image_container.clear()
+                with self.image_container:
+                    with ui.column().classes('viewport-idle'):
+                        ui.icon('aspect_ratio', size='6rem')
+                        ui.label('VIEWPORT_IDLE')
+                self.inspector_container.clear()
+                with self.inspector_container:
+                    with ui.column().classes('viewport-idle'):
+                        ui.icon('info', size='2rem')
+                        ui.label('Select an image or run batch to view informatics')
+                        
         if not self.queued_files:
             self.empty_state.set_visibility(True)
+            
+    def load_result(self, file_id):
+        info = self.queued_files.get(file_id)
+        if not info: return
+            
+        try:
+            for f_info in self.queued_files.values():
+                f_info['row_ui'].classes(add='border-transparent hover:bg-[#151515] hover:border-[#333333]', remove='bg-[#1A1A1A] border-[#F27D26]/30')
+            info['row_ui'].classes(add='bg-[#1A1A1A] border-[#F27D26]/30', remove='border-transparent hover:bg-[#151515] hover:border-[#333333]')
+
+            self.image_container.clear()
+            self.inspector_container.clear()
+            
+            json_path = info.get('json_path')
+            if json_path and json_path.exists():
+                with open(json_path, 'r') as f:
+                    raw_json = json.load(f)
+                result = PipelineResult.model_validate(raw_json)
+                display_qc_result(result, raw_json, info['img_src'], self.image_container, self.inspector_container)
+            else:
+                with self.image_container:
+                    with ui.element('div').classes('image-wrapper'):
+                        ui.image(info['img_src']).classes('image-preview')
+                with self.inspector_container:
+                    with ui.column().classes('viewport-idle'):
+                        ui.icon('info', size='2rem')
+                        ui.label('Image pending processing...')
+        except Exception as e:
+            ui.notify(f"Error loading result: {e}", type='negative')
 
     def build_file_row(self, file_id, file_name, file_path, img_src):
         self.empty_state.set_visibility(False)
         with self.queue_container:
-            with ui.row().classes('group relative flex items-center gap-3 p-3 rounded cursor-pointer transition-all border border-transparent hover:bg-[#151515] hover:border-[#333333] w-full flex-nowrap overflow-hidden') as row_ui:
+            with ui.row().classes('group relative flex items-center gap-3 p-3 rounded cursor-pointer transition-all border border-transparent hover:bg-[#151515] hover:border-[#333333] w-full flex-nowrap overflow-hidden').on('click', lambda e, fid=file_id: self.load_result(fid)) as row_ui:
                 
                 with ui.element('div').classes('w-10 h-10 rounded overflow-hidden border border-[#333333] shrink-0 bg-black flex items-center justify-center'):
                     ui.image(img_src).classes('w-full h-full object-cover opacity-80')
                 
-                with ui.element('div').classes('flex-1 min-w-0'):
-                    ui.label(file_name).classes('text-xs font-mono truncate uppercase tracking-tight text-white')
+                with ui.element('div').classes('flex-1 min-w-0 pointer-events-none'):
+                    # Removed 'uppercase' class to respect original file name casing
+                    ui.label(file_name).classes('text-xs font-mono truncate tracking-tight text-white')
                     with ui.row().classes('items-center gap-2 mt-1 m-0 p-0'):
                         spinner = ui.spinner('dots', size='1em', color='blue-400')
                         spinner.set_visibility(False)
                         status_label = ui.label('PENDING').classes('text-[10px] text-gray-500 uppercase font-bold')
                 
-                delete_btn = ui.button(icon='delete', color='red', on_click=lambda: self.remove_file(file_id)) \
+                delete_btn = ui.button(icon='delete', color='red') \
                     .props('flat dense') \
-                    .classes('opacity-0 group-hover:opacity-100 transition-all absolute right-2 bg-[#151515] z-10')
+                    .classes('opacity-0 group-hover:opacity-100 transition-all absolute right-2 bg-[#151515] z-10') \
+                    .on('click.stop', lambda e, fid=file_id: self.remove_file(fid))
 
         self.queued_files[file_id] = {
             'name': file_name,
             'path': file_path,
+            'json_path': None,
             'img_src': img_src,
             'row_ui': row_ui,
             'status_label': status_label,
@@ -61,18 +112,24 @@ class UploaderController:
         }
 
     async def handle_upload(self, e):
-        file_name = getattr(e, 'name', 'uploaded_image.jpg')
-        
-        if not file_name.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff')):
-            ui.notify(f"Skipped {file_name}: Only image files are allowed.", type='warning')
-            return
-            
         if hasattr(e, 'content'): file_obj = e.content
         elif hasattr(e, 'file'): file_obj = e.file
         elif hasattr(e, 'stream'): file_obj = e.stream
         else:
             ui.notify(f"Unknown upload format. Attributes available: {dir(e)}", type='negative')
             return
+            
+        # Safely extract the original filename
+        raw_name = getattr(e, 'name', None) or \
+                   getattr(e, 'filename', None) or \
+                   getattr(file_obj, 'name', None) or \
+                   getattr(file_obj, 'filename', None)
+                   
+        file_name = str(raw_name) if raw_name else None
+        
+        if not file_name:
+            file_name = f"image_{uuid.uuid4().hex[:6]}.jpg"
+            ui.notify(f"Browser stripped filename. Used: {file_name}", type='warning')
             
         if hasattr(file_obj, 'read'):
             read_result = file_obj.read()
@@ -92,6 +149,9 @@ class UploaderController:
         img_src = f"data:{mime_type};base64,{base64_img}"
         
         self.build_file_row(file_id, file_name, file_path, img_src)
+        
+        # Clear the browser's internal file queue so the exact same file can be re-uploaded if deleted
+        e.sender.run_method('removeUploadedFiles')
 
     async def process_batch(self, e):
         if not self.queued_files:
@@ -124,6 +184,12 @@ class UploaderController:
             
             try:
                 result, raw_json = await analyze_image(self.backend_url, info['name'], file_bytes)
+                
+                json_path = info['path'].with_suffix('.json')
+                with open(json_path, 'w') as f:
+                    json.dump(raw_json, f)
+                info['json_path'] = json_path
+                
                 display_qc_result(result, raw_json, info['img_src'], self.image_container, self.inspector_container)
                 status = result.qc_summary
                 info['status_label'].set_text(status)
