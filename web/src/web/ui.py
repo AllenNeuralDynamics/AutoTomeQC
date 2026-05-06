@@ -19,19 +19,44 @@ app.add_static_files("/static", str(static_dir))
 
 @ui.page('/')
 def index():
-    # Inject the custom Tailwind CSS from the static folder
+    ui.dark_mode().enable()
+    
+    # Globally replace Quasar's default "Sky Blue" with our theme's Orange
+    ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
+    
+    # Connect to the external stylesheet
     ui.add_head_html('<link href="/static/tailwind.css" rel="stylesheet">')
 
     # Read from environment variable, fallback to localhost for local development
     BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000/api/v1/process")
 
-    ui.label("AutoTomeQC Dashboard").classes("text-3xl font-bold mb-6")
+    # --- 1. TOOLBAR (Header) ---
+    with ui.header().classes('app-header').classes(remove='bg-primary'):
+        with ui.row().classes('header-left'):
+            ui.button(icon='chevron_left', color=None, on_click=lambda: left_drawer.toggle()).props('flat dense').classes('btn-icon')
+            ui.element('div').classes('header-divider')
+            with ui.row().classes('project-title-container'):
+                ui.label('PROJECT').classes('text-accent')
+                ui.label('/')
+                ui.label('UNTITLED_PROJECT').classes('text-title')
+        
+        with ui.row().classes('header-right'):
+            ui.button('CONFIG', icon='settings', color=None).classes('btn-config')
+            ui.button('EXPORT', icon='download', color=None).classes('btn-export')
 
-    results_container = ui.column()
+    # --- 2. MAIN WORKSPACE (Image Viewer) ---
+    ui.query('.q-page').classes('main-workspace bg-grid')
+    image_container = ui.column().classes('image-container')
+    with image_container:
+        with ui.column().classes('viewport-idle'):
+            ui.icon('aspect_ratio', size='6rem')
+            ui.label('VIEWPORT_IDLE')
 
+    # --- 3. UPLOAD CALLBACK (Logic) ---
     async def handle_upload(e):
-        results_container.clear()
-        with results_container:
+        image_container.clear()
+        inspector_container.clear()
+        with image_container:
             ui.spinner('dots', size='lg')
         
         # --- NiceGUI Version Compatibility ---
@@ -67,21 +92,45 @@ def index():
             # 1. Fetch Data (Service)
             result, raw_json = await analyze_image(BACKEND_URL, file_name, file_bytes)
             
-            results_container.clear()
-            with results_container:
                 # 2. Draw Data (Component)
-                display_qc_result(result, raw_json, img_src)
+            display_qc_result(result, raw_json, img_src, image_container, inspector_container)
                     
         except httpx.HTTPStatusError as exc:
-            results_container.clear()
-            with results_container:
+            inspector_container.clear()
+            with inspector_container:
                 ui.label(f"Backend Error: {exc.response.text}").classes('text-red-600 font-bold')
         except httpx.RequestError:
-            results_container.clear()
-            with results_container:
+            inspector_container.clear()
+            with inspector_container:
                 ui.label(f"Failed to connect to the backend at {BACKEND_URL}").classes('text-red-600 font-bold')
 
-    ui.upload(on_upload=handle_upload, label="Upload a section image", auto_upload=True).props('accept=".jpg,.jpeg,.png,.tif,.tiff"')
+    # --- 4. LEFT SIDEBAR (Uploader) ---
+    with ui.left_drawer(fixed=True).classes('sidebar') as left_drawer:
+        with ui.row().classes('sidebar-header'):
+            with ui.row().classes('sidebar-title'):
+                ui.icon('monitor_heart').classes('text-accent text-xl')
+                ui.label('AutoTome-QC v2.4').classes('sidebar-title-text')
+        
+        # Inject the uploader here so it can use the callback
+        with ui.column().classes('sidebar-content'):
+            ui.upload(on_upload=handle_upload, label="UPLOAD DATA", auto_upload=True).props('accept=".jpg,.jpeg,.png,.tif,.tiff" flat bordered').classes('w-full')
+        
+        with ui.row().classes('sidebar-footer'):
+            ui.button('PROCESS BATCH', icon='play_arrow', color=None).classes('btn-process')
+
+    # --- 5. RIGHT SIDEBAR (Inspector) ---
+    with ui.right_drawer(fixed=True).classes('sidebar') as right_drawer:
+        with ui.row().classes('sidebar-header'):
+            with ui.row().classes('sidebar-title'):
+                ui.icon('terminal').classes('text-accent text-lg')
+                ui.label('Inspector').classes('sidebar-title-text')
+        
+        # Store reference so the callback can push data here
+        inspector_container = ui.column().classes('inspector-content')
+        with inspector_container:
+            with ui.column().classes('viewport-idle'):
+                ui.icon('info', size='2rem')
+                ui.label('Select an image or run batch to view informatics')
     
 if __name__ in {"__main__", "__mp_main__"}:
     # Parse command-line arguments

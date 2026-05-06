@@ -1,9 +1,9 @@
 {
     "filename": "img0",
-    "timestamp": "2026-05-04 14:51:43",
+    "timestamp": "2026-05-05 12:28:58",
     "qc_summary": "PASS",
     "fail_reason": "N/A",
-    "processing_time_sec": 0.2167,
+    "processing_time_sec": 0.1575,
     "sections": [
         {
             "qc_result": "PASS",

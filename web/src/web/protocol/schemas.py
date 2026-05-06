@@ -7,6 +7,7 @@ class QCCriteria(BaseModel):
     message: Optional[str] = None
     conf: Optional[float] = None
     metric: Optional[float] = None
+    reason: Optional[str] = None
 
 class SectionResult(BaseModel):
     qc_result: str
