@@ -5,16 +5,15 @@ import httpx
 from typing import Tuple
 from web.protocol.schemas import PipelineResult
 
-async def analyze_image(backend_url: str, file_name: str, file_bytes: bytes) -> Tuple[PipelineResult, dict]:
+async def analyze_image(backend_url: str, file_path: str) -> Tuple[PipelineResult, dict]:
     """
-    Sends the image to the FastAPI backend, validates the response, 
+    Sends the image path to the FastAPI backend, validates the response, 
     and returns both the Pydantic object and the raw JSON dictionary.
     """
     async with httpx.AsyncClient() as client:
-        files = {"file": (file_name, file_bytes, "image/jpeg")}
-        
-        # Send the POST request asynchronously
-        response = await client.post(backend_url, files=files, timeout=60.0)
+        # Send the POST request asynchronously with the file path as a query parameter
+        params = {"img_path": file_path}
+        response = await client.post(backend_url, params=params, timeout=60.0)
         
         # Raise an exception if the status code is not 200 OK
         response.raise_for_status()

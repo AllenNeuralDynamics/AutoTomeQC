@@ -1,7 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, HTTPException
-import numpy as np
-import cv2
+from fastapi import FastAPI, HTTPException
 
 from autotomeqc.core.autotome_service import AutoTomeService
 
@@ -20,19 +18,10 @@ app = FastAPI(title="AutoTomeQC API", lifespan=lifespan)
 
 # Create the endpoint
 @app.post("/api/v1/process")
-def process_image(file: UploadFile = File(...)):
+def process_image(img_path: str):
     try:
-        # TODO: Return segmented images as well.
-        # Read the uploaded image into a numpy array (cv2 frame)
-        contents = file.file.read()
-        nparr = np.frombuffer(contents, np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if frame is None:
-            raise HTTPException(status_code=400, detail="Invalid image file provided.")
-
-        # Pass the raw frame to your existing pipeline
-        future_ticket = service.process(frame=frame)
+        # Pass the file path directly to the pipeline
+        future_ticket = service.process(img_path=img_path)
         result = future_ticket.result()  # Wait for the worker thread to finish
         return result
     except Exception as e:

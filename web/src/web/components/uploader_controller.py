@@ -136,8 +136,7 @@ class UploaderController:
             file_bytes = file_obj
 
         file_id = uuid.uuid4().hex
-        unique_filename = f"{file_id}_{file_name}"
-        file_path = self.temp_dir / unique_filename
+        file_path = self.temp_dir / file_name
         with open(file_path, "wb") as f:
             f.write(file_bytes)
             
@@ -177,11 +176,9 @@ class UploaderController:
             with self.image_container:
                 ui.spinner('dots', size='lg')
             
-            with open(info['path'], "rb") as f:
-                file_bytes = f.read()
-            
             try:
-                result, raw_json = await analyze_image(self.backend_url, info['name'], file_bytes)
+                # Pass the temporary file path directly to the API
+                result, raw_json = await analyze_image(self.backend_url, str(info['path']))
                 
                 json_path = info['path'].with_suffix('.json')
                 with open(json_path, 'w') as f:
