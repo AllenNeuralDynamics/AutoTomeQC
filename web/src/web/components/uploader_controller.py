@@ -56,8 +56,7 @@ class UploaderController:
             
         try:
             for f_info in self.queued_files.values():
-                f_info['row_ui'].classes(add='border-transparent hover:bg-[#151515] hover:border-[#333333]', remove='bg-[#1A1A1A] border-[#F27D26]/30')
-            info['row_ui'].classes(add='bg-[#1A1A1A] border-[#F27D26]/30', remove='border-transparent hover:bg-[#151515] hover:border-[#333333]')
+                f_info['row_ui'].classes(add='active')
 
             self.image_container.clear()
             self.inspector_container.clear()
@@ -82,22 +81,21 @@ class UploaderController:
     def build_file_row(self, file_id, file_name, file_path, img_src):
         self.empty_state.set_visibility(False)
         with self.queue_container:
-            with ui.row().classes('group relative flex items-center gap-3 p-3 rounded cursor-pointer transition-all border border-transparent hover:bg-[#151515] hover:border-[#333333] w-full flex-nowrap overflow-hidden').on('click', lambda e, fid=file_id: self.load_result(fid)) as row_ui:
+            with ui.row().classes('queue-item').on('click', lambda e, fid=file_id: self.load_result(fid)) as row_ui:
                 
-                with ui.element('div').classes('w-10 h-10 rounded overflow-hidden border border-[#333333] shrink-0 bg-black flex items-center justify-center'):
-                    ui.image(img_src).classes('w-full h-full object-cover opacity-80')
+                with ui.element('div').classes('queue-thumb'):
+                    ui.image(img_src).classes('queue-img')
                 
-                with ui.element('div').classes('flex-1 min-w-0 pointer-events-none'):
-                    # Removed 'uppercase' class to respect original file name casing
-                    ui.label(file_name).classes('text-xs font-mono truncate tracking-tight text-white')
-                    with ui.row().classes('items-center gap-2 mt-1 m-0 p-0'):
+                with ui.element('div').classes('queue-details'):
+                    ui.label(file_name).classes('queue-filename')
+                    with ui.row().classes('queue-status-row'):
                         spinner = ui.spinner('dots', size='1em', color='blue-400')
                         spinner.set_visibility(False)
-                        status_label = ui.label('PENDING').classes('text-[10px] text-gray-500 uppercase font-bold')
+                        status_label = ui.label('PENDING').classes('queue-status-text')
                 
                 delete_btn = ui.button(icon='delete', color='red') \
                     .props('flat dense') \
-                    .classes('opacity-0 group-hover:opacity-100 transition-all absolute right-2 bg-[#151515] z-10') \
+                    .classes('btn-delete') \
                     .on('click.stop', lambda e, fid=file_id: self.remove_file(fid))
 
         self.queued_files[file_id] = {
@@ -119,7 +117,7 @@ class UploaderController:
             ui.notify(f"Unknown upload format. Attributes available: {dir(e)}", type='negative')
             return
             
-        # Safely extract the original filename
+
         raw_name = getattr(e, 'name', None) or \
                    getattr(e, 'filename', None) or \
                    getattr(file_obj, 'name', None) or \
@@ -168,10 +166,10 @@ class UploaderController:
             if info['status_label'].text in ['PASS', 'FAIL']: continue
                 
             for f_info in self.queued_files.values():
-                f_info['row_ui'].classes(add='border-transparent hover:bg-[#151515] hover:border-[#333333]', remove='bg-[#1A1A1A] border-[#F27D26]/30')
-            info['row_ui'].classes(add='bg-[#1A1A1A] border-[#F27D26]/30', remove='border-transparent hover:bg-[#151515] hover:border-[#333333]')
+                f_info['row_ui'].classes(remove='active')
+            info['row_ui'].classes(add='active')
             info['status_label'].set_text('PROCESSING')
-            info['status_label'].classes(add='text-blue-400', remove='text-gray-500 text-red-500 text-green-500')
+            info['status_label'].classes(add='processing', remove='text-pass text-fail')
             info['spinner'].set_visibility(True)
             
             self.image_container.clear()
@@ -193,10 +191,10 @@ class UploaderController:
                 display_qc_result(result, raw_json, info['img_src'], self.image_container, self.inspector_container)
                 status = result.qc_summary
                 info['status_label'].set_text(status)
-                info['status_label'].classes(add=f"text-{'green' if status == 'PASS' else 'red'}-500", remove='text-blue-400 text-gray-500')
+                info['status_label'].classes(add=f"text-{'pass' if status == 'PASS' else 'fail'}", remove='processing')
             except Exception as exc:
                 info['status_label'].set_text('ERROR')
-                info['status_label'].classes(add='text-red-500', remove='text-blue-400 text-gray-500')
+                info['status_label'].classes(add='text-fail', remove='processing')
                 self.inspector_container.clear()
                 with self.inspector_container:
                     ui.label(f"Backend Error").classes('text-red-600 font-bold')
