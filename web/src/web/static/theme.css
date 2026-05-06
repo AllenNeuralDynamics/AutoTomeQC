@@ -151,6 +151,8 @@ body {
 .queue-status-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; margin-bottom: 0; padding: 0; }
 .queue-status-text { font-size: 0.625rem; color: var(--text-dark); text-transform: uppercase; font-weight: bold; }
 .queue-status-text.processing { color: #60a5fa; }
+.queue-status-text.pass { color: var(--pass-color); }
+.queue-status-text.fail { color: var(--fail-color); }
 
 .btn-delete { opacity: 0; transition: all 0.2s; position: absolute; right: 0.5rem; background-color: var(--bg-card); z-index: 10; }
 .queue-item:hover .btn-delete { opacity: 1; }

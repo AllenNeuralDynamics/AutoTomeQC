@@ -169,7 +169,7 @@ class UploaderController:
                 f_info['row_ui'].classes(remove='active')
             info['row_ui'].classes(add='active')
             info['status_label'].set_text('PROCESSING')
-            info['status_label'].classes(add='processing', remove='text-pass text-fail')
+            info['status_label'].style('color: #60a5fa !important')
             info['spinner'].set_visibility(True)
             
             self.image_container.clear()
@@ -191,10 +191,10 @@ class UploaderController:
                 display_qc_result(result, raw_json, info['img_src'], self.image_container, self.inspector_container)
                 status = result.qc_summary
                 info['status_label'].set_text(status)
-                info['status_label'].classes(add=f"text-{'pass' if status == 'PASS' else 'fail'}", remove='processing')
+                info['status_label'].style(f'color: var(--{"pass" if status == "PASS" else "fail"}-color) !important')
             except Exception as exc:
                 info['status_label'].set_text('ERROR')
-                info['status_label'].classes(add='text-fail', remove='processing')
+                info['status_label'].style('color: var(--fail-color) !important')
                 self.inspector_container.clear()
                 with self.inspector_container:
                     ui.label(f"Backend Error").classes('text-red-600 font-bold')
