@@ -56,7 +56,8 @@ class UploaderController:
             
         try:
             for f_info in self.queued_files.values():
-                f_info['row_ui'].classes(add='active')
+                f_info['row_ui'].classes(remove='active')
+            info['row_ui'].classes(add='active')
 
             self.image_container.clear()
             self.inspector_container.clear()
@@ -98,6 +99,7 @@ class UploaderController:
                     .classes('btn-delete') \
                     .on('click.stop', lambda e, fid=file_id: self.remove_file(fid))
 
+        # TODO move to pydantic model if we add more attributes
         self.queued_files[file_id] = {
             'name': file_name,
             'path': file_path,
