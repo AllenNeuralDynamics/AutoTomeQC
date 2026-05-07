@@ -8,21 +8,22 @@ from pathlib import Path
 from nicegui import ui
 
 from web.services.api import analyze_image
-from web.components.results_card import display_qc_result
+from web.components.main_workspace import update_main_workspace
+from web.components.inspector_sidebar import update_inspector_sidebar
 from web.protocol.schemas import PipelineResult
 
 class UploaderController:
     """Handles the state and logic for the batch uploader and queue processing."""
     
-    def __init__(self, backend_url, image_container, inspector_container, queue_container, empty_state):
+    def __init__(self, backend_url, temp_upload_dir, temp_upload_url_prefix, image_container, inspector_container, queue_container, empty_state):
         self.backend_url = backend_url
         self.image_container = image_container
         self.inspector_container = inspector_container
         self.queue_container = queue_container
         self.empty_state = empty_state
         
-        # State tracking
-        self.temp_dir = Path(tempfile.mkdtemp(prefix="autotome_"))
+        self.temp_dir = temp_upload_dir
+        self.static_url_prefix = temp_upload_url_prefix
         self.queued_files = {}
 
     def remove_file(self, file_id):
@@ -67,7 +68,10 @@ class UploaderController:
                 with open(json_path, 'r') as f:
                     raw_json = json.load(f)
                 result = PipelineResult.model_validate(raw_json)
-                display_qc_result(result, raw_json, info['img_src'], self.image_container, self.inspector_container)
+                
+                # Pass the local Path directly; NiceGUI natively auto-serves it
+                update_main_workspace(self.image_container, info['path'])
+                update_inspector_sidebar(self.inspector_container, result, raw_json)
             else:
                 with self.image_container:
                     with ui.element('div').classes('image-wrapper'):
@@ -187,7 +191,9 @@ class UploaderController:
                     json.dump(raw_json, f)
                 info['json_path'] = json_path
                 
-                display_qc_result(result, raw_json, info['img_src'], self.image_container, self.inspector_container)
+                # Pass the local Path directly; NiceGUI natively auto-serves it
+                update_main_workspace(self.image_container, info['path'])
+                update_inspector_sidebar(self.inspector_container, result, raw_json)
                 status = result.qc_summary
                 info['status_label'].set_text(status)
                 info['status_label'].style(f'color: var(--{"pass" if status == "PASS" else "fail"}-color) !important')

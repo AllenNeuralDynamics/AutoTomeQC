@@ -8,6 +8,7 @@ dependencies = [
     "nicegui>=1.4.0",
     "httpx>=0.25.0",
     "pydantic>=2.0.0",
+    "pywebview",
 ]
 
 [tool.uv.sources]
