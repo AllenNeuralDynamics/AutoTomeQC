@@ -70,7 +70,7 @@ class UploaderController:
                 result = PipelineResult.model_validate(raw_json)
                 
                 # Pass the local Path directly; NiceGUI natively auto-serves it
-                update_main_workspace(self.image_container, info['path'])
+                update_main_workspace(self.image_container, f"{self.static_url_prefix}/{info['path'].name}")
                 update_inspector_sidebar(self.inspector_container, result, raw_json)
             else:
                 with self.image_container:
@@ -192,7 +192,7 @@ class UploaderController:
                 info['json_path'] = json_path
                 
                 # Pass the local Path directly; NiceGUI natively auto-serves it
-                update_main_workspace(self.image_container, info['path'])
+                update_main_workspace(self.image_container, f"{self.static_url_prefix}/{info['path'].name}")
                 update_inspector_sidebar(self.inspector_container, result, raw_json)
                 status = result.qc_summary
                 info['status_label'].set_text(status)
