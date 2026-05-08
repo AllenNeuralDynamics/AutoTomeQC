@@ -192,7 +192,7 @@ class UploaderController:
                 info['json_path'] = json_path
                 
                 # Pass the local Path directly; NiceGUI natively auto-serves it
-                update_main_workspace(self.image_container, f"{self.static_url_prefix}/{info['path'].name}")
+                
                 update_inspector_sidebar(self.inspector_container, result, raw_json)
                 status = result.qc_summary
                 info['status_label'].set_text(status)
@@ -203,6 +203,13 @@ class UploaderController:
                 self.inspector_container.clear()
                 with self.inspector_container:
                     ui.label(f"Backend Error").classes('text-red-600 font-bold')
+
+            try:
+                update_main_workspace(self.image_container, f"{self.static_url_prefix}/{info['path'].name}")
+            except Exception as exc:
+                self.image_container.clear()
+                with self.image_container:
+                    ui.label(f"Error displaying image").classes('text-red-600 font-bold')
                     
             info['spinner'].set_visibility(False)        
             await asyncio.sleep(1.0)
