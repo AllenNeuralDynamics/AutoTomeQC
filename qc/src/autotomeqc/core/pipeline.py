@@ -254,7 +254,8 @@ class AutoTomePipeline:
                 segmentation_conf=round(section_obj.confidence, 2),
                 area_in_pixels=section_obj.area_in_pixels,
                 overlap_ratio=round(section_obj.overlap_ratio, 2),
-                criteria=qc_results
+                criteria=qc_results,
+                mask=section_obj.mask if section_obj.mask else None
             ))
 
         # Final global summary report Logic

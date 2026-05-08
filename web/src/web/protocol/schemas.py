@@ -15,6 +15,8 @@ class SectionResult(BaseModel):
     area_in_pixels: int
     overlap_ratio: float
     criteria: Dict[str, QCCriteria]
+    mask: Optional[List[List[float]]] = None
+    
 
 class PipelineResult(BaseModel):
     filename: str

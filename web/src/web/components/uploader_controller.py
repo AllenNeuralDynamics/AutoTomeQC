@@ -70,7 +70,7 @@ class UploaderController:
                 result = PipelineResult.model_validate(raw_json)
                 
                 # Pass the local Path directly; NiceGUI natively auto-serves it
-                update_main_workspace(self.image_container, f"{self.static_url_prefix}/{info['path'].name}")
+                update_main_workspace(self.image_container, info['path'], result=result)
                 update_inspector_sidebar(self.inspector_container, result, raw_json)
             else:
                 with self.image_container:
@@ -205,7 +205,7 @@ class UploaderController:
                     ui.label(f"Backend Error").classes('text-red-600 font-bold')
 
             try:
-                update_main_workspace(self.image_container, f"{self.static_url_prefix}/{info['path'].name}")
+                update_main_workspace(self.image_container, info['path'], result=result)
             except Exception as exc:
                 self.image_container.clear()
                 with self.image_container:

@@ -1,8 +1,9 @@
 from nicegui import ui
-from typing import Union
+from typing import Union, Optional
 from pathlib import Path
 import numpy as np
 from PIL import Image
+from web.protocol.schemas import PipelineResult
 
 """
 def render_main_workspace():
@@ -53,18 +54,39 @@ def render_main_workspace():
             ui.label('VIEWPORT_IDLE')
     return image_container
 
-def update_main_workspace(image_container, img_src: Union[str, Path]):
+def update_main_workspace(image_container, img_src: Union[str, Path], result: Optional[PipelineResult] = None):
     image_container.clear()
+    
+    # Resize the image to 640x640 to match YOLO's coordinate space for the SVG masks
+    if isinstance(img_src, Path) and img_src.exists():
+        img_src = Image.open(img_src).resize((640, 640))
+    elif isinstance(img_src, str) and Path(img_src).exists():
+        img_src = Image.open(img_src).resize((640, 640))
+
     with image_container:
-        #with ui.element('div').classes('flex-1 w-full h-full flex items-center justify-center'):
-        #ui.image(img_src).classes('image-preview').style('w-full h-full object-contain')
-        #image = Image.fromarray(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
-        # Expand
-        #ui.image(img_src).classes('w-full h-full object-cover')
-        #ui.image(img_src).props('fit=scale-down')
-        
-        # Fixed image size
-        # Check img_src dimension: f
-        # TODO get size
-        ui.image(img_src).props('width=640 height=640')
-    return        
+        with ui.element('div').classes('relative'):
+            image_view = ui.interactive_image(img_src).style('width: 640px; height: 640px;')
+            
+            if result and result.sections:
+                svg_content = ""
+                for sec in result.sections:
+                    if sec.mask:
+                        points_str = " ".join([f"{p[0]},{p[1]}" for p in sec.mask])
+                        svg_content += f'<polygon points="{points_str}" fill="rgba(242, 125, 38, 0.2)" stroke="#F27D26" stroke-width="2" />'
+                
+                if svg_content:
+                    image_view.content = svg_content
+                    
+                    def toggle_mask():
+                        if image_view.content:
+                            image_view.content = ""
+                            toggle_btn._props['icon'] = 'visibility_off'
+                        else:
+                            image_view.content = svg_content
+                            toggle_btn._props['icon'] = 'visibility'
+                        toggle_btn.update()
+                        
+                    toggle_btn = ui.button(icon='visibility', on_click=toggle_mask) \
+                        .props('flat round color=white') \
+                        .classes('absolute top-2 right-2 bg-black/50 z-10')
+    return
