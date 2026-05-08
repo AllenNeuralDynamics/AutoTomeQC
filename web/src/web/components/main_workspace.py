@@ -26,11 +26,31 @@ def update_main_workspace(image_container, img_src: Union[str, Path]):
 
 """
 
+
 def render_main_workspace():
-    ui.query('.q-page').classes('flex flex-col items-stretch bg-[#0A0A0A]')
-    image_container = ui.element('div').classes('w-full flex-grow flex items-center justify-center bg-black overflow-hidden min-h-[600px]')
+    #image_container = ui.element('div').classes('w-full flex-grow flex items-center justify-center bg-black overflow-hidden min-h-[600px]')
+    #image_container = ui.element('div').classes(
+    #    'w-full flex-grow flex-1 h-full min-h-0 flex items-center justify-center bg-black overflow-hidden'
+    #)
+    # Flex container that fills available space, centers content, and has a black background
+    image_container = ui.element('div').classes(
+        'w-full h-full flex-1 flex-grow min-h-0 ' # Expansion
+        'flex items-center justify-center '       # Content Centering
+        'bg-black overflow-hidden self-center'    # Alignment & Style
+    )
+    # Non-stretching image with object-fit to contain, wrapped in a div that centers it
+    image_container = ui.element('div').classes(
+        'w-[640px] h-[640px] flex-none '       # Strict Fixed Dimensions
+        'flex items-center justify-center '    # Centers the icon/label inside
+        'bg-black overflow-hidden m-auto '     # Centers the div itself in the parent
+        'self-center rounded-lg border border-[#222222]'   # Style
+    )
+    # Fixed-size image with object-fit to contain, wrapped in a div that centers it
+
     with image_container:
-        ui.icon('aspect_ratio', size='6rem').classes('opacity-10 text-white')
+        with ui.column().classes('viewport-idle'):
+            ui.icon('aspect_ratio', size='6rem')
+            ui.label('VIEWPORT_IDLE')
     return image_container
 
 def update_main_workspace(image_container, img_src: Union[str, Path]):
@@ -39,5 +59,12 @@ def update_main_workspace(image_container, img_src: Union[str, Path]):
         #with ui.element('div').classes('flex-1 w-full h-full flex items-center justify-center'):
         #ui.image(img_src).classes('image-preview').style('w-full h-full object-contain')
         #image = Image.fromarray(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
-        ui.image(img_src).classes('w-full h-full object-cover')
+        # Expand
+        #ui.image(img_src).classes('w-full h-full object-cover')
+        #ui.image(img_src).props('fit=scale-down')
+        
+        # Fixed image size
+        # Check img_src dimension: f
+        # TODO get size
+        ui.image(img_src).props('width=640 height=640')
     return        

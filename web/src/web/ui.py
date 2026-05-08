@@ -58,7 +58,7 @@ if __name__ in {"__main__", "__mp_main__"}:
 
     # Start the NiceGUI engine outside the page route
     # WEB UI
-    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=True, reload=False)
+    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False)
     
     # Desktop option
     #ui.run(native=True, reload=False, title="AutoTomeQC", port=args.port)

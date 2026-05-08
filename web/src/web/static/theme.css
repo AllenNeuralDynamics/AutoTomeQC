@@ -26,16 +26,17 @@ body {
 }
 
 /* --- Layout Components --- */
-.bg-grid {
-    background-image: 
-        linear-gradient(rgba(242, 125, 38, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(242, 125, 38, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
+.q-page {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    background-color: #333333 !important;
+    
+    /* Crucial: Ensure the page always spans the full viewport height */
+    min-height: 100vh !important;
+    height: 100vh !important;
+    overflow: hidden;
 }
-
 .main-workspace {
     display: flex;
     flex-direction: column;

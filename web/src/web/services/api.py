@@ -19,4 +19,5 @@ async def analyze_image(backend_url: str, file_path: str) -> Tuple[PipelineResul
         response.raise_for_status()
         
         raw_json = response.json()
+        #print("Raw JSON response from backend:", raw_json)  # Debugging statement
         return PipelineResult.model_validate(raw_json), raw_json
