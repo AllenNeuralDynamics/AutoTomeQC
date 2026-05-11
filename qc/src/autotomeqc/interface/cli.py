@@ -4,6 +4,11 @@ import logging
 import json
 import autotomeqc
 from autotomeqc.core.autotome_service import AutoTomeService
+from autotomeqc.config.config_loader import load_app_config
+import argparse
+
+import yaml
+
 
 logger = logging.getLogger(__name__)
 READY_SIGNAL = "System Ready"
@@ -20,7 +25,17 @@ def print_arg_info(args):
     logger.info(f"version: {autotomeqc.__version__}")
 
 def run_interactive_cli():
-    service = AutoTomeService()
+    parser = argparse.ArgumentParser(description="AutoTomeQC CLI")
+    parser.add_argument("--config", type=str, help="Path to custom config.yaml (optional)")
+    args = parser.parse_args()
+    
+    custom_config = None
+    if args.config:
+        logger.info(f"Loading custom config from: {args.config}")
+        custom_config = load_app_config(args.config)
+
+    # Add arg parser and pass config
+    service = AutoTomeService(config=custom_config)
 
     # Detect Mode
     # isatty() returns True if connected to a terminal (Human), False if piped (Robot)

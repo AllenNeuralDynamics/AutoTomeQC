@@ -1,25 +1,29 @@
 # Temp file for testing
 # src/autotomeqc/config/config_loader.py
 
+from typing import Optional
+
 import yaml
 from pathlib import Path
 from autotomeqc.config.schemas import AppConfig
 
-# TODO Use the adapter or validate using pydantic
-def load_app_config() -> AppConfig:
-    # Get the directory where THIS file (config_loader.py) lives
-    config_dir = Path(__file__).resolve().parent
 
-    # Point directly to the yaml in the same folder
-    config_path = config_dir / 'yolo-config.yaml'
+def load_app_config(config_path: str = None) -> AppConfig:
+    """
+    Accepts a string path or None. 
+    Loads the YAML and validates it via Pydantic.
+    """
+    if config_path is None:
+        target_path = Path(__file__).resolve().parent / 'yolo-config.yaml'  # Default config
+    else:
+        target_path = Path(config_path)
 
-    if not config_path.exists():
-        print(f"DEBUG: Looking for config at: {config_path.absolute()}")
-        raise FileNotFoundError(f"Config missing at: {config_path}")
+    # Basic verification
+    if not target_path.exists():
+        raise FileNotFoundError(f"Config not found at: {target_path.absolute()}")
 
-    with open(config_path, 'r') as f:
+    # Load and Return as Pydantic Object
+    with open(target_path, 'r') as f:
         raw_yaml = yaml.safe_load(f)
 
     return AppConfig(**raw_yaml)
-
-CONFIG = load_app_config()

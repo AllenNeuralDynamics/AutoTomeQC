@@ -4,6 +4,8 @@ import numpy as np
 from concurrent.futures import Future
 from typing import Optional
 from autotomeqc.core.pipeline import AutoTomePipeline
+from autotomeqc.config.schemas import AppConfig
+from autotomeqc.config.config_loader import load_app_config
 
 
 class AutoTomeService:
@@ -11,7 +13,9 @@ class AutoTomeService:
     The High-Level Controller. 
     It explicitly handles the 3 main events: Start, Stop, Process.
     """
-    def __init__(self):
+    def __init__(self, config:AppConfig=None):
+        # If the user doesn't provide a config, load the default
+        self.config = config or load_app_config()
         self.pipeline = None
         self.running = False
         self.log = logging.getLogger(self.__class__.__name__)
@@ -25,7 +29,7 @@ class AutoTomeService:
             return False
         self.log.info(">>> EVENT: START")
         try:
-            self.pipeline = AutoTomePipeline()
+            self.pipeline = AutoTomePipeline(config=self.config)
             success = self.pipeline.start()
             if success:
                 self.running = True

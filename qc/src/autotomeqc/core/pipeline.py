@@ -10,11 +10,11 @@ from collections import deque
 from typing import Dict, Optional, Any
 from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
-from autotomeqc.config.config_loader import CONFIG
+from autotomeqc.config.schemas import AppConfig
 from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask, Detection, ProcessInput
 from pydantic import ValidationError
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
-from autotomeqc.yolo_segmentation.post_processing import cropped_segmented, validate_detections
+from autotomeqc.yolo_segmentation.post_processing import YoloPostProcessor
 from autotomeqc.algorithms.coverage import SectionCoverageQC
 from autotomeqc.algorithms.knife_mark import KnifeMarksQC
 from autotomeqc.algorithms.thickness_consistency import ThicknessConsistencyQC
@@ -25,11 +25,12 @@ from autotomeqc.algorithms.shape import ShapeQC
 class AutoTomePipeline:
     DEFAULT_MAX_QUEUE_SIZE = 20   # 20 frames 640x640 RGB is ~24MB
 
-    def __init__(self):
+    def __init__(self, config:AppConfig):
+        self.config = config
         self.log = logging.getLogger(self.__class__.__name__)
-        self.output_path = Path(CONFIG.qc.output_dir)
-        self.save_segmented_img = CONFIG.qc.save_segmented_images
-        self.save_input_img = CONFIG.qc.save_input_images
+        self.output_path = Path(self.config.qc.output_dir) if self.config else None
+        self.save_segmented_img = self.config.qc.save_segmented_images if self.config else False
+        self.save_input_img = self.config.qc.save_input_images if self.config else False
 
         self.input_queue = deque(maxlen=self.DEFAULT_MAX_QUEUE_SIZE)
         self.queue_lock = threading.Lock()
@@ -37,15 +38,16 @@ class AutoTomePipeline:
         self.is_running = False
 
         # Preprocessing - Segmentation via YOLO
-        self.segmenter = YoloSegmentation(config=CONFIG.qc.yolo)
+        self.segmenter = YoloSegmentation(config=self.config.qc.yolo if self.config else None)
+        self.post_processor = YoloPostProcessor(config=self.config.qc.yolo_post_processing)
 
         self.log.info("Initializing QC Models...")
         self.qc_modules = {
-            "coverage": SectionCoverageQC(CONFIG.qc.section_coverage),
-            "knife_mark": KnifeMarksQC(CONFIG.qc.knife_mark),
-            "thickness_consistency": ThicknessConsistencyQC(CONFIG.qc.thickness_consistency),
-            "thickness": ThicknessQC(CONFIG.qc.thickness),
-            "shape": ShapeQC(CONFIG.qc.shape, output_dir=self.output_path),
+            "coverage": SectionCoverageQC(self.config.qc.section_coverage if self.config else None),
+            "knife_mark": KnifeMarksQC(self.config.qc.knife_mark if self.config else None),
+            "thickness_consistency": ThicknessConsistencyQC(self.config.qc.thickness_consistency if self.config else None),
+            "thickness": ThicknessQC(self.config.qc.thickness if self.config else None),
+            "shape": ShapeQC(self.config.qc.shape if self.config else None, output_dir=self.output_path),
         }
 
     def start(self):
@@ -171,14 +173,14 @@ class AutoTomePipeline:
                     detections = self.segmenter.process_frame(frame)
 
                     # Validate Detections
-                    is_valid, error_reason, detections = validate_detections(detections)
+                    is_valid, error_reason, detections = self.post_processor.validate_detections(detections)
                     if not is_valid:
                         self._handle_pipeline_failure(
                             frame, detections, filename, timestamp, error_reason, future_ticket
                         )
                     else:
                         # Pre-processing for QC (Segmentation & Cropping)
-                        detections = cropped_segmented(frame, detections)
+                        detections = self.post_processor.cropped_segmented(frame, detections)
                         # Execution for QC Algorithms
                         self._handle_pipeline_valid_input(
                             frame, detections, filename, timestamp, start_ts,
