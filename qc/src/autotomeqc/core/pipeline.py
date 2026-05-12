@@ -29,6 +29,7 @@ class AutoTomePipeline:
         self.config = config
         self.log = logging.getLogger(self.__class__.__name__)
         self.output_path = Path(self.config.qc.output_dir) if self.config else None
+        self.save_qc_json = self.config.qc.save_qc_json if self.config else True
         self.save_segmented_img = self.config.qc.save_segmented_images if self.config else False
         self.save_input_img = self.config.qc.save_input_images if self.config else False
 
@@ -212,7 +213,8 @@ class AutoTomePipeline:
             sections=[]
         )
         output = result.model_dump(exclude_none=True)
-        save_json_results(output, self.output_path / f"{filename}_qc.json")
+        if self.save_qc_json:
+            save_json_results(output, self.output_path / f"{filename}_qc.json")
         if self.save_input_img and frame is not None:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
         if future_ticket and not future_ticket.done():
@@ -283,7 +285,8 @@ class AutoTomePipeline:
         output = result_obj.model_dump(exclude_none=True)
 
         # IO Operations
-        save_json_results(output, self.output_path / f"{filename}_qc.json")
+        if self.save_qc_json:
+            save_json_results(output, self.output_path / f"{filename}_qc.json")
         if self.save_input_img:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
         if self.save_segmented_img:

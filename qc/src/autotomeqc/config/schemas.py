@@ -52,6 +52,7 @@ class ShapeSettings(BaseModel):
 
 class QCSettings(BaseModel):
     output_dir: str = "example/output"
+    save_qc_json: bool = True
     save_segmented_images: bool = True
     save_input_images: bool = True
     yolo: YoloSettings
