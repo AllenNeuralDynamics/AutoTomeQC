@@ -4,12 +4,13 @@ from typing import Optional
 import cv2
 import numpy as np
 from autotomeqc.core.models import Detection
+from autotomeqc.config.schemas import PostProcessingSettings
 
 logger = logging.getLogger(__name__)
 
 class YoloPostProcessor:
-    def __init__(self, config):
-        self.config = config # This would be config.qc.yolo_post_processing
+    def __init__(self, config: PostProcessingSettings):
+        self.config = config
 
     def get_best_section_detection(self, detections: list[Detection]) -> Optional[Detection]:
         # Find ALL 'section' detections with high confidence

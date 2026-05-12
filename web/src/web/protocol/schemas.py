@@ -17,7 +17,6 @@ class SectionResult(BaseModel):
     criteria: Dict[str, QCCriteria]
     mask: Optional[List[List[float]]] = None
     
-
 class PipelineResult(BaseModel):
     filename: str
     timestamp: str
@@ -25,3 +24,10 @@ class PipelineResult(BaseModel):
     fail_reason: str
     processing_time_sec: Optional[float] = None
     sections: List[SectionResult] = []
+
+class UIOutputSettings(BaseModel):
+    """Lightweight schema for frontend UI state management and API requests."""
+    save_qc_json: bool = True
+    save_segmented_images: bool = True
+    save_input_images: bool = True
+    return_mask_data: bool = False

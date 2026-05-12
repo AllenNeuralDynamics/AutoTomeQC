@@ -38,8 +38,8 @@ def main():
     configure_logging(level=log_level)
     log = logging.getLogger("autotome-ui")
 
-    # Provide the Backend URL dynamically to the Streamlit UI
-    os.environ["AUTOTOME_BACKEND_URL"] = f"http://localhost:{args.backend_port}/api/v1/process"
+    # Provide the Base Backend URL dynamically to the Web UI
+    os.environ["AUTOTOME_BACKEND_URL"] = f"http://localhost:{args.backend_port}"
 
     # Backend) Start the Backend API in the background using the same python environment
     backend_cmd = [

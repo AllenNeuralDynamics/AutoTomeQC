@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 from pathlib import Path
@@ -51,6 +51,7 @@ class ShapeSettings(BaseModel):
     save_debug_img: bool = True
 
 class QCSettings(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
     output_dir: str = "example/output"
     save_qc_json: bool = True
     save_segmented_images: bool = True

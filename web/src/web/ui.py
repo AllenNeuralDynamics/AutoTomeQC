@@ -9,6 +9,7 @@ from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace
 from web.components.inspector_sidebar import render_inspector_sidebar
 from web.components.uploader_sidebar import render_uploader_sidebar
+from web.components.loading_overlay import render_loading_overlay
 
 # Parse arguments for port mapping
 parser = argparse.ArgumentParser()
@@ -34,7 +35,12 @@ def index():
     ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')
 
     # Read from environment variable, fallback to localhost for local development
-    BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000/api/v1/process")
+    BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000")
+    PROCESS_URL = f"{BACKEND_URL}/api/v1/process"
+    HEALTH_URL = f"{BACKEND_URL}/api/v1/health"
+
+    # --- 0. LOADING OVERLAY ---
+    render_loading_overlay(HEALTH_URL)
 
     # --- 1. RIGHT SIDEBAR (Inspector) ---
     # We initialize it first so we can pass its container to the uploader logic
@@ -45,7 +51,7 @@ def index():
 
     # --- 3. LEFT SIDEBAR (Uploader) ---
     # Pass the persistent temporary upload directory and its URL prefix
-    left_drawer = render_uploader_sidebar(BACKEND_URL, temp_upload_dir, temp_upload_url_prefix, image_container, inspector_container)
+    left_drawer = render_uploader_sidebar(PROCESS_URL, temp_upload_dir, temp_upload_url_prefix, image_container, inspector_container)
 
     # --- 4. TOOLBAR (Header) ---
     render_header(left_drawer)
