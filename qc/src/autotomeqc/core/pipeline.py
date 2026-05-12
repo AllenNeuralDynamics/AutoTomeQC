@@ -32,6 +32,7 @@ class AutoTomePipeline:
         self.save_qc_json = self.config.qc.save_qc_json if self.config else True
         self.save_segmented_img = self.config.qc.save_segmented_images if self.config else False
         self.save_input_img = self.config.qc.save_input_images if self.config else False
+        self.return_mask = self.config.qc.return_mask_data if self.config else False
 
         self.input_queue = deque(maxlen=self.DEFAULT_MAX_QUEUE_SIZE)
         self.queue_lock = threading.Lock()
@@ -259,7 +260,7 @@ class AutoTomePipeline:
                 area_in_pixels=section_obj.area_in_pixels,
                 overlap_ratio=round(section_obj.overlap_ratio, 2),
                 criteria=qc_results,
-                mask=section_obj.mask if section_obj.mask else None
+                mask=section_obj.mask if (self.return_mask and section_obj.mask) else None
             ))
 
         # Final global summary report Logic

@@ -55,6 +55,7 @@ class QCSettings(BaseModel):
     save_qc_json: bool = True
     save_segmented_images: bool = True
     save_input_images: bool = True
+    return_mask_data: bool = False
     yolo: YoloSettings
     yolo_post_processing: PostProcessingSettings # type: ignore
     # Map the algorithm configs

@@ -1,8 +1,9 @@
 qc:
   output_dir: "example/output"
-  save_qc_json: false
-  save_segmented_images: false
-  save_input_images: false
+  save_qc_json: true
+  save_segmented_images: true
+  save_input_images: true
+  return_mask_data: false
   yolo:
     weights_path: "weights/seg_fast_yolo26_640.pt"
     conf_thresh: 0.5
