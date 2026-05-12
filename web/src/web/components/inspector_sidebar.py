@@ -79,4 +79,11 @@ def display_qc_result(result: PipelineResult, raw_json: dict):
                                 ui.label(f"! {knife_crit.reason}").classes('notes-error')
 
         with ui.expansion("Raw JSON Report", icon="data_object").classes('json-expansion'):
-            ui.code(json.dumps(raw_json, indent=2), language='json').classes('json-code')
+            # Remove the heavy mask data from the display JSON to keep it readable
+            display_json = dict(raw_json)
+            if 'sections' in display_json:
+                display_json['sections'] = [
+                    {k: v for k, v in sec.items() if k != 'mask'}
+                    for sec in display_json['sections']
+                ]
+            ui.code(json.dumps(display_json, indent=2), language='json').classes('json-code')
