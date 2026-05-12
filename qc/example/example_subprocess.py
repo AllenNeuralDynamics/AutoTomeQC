@@ -8,6 +8,7 @@ from pathlib import Path
 # --- Configuration ---
 current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parent
+config_path = project_root / "qc" / "src" / "autotomeqc" / "config" / "yolo-config.yaml"
 input_dir = current_dir / "input_images"
 READY_SIGNAL = "System Ready"
 
@@ -26,13 +27,18 @@ def main():
     print("[MASTER] Launching AutoTomeQC Service...")
     
     # Launch Service as a Subprocess
+    cmd = ["uv", "run", "autotomeqc"]
+    if config_path.exists():
+        cmd.extend(["--config", str(config_path)])
+
+    # 3. Launch Service as a Subprocess
+    # We use pipes to communicate with the headless service
     process = subprocess.Popen(
-        [sys.executable, "-m", "autotomeqc"],
+        cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        text=True,     # Work with strings, not bytes
-        bufsize=1,     # Line buffered (send commands immediately)
-        cwd=project_root
+        text=True,     # Work with strings (JSON), not bytes
+        bufsize=1      # Line buffered for real-time interaction
     )
 
     # Warmup
