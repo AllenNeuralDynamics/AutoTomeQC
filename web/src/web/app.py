@@ -23,6 +23,17 @@ def get_local_ip() -> str:
 def configure_logging(level: int, fmt: str = "%(message)s", datefmt: str = "[%X]") -> None:
     logging.basicConfig(level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
+def set_environment_variables(backend_port: int) -> None:
+    """Sets necessary environment variables for the backend and frontend processes."""
+    # Provide the Base Backend URL dynamically to the Web UI
+    os.environ["AUTOTOME_BACKEND_URL"] = f"http://localhost:{backend_port}"
+
+    # Tell the Backend to disable disk writes and return mask data for the UI
+    os.environ["AUTOTOME_SAVE_QC_JSON"] = "False"
+    os.environ["AUTOTOME_SAVE_SEGMENTED"] = "False"
+    os.environ["AUTOTOME_SAVE_INPUT"] = "False"
+    os.environ["AUTOTOME_RETURN_MASK"] = "True"
+
 def main():
     """
     Entry point for the 'autotome-ui' command defined in pyproject.toml.
@@ -38,8 +49,8 @@ def main():
     configure_logging(level=log_level)
     log = logging.getLogger("autotome-ui")
 
-    # Provide the Base Backend URL dynamically to the Web UI
-    os.environ["AUTOTOME_BACKEND_URL"] = f"http://localhost:{args.backend_port}"
+    # Setup environment
+    set_environment_variables(args.backend_port)
 
     # Backend) Start the Backend API in the background using the same python environment
     backend_cmd = [

@@ -1,6 +1,6 @@
 from nicegui import ui
 from pathlib import Path
-from web.components.uploader_controller import UploaderController
+from web.controllers.uploader_controller import UploaderController
 
 def render_uploader_sidebar(BACKEND_URL: str, temp_upload_dir: Path, temp_upload_url_prefix: str, image_container, inspector_container):
     """Renders the left sidebar and contains the upload logic."""
