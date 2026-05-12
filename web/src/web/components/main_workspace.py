@@ -3,7 +3,7 @@ from typing import Union, Optional
 from pathlib import Path
 import numpy as np
 from PIL import Image
-from web.protocol.schemas import PipelineResult
+from web.models.schemas import PipelineResult
 
 """
 def render_main_workspace():
@@ -27,6 +27,26 @@ def update_main_workspace(image_container, img_src: Union[str, Path]):
 
 """
 
+def set_workspace_idle(image_container):
+    image_container.clear()
+    with image_container:
+        with ui.column().classes('viewport-idle'):
+            ui.icon('aspect_ratio', size='6rem')
+            ui.label('VIEWPORT_IDLE')
+
+def set_workspace_pending(image_container, img_src=None):
+    image_container.clear()
+    with image_container:
+        if img_src:
+            with ui.element('div').classes('image-wrapper'):
+                ui.image(img_src).classes('image-preview')
+        else:
+            ui.spinner('dots', size='lg')
+
+def set_workspace_error(image_container, msg):
+    image_container.clear()
+    with image_container:
+        ui.label(msg).classes('text-red-600 font-bold')
 
 def render_main_workspace():
     #image_container = ui.element('div').classes('w-full flex-grow flex items-center justify-center bg-black overflow-hidden min-h-[600px]')
@@ -48,10 +68,7 @@ def render_main_workspace():
     )
     # Fixed-size image with object-fit to contain, wrapped in a div that centers it
 
-    with image_container:
-        with ui.column().classes('viewport-idle'):
-            ui.icon('aspect_ratio', size='6rem')
-            ui.label('VIEWPORT_IDLE')
+    set_workspace_idle(image_container)
     return image_container
 
 def update_main_workspace(image_container, img_src: Union[str, Path], result: Optional[PipelineResult] = None):

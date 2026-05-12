@@ -1,8 +1,27 @@
 from nicegui import ui
-from web.protocol.schemas import PipelineResult
+from web.models.schemas import PipelineResult
 import json
 from nicegui import ui
-from web.protocol.schemas import PipelineResult
+from web.models.schemas import PipelineResult
+
+def set_inspector_idle(inspector_container):
+    inspector_container.clear()
+    with inspector_container:
+        with ui.column().classes('viewport-idle'):
+            ui.icon('info', size='2rem')
+            ui.label('Select an image or run batch to view informatics')
+
+def set_inspector_pending(inspector_container):
+    inspector_container.clear()
+    with inspector_container:
+        with ui.column().classes('viewport-idle'):
+            ui.icon('info', size='2rem')
+            ui.label('Image pending processing...')
+
+def set_inspector_error(inspector_container, msg):
+    inspector_container.clear()
+    with inspector_container:
+        ui.label(msg).classes('text-red-600 font-bold')
 
 def render_inspector_sidebar():
     """Renders the right sidebar and returns the inspector container."""
@@ -14,10 +33,7 @@ def render_inspector_sidebar():
         
         # Store reference so the callback can push data here
         inspector_container = ui.column().classes('inspector-content')
-        with inspector_container:
-            with ui.column().classes('viewport-idle'):
-                ui.icon('info', size='2rem')
-                ui.label('Select an image or run batch to view informatics')
+        set_inspector_idle(inspector_container)
     
     return right_drawer, inspector_container
 

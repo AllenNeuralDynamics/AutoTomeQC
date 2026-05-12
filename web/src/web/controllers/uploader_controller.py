@@ -8,23 +8,27 @@ from pathlib import Path
 from nicegui import ui
 
 from web.services.api import analyze_image
-from web.components.main_workspace import update_main_workspace
-from web.components.inspector_sidebar import update_inspector_sidebar
-from web.protocol.schemas import PipelineResult
+from web.models.schemas import PipelineResult
 
 class UploaderController:
     """Handles the state and logic for the batch uploader and queue processing."""
     
-    def __init__(self, backend_url, temp_upload_dir, temp_upload_url_prefix, image_container, inspector_container, queue_container, empty_state):
+    def __init__(self, backend_url, temp_upload_dir, temp_upload_url_prefix):
         self.backend_url = backend_url
-        self.image_container = image_container
-        self.inspector_container = inspector_container
-        self.queue_container = queue_container
-        self.empty_state = empty_state
         
         self.temp_dir = temp_upload_dir
         self.static_url_prefix = temp_upload_url_prefix
         self.queued_files = {}
+        
+        # UI Containers (Injected later by the Orchestrator)
+        self.queue_container = None
+        self.empty_state = None
+
+        # Events (Callbacks injected by the UI router)
+        self.on_image_selected = lambda path, result, raw_json: None
+        self.on_image_pending = lambda img_src: None
+        self.on_image_error = lambda msg: None
+        self.on_clear_views = lambda: None
 
     def remove_file(self, file_id):
         info = self.queued_files.pop(file_id, None)
@@ -37,16 +41,7 @@ class UploaderController:
                 
             # Clear the main workspace if we deleted the image we were actively viewing
             if is_active or not self.queued_files:
-                self.image_container.clear()
-                with self.image_container:
-                    with ui.column().classes('viewport-idle'):
-                        ui.icon('aspect_ratio', size='6rem')
-                        ui.label('VIEWPORT_IDLE')
-                self.inspector_container.clear()
-                with self.inspector_container:
-                    with ui.column().classes('viewport-idle'):
-                        ui.icon('info', size='2rem')
-                        ui.label('Select an image or run batch to view informatics')
+                self.on_clear_views()
                         
         if not self.queued_files:
             self.empty_state.set_visibility(True)
@@ -60,26 +55,17 @@ class UploaderController:
                 f_info['row_ui'].classes(remove='active')
             info['row_ui'].classes(add='active')
 
-            self.image_container.clear()
-            self.inspector_container.clear()
-            
             json_path = info.get('json_path')
             if json_path and json_path.exists():
                 with open(json_path, 'r') as f:
                     raw_json = json.load(f)
                 result = PipelineResult.model_validate(raw_json)
                 
-                # Pass the local Path directly; NiceGUI natively auto-serves it
-                update_main_workspace(self.image_container, info['path'], result=result)
-                update_inspector_sidebar(self.inspector_container, result, raw_json)
+                # Emit success event
+                self.on_image_selected(info['path'], result, raw_json)
             else:
-                with self.image_container:
-                    with ui.element('div').classes('image-wrapper'):
-                        ui.image(info['img_src']).classes('image-preview')
-                with self.inspector_container:
-                    with ui.column().classes('viewport-idle'):
-                        ui.icon('info', size='2rem')
-                        ui.label('Image pending processing...')
+                # Emit pending event
+                self.on_image_pending(info['img_src'])
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
 
@@ -176,11 +162,7 @@ class UploaderController:
             info['status_label'].set_text('PROCESSING')
             info['status_label'].style('color: #60a5fa !important')
             info['spinner'].set_visibility(True)
-            
-            self.image_container.clear()
-            self.inspector_container.clear()
-            with self.image_container:
-                ui.spinner('dots', size='lg')
+            self.on_image_pending(None) # Signal spinner
             
             try:
                 # Pass the temporary file path directly to the API
@@ -191,25 +173,14 @@ class UploaderController:
                     json.dump(raw_json, f)
                 info['json_path'] = json_path
                 
-                # Pass the local Path directly; NiceGUI natively auto-serves it
-                
-                update_inspector_sidebar(self.inspector_container, result, raw_json)
+                self.on_image_selected(info['path'], result, raw_json)
                 status = result.qc_summary
                 info['status_label'].set_text(status)
                 info['status_label'].style(f'color: var(--{"pass" if status == "PASS" else "fail"}-color) !important')
             except Exception as exc:
                 info['status_label'].set_text('ERROR')
                 info['status_label'].style('color: var(--fail-color) !important')
-                self.inspector_container.clear()
-                with self.inspector_container:
-                    ui.label(f"Backend Error").classes('text-red-600 font-bold')
-
-            try:
-                update_main_workspace(self.image_container, info['path'], result=result)
-            except Exception as exc:
-                self.image_container.clear()
-                with self.image_container:
-                    ui.label(f"Error displaying image").classes('text-red-600 font-bold')
+                self.on_image_error("Backend Error")
                     
             info['spinner'].set_visibility(False)        
             await asyncio.sleep(1.0)

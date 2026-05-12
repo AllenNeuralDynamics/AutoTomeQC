@@ -3,8 +3,8 @@
 
 import httpx
 import time
-from typing import Tuple
-from web.protocol.schemas import PipelineResult
+from typing import Tuple, Dict, Any
+from web.models.schemas import PipelineResult, AppConfig
 
 async def analyze_image(backend_url: str, file_path: str) -> Tuple[PipelineResult, dict]:
     """
@@ -22,6 +22,13 @@ async def analyze_image(backend_url: str, file_path: str) -> Tuple[PipelineResul
         raw_json = response.json()
         #print("Raw JSON response from backend:", raw_json)  # Debugging statement
         return PipelineResult.model_validate(raw_json), raw_json
+
+async def fetch_config_async(config_url: str) -> AppConfig:
+    """Fetches the active configuration from the backend."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(config_url, timeout=5.0)
+        response.raise_for_status()
+        return AppConfig.model_validate(response.json())
 
 def check_health(health_url: str) -> bool:
     """Synchronous health check for the backend."""

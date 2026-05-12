@@ -1,8 +1,7 @@
 from nicegui import ui
 from pathlib import Path
-from web.controllers.uploader_controller import UploaderController
 
-def render_uploader_sidebar(BACKEND_URL: str, temp_upload_dir: Path, temp_upload_url_prefix: str, image_container, inspector_container):
+def render_uploader_sidebar(on_upload, on_process):
     """Renders the left sidebar and contains the upload logic."""
     with ui.left_drawer(fixed=True).classes('sidebar') as left_drawer:
         
@@ -22,14 +21,11 @@ def render_uploader_sidebar(BACKEND_URL: str, temp_upload_dir: Path, temp_upload
                     ui.icon('image', size='sm').classes('text-white')
                 ui.label('NO DATA LOADED').classes('queue-empty-text')
                 
-        # Initialize the state and logic controller
-        controller = UploaderController(BACKEND_URL, temp_upload_dir, temp_upload_url_prefix, image_container, inspector_container, queue_container, empty_state)
-        
         # Hidden native uploader triggered by the header button
-        uploader = ui.upload(on_upload=controller.handle_upload, multiple=True, auto_upload=True).props('accept="image/*"').classes('hidden-uploader')
+        uploader = ui.upload(on_upload=on_upload, multiple=True, auto_upload=True).props('accept="image/*"').classes('hidden-uploader')
         upload_btn.on('click', lambda: uploader.run_method('pickFiles'))
         
         with ui.row().classes('sidebar-footer'):
-            ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=controller.process_batch).classes('btn-process')
+            ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=on_process).classes('btn-process')
             
-    return left_drawer
+    return left_drawer, queue_container, empty_state
