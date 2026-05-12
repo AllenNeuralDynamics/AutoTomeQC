@@ -1,5 +1,9 @@
 # example/example_import.py
+from pathlib import Path
 from autotomeqc.core.autotome_service import AutoTomeService
+
+current_dir = Path(__file__).resolve().parent
+input_dir = current_dir / "input_images"
 
 def print_result(result):
     print(f"Processing: {result['filename']}")
@@ -26,7 +30,7 @@ def main():
     print("Service Ready! Starting processing...")
     try:
         for i in range(17):
-            path = f"example/input_images/img{i}.jpg"
+            path = str(input_dir / f"img{i}.jpg")
             print(f"\nProcessing: {path}")
 
             # ---------------------------------------------------------
