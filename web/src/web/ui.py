@@ -4,8 +4,10 @@ import argparse
 from pathlib import Path
 from nicegui import ui, app
 
-import web.controllers.state_controller
 from web.models.status import app_state
+from web.controllers.state_controller import wait_backend_ready, on_fetch_config
+from web.protocol.state_events import is_running, fetch_config
+
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
 from web.components.inspector_sidebar import render_inspector_sidebar, update_inspector_sidebar, set_inspector_idle, set_inspector_pending, set_inspector_error
@@ -13,6 +15,7 @@ from web.components.uploader_sidebar import render_uploader_sidebar
 from web.components.loading_overlay import render_loading_overlay
 from web.controllers.uploader_controller import UploaderController
 from web.protocol.events import image_selected, image_pending, image_error, clear_views
+
 
 # Parse arguments for port mapping
 parser = argparse.ArgumentParser()
@@ -72,10 +75,16 @@ def index():
         set_workspace_idle(image_container)
         set_inspector_idle(inspector_container)
 
+    @is_running.subscribe  # UI -> controller event
+    async def _on_is_running():
+        await wait_backend_ready()
+    
+    @fetch_config.subscribe  # UI -> controller event
+    async def _on_fetch_config():
+        await on_fetch_config()
+
     # --- 6. TOOLBAR (Header) ---
     render_header(left_drawer)
-
-# Import controllers to register event handlers after the UI is defined
 
     
 if __name__ in {"__main__", "__mp_main__"}:
