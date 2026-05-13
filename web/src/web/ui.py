@@ -31,7 +31,7 @@ def index():
     ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')  # connect to theme
 
     # --- LOADING OVERLAY ---
-    render_loading_overlay(app_state.is_ready_url, app_state.config_url)
+    render_loading_overlay()
 
     # --- 1. RIGHT SIDEBAR (Inspector) ---
     _, inspector_container = render_inspector_sidebar()

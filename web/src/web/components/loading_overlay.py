@@ -1,9 +1,8 @@
 # web/components/loading_overlay.py
 from nicegui import ui
 from web.events import is_running, fetch_config
-from web.models.status import app_state
 
-def render_loading_overlay(is_running_url: str, config_url: str):
+def render_loading_overlay():
     """Renders a full-screen loading dialog that waits for the backend to become ready."""
     with ui.dialog().props('persistent maximized') as loading_dialog:
         with ui.column().classes('w-full h-full items-center justify-center bg-[#151515]'):
