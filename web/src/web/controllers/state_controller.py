@@ -3,7 +3,7 @@ import asyncio
 
 from web.services.api import fetch_config_async, is_running_async
 from web.models.status import app_state
-from web.events import fetch_config, is_running
+from web.protocol.events import fetch_config, is_running
 
 @fetch_config.subscribe
 async def _on_fetch_config():
