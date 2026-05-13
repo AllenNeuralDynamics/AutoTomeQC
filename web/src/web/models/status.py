@@ -1,5 +1,7 @@
 # Store Config from backend
 import os
+import tempfile
+from pathlib import Path
 from typing import Optional
 from web.models.schemas import AppConfig
 
@@ -15,6 +17,10 @@ class AppState:
         self.process_url: str = f"{self.backend_url}/api/v1/process"
         self.is_ready_url: str = f"{self.backend_url}/api/v1/is_ready"
         self.config_url: str = f"{self.backend_url}/api/v1/config"
+
+        # Create a persistent temporary directory for uploaded files for the session
+        self.temp_upload_dir = Path(tempfile.mkdtemp(prefix="autotome_"))
+        self.temp_upload_url_prefix = f"/temp_files/{self.temp_upload_dir.name}"
 
 # Create a global instance to be imported and used across frontend components
 app_state = AppState()
