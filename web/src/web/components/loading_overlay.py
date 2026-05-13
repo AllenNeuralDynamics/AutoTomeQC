@@ -1,8 +1,8 @@
+# web/components/loading_overlay.py
 from nicegui import ui
-from web.services.api import check_health_async, fetch_config_async
-from web.models.status import app_state
+from web.events import is_running, fetch_config
 
-def render_loading_overlay(health_url: str, config_url: str):
+def render_loading_overlay(is_running_url: str, config_url: str):
     """Renders a full-screen loading dialog that waits for the backend to become ready."""
     with ui.dialog().props('persistent maximized') as loading_dialog:
         with ui.column().classes('w-full h-full items-center justify-center bg-[#151515]'):
@@ -12,15 +12,17 @@ def render_loading_overlay(health_url: str, config_url: str):
     
     loading_dialog.open()
 
-    async def check_backend_ready():
-        if await check_health_async(health_url):
+    async def _check_backend_ready():
+        try:
+            await is_running.call(is_running_url)
             # Backend is ready! Fetch the configuration before closing the overlay
             try:
-                app_state.config = await fetch_config_async(config_url)
-                app_state.is_backend_ready = True
+                await fetch_config.call(config_url)
                 loading_dialog.close()
                 health_timer.deactivate()
             except Exception as e:
                 ui.notify(f"Failed to fetch config: {str(e)}", type='negative')
+        except Exception as e:
+            ui.notify(f"Health check failed: {str(e)}", type='negative')
 
-    health_timer = ui.timer(2.0, check_backend_ready)
+    health_timer = ui.timer(1.0, _check_backend_ready)

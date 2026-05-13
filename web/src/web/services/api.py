@@ -5,6 +5,8 @@ import httpx
 import time
 from typing import Tuple, Dict, Any
 from web.models.schemas import PipelineResult, AppConfig
+from web.models.status import app_state
+
 
 async def analyze_image(backend_url: str, file_path: str) -> Tuple[PipelineResult, dict]:
     """
@@ -28,35 +30,17 @@ async def fetch_config_async(config_url: str) -> AppConfig:
     async with httpx.AsyncClient() as client:
         response = await client.get(config_url, timeout=5.0)
         response.raise_for_status()
+        from web.models.status import app_state
+ 
         return AppConfig.model_validate(response.json())
 
-def check_health(health_url: str) -> bool:
-    """Synchronous health check for the backend."""
-    try:
-        with httpx.Client() as client:
-            response = client.get(health_url, timeout=2.0)
-            if response.status_code == 200 and response.json().get("status") == "ready":
-                return True
-    except Exception:
-        pass
-    return False
-
-async def check_health_async(health_url: str) -> bool:
+async def is_running_async(health_url: str) -> bool:
     """Asynchronous health check for the backend."""
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(health_url, timeout=2.0)
-            if response.status_code == 200 and response.json().get("status") == "ready":
+            if response.status_code == 200 and response.json().get("status") == "running":
                 return True
     except Exception:
         pass
-    return False
-
-def wait_for_backend(health_url: str, timeout_sec: int = 120) -> bool:
-    """Polls the backend health endpoint until it is ready."""
-    start_ts = time.time()
-    while time.time() - start_ts < timeout_sec:
-        if check_health(health_url):
-            return True
-        time.sleep(2.0)
     return False

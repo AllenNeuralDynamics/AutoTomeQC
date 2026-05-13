@@ -9,6 +9,7 @@ from nicegui import ui
 
 from web.services.api import analyze_image
 from web.models.schemas import PipelineResult
+from web.protocol.events import image_selected, image_pending, image_error, clear_views
 
 class UploaderController:
     """Handles the state and logic for the batch uploader and queue processing."""
@@ -24,12 +25,6 @@ class UploaderController:
         self.queue_container = None
         self.empty_state = None
 
-        # Events (Callbacks injected by the UI router)
-        self.on_image_selected = lambda path, result, raw_json: None
-        self.on_image_pending = lambda img_src: None
-        self.on_image_error = lambda msg: None
-        self.on_clear_views = lambda: None
-
     def remove_file(self, file_id):
         info = self.queued_files.pop(file_id, None)
         if info:
@@ -41,7 +36,7 @@ class UploaderController:
                 
             # Clear the main workspace if we deleted the image we were actively viewing
             if is_active or not self.queued_files:
-                self.on_clear_views()
+                clear_views.emit(None)
                         
         if not self.queued_files:
             self.empty_state.set_visibility(True)
@@ -62,10 +57,10 @@ class UploaderController:
                 result = PipelineResult.model_validate(raw_json)
                 
                 # Emit success event
-                self.on_image_selected(info['path'], result, raw_json)
+                image_selected.emit((info['path'], result, raw_json))
             else:
                 # Emit pending event
-                self.on_image_pending(info['img_src'])
+                image_pending.emit(info['img_src'])
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
 
@@ -162,7 +157,7 @@ class UploaderController:
             info['status_label'].set_text('PROCESSING')
             info['status_label'].style('color: #60a5fa !important')
             info['spinner'].set_visibility(True)
-            self.on_image_pending(None) # Signal spinner
+            image_pending.emit(None) # Signal spinner
             
             try:
                 # Pass the temporary file path directly to the API
@@ -173,14 +168,14 @@ class UploaderController:
                     json.dump(raw_json, f)
                 info['json_path'] = json_path
                 
-                self.on_image_selected(info['path'], result, raw_json)
+                image_selected.emit((info['path'], result, raw_json))
                 status = result.qc_summary
                 info['status_label'].set_text(status)
                 info['status_label'].style(f'color: var(--{"pass" if status == "PASS" else "fail"}-color) !important')
             except Exception as exc:
                 info['status_label'].set_text('ERROR')
                 info['status_label'].style('color: var(--fail-color) !important')
-                self.on_image_error("Backend Error")
+                image_error.emit("Backend Error")
                     
             info['spinner'].set_visibility(False)        
             await asyncio.sleep(1.0)
