@@ -54,33 +54,33 @@ def index():
     uploader_controller.empty_state = e_state
 
     # --- 5. WIRE UP EVENT SUBSCRIBERS ---
-    @image_selected.subscribe
-    def handle_image_selected(data):
+    @image_selected.subscribe  # Controller -> UI event
+    def _handle_image_selected(data):
         path, result, raw_json = data
         update_main_workspace(image_container, path, result)
         update_inspector_sidebar(inspector_container, result, raw_json)
         
-    @image_pending.subscribe
-    def handle_image_pending(img_src):
+    @image_pending.subscribe  # Controller -> UI event
+    def _handle_image_pending(img_src):
         set_workspace_pending(image_container, img_src)
         set_inspector_pending(inspector_container)
         
-    @image_error.subscribe
-    def handle_image_error(msg):
+    @image_error.subscribe  # Controller -> UI event
+    def _handle_image_error(msg):
         set_workspace_error(image_container, msg)
         set_inspector_error(inspector_container, msg)
         
-    @clear_views.subscribe
-    def handle_clear_views(_=None):
+    @clear_views.subscribe  # # Controller -> UI event
+    def _handle_clear_views(_=None):
         set_workspace_idle(image_container)
         set_inspector_idle(inspector_container)
 
     @is_running.subscribe  # UI -> controller event
-    async def _on_is_running():
+    async def _handle_is_running():
         await wait_backend_ready()
     
     @fetch_config.subscribe  # UI -> controller event
-    async def _on_fetch_config():
+    async def _handle_fetch_config():
         await on_fetch_config()
 
     # --- 6. TOOLBAR (Header) ---
