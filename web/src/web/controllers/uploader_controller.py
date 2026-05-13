@@ -9,6 +9,7 @@ from nicegui import ui
 from web.models.status import app_state
 from web.services.api import analyze_image
 from web.models.schemas import PipelineResult, QueuedFile
+from web.components.uploader_sidebar import render_file_row
 from web.protocol.events import image_selected, image_pending, image_error, clear_views
 
 class UploaderController:
@@ -61,22 +62,10 @@ class UploaderController:
     def build_file_row(self, file_id, file_name, file_path, img_src):
         self.empty_state.set_visibility(False)
         with self.queue_container:
-            with ui.row().classes('queue-item shrink-0').on('click', lambda e, fid=file_id: self.load_result(fid)) as row_ui:
-                
-                with ui.element('div').classes('queue-thumb'):
-                    ui.image(img_src).classes('queue-img')
-                
-                with ui.element('div').classes('queue-details'):
-                    ui.label(file_name).classes('queue-filename')
-                    with ui.row().classes('queue-status-row'):
-                        spinner = ui.spinner('dots', size='1em', color='blue-400')
-                        spinner.set_visibility(False)
-                        status_label = ui.label('PENDING').classes('queue-status-text')
-                
-                delete_btn = ui.button(icon='delete', color='red') \
-                    .props('flat dense') \
-                    .classes('btn-delete') \
-                    .on('click.stop', lambda e, fid=file_id: self.remove_file(fid))
+            row_ui, spinner, status_label, delete_btn = render_file_row(
+                file_id, file_name, img_src,
+                self.load_result, self.remove_file
+            )
 
         app_state.queued_files[file_id] = QueuedFile(
             name=file_name,
@@ -95,7 +84,6 @@ class UploaderController:
         else:
             ui.notify(f"Unknown upload format. Attributes available: {dir(e)}", type='negative')
             return
-            
 
         raw_name = getattr(e, 'name', None) or \
                    getattr(e, 'filename', None) or \

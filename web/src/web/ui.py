@@ -46,6 +46,7 @@ def index():
     uploader_controller = UploaderController()
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
+    # TODO: Move into Event (UI -> Controller)
     left_drawer, q_container, e_state = render_uploader_sidebar(
         on_upload=uploader_controller.handle_upload,
         on_process=uploader_controller.process_batch

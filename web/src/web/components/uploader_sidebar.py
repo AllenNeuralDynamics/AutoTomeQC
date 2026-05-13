@@ -29,3 +29,24 @@ def render_uploader_sidebar(on_upload, on_process):
             ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=on_process).classes('btn-process')
             
     return left_drawer, queue_container, empty_state
+
+def render_file_row(file_id, file_name, img_src, on_click_callback, on_delete_callback):
+    """Renders a single file row in the upload queue."""
+    with ui.row().classes('queue-item shrink-0').on('click', lambda e, fid=file_id: on_click_callback(fid)) as row_ui:
+        
+        with ui.element('div').classes('queue-thumb'):
+            ui.image(img_src).classes('queue-img')
+        
+        with ui.element('div').classes('queue-details'):
+            ui.label(file_name).classes('queue-filename')
+            with ui.row().classes('queue-status-row'):
+                spinner = ui.spinner('dots', size='1em', color='blue-400')
+                spinner.set_visibility(False)
+                status_label = ui.label('PENDING').classes('queue-status-text')
+        
+        delete_btn = ui.button(icon='delete', color='red') \
+            .props('flat dense') \
+            .classes('btn-delete') \
+            .on('click.stop', lambda e, fid=file_id: on_delete_callback(fid))
+            
+    return row_ui, spinner, status_label, delete_btn
