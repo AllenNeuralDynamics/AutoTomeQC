@@ -4,13 +4,13 @@ import argparse
 from pathlib import Path
 from nicegui import ui, app
 
+import web.controllers.state_controller
 from web.models.status import app_state
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
 from web.components.inspector_sidebar import render_inspector_sidebar, update_inspector_sidebar, set_inspector_idle, set_inspector_pending, set_inspector_error
 from web.components.uploader_sidebar import render_uploader_sidebar
 from web.components.loading_overlay import render_loading_overlay
-import web.controllers.state_controller
 from web.controllers.uploader_controller import UploaderController
 from web.protocol.events import image_selected, image_pending, image_error, clear_views
 
@@ -40,9 +40,7 @@ def index():
     image_container = render_main_workspace()
 
     # --- 3. CONTROLLERS ---
-    uploader_controller = UploaderController(app_state.process_url,
-                                             app_state.temp_upload_dir,
-                                             app_state.temp_upload_url_prefix)
+    uploader_controller = UploaderController()
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
     left_drawer, q_container, e_state = render_uploader_sidebar(
@@ -76,6 +74,9 @@ def index():
 
     # --- 6. TOOLBAR (Header) ---
     render_header(left_drawer)
+
+# Import controllers to register event handlers after the UI is defined
+
     
 if __name__ in {"__main__", "__mp_main__"}:
     # Parse command-line arguments

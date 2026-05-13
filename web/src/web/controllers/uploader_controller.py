@@ -5,60 +5,55 @@ import uuid
 from pathlib import Path
 from nicegui import ui
 
+from web.models.status import app_state
 from web.services.api import analyze_image
-from web.models.schemas import PipelineResult
+from web.models.schemas import PipelineResult, QueuedFile
 from web.protocol.events import image_selected, image_pending, image_error, clear_views
 
 class UploaderController:
     """Handles the state and logic for the batch uploader and queue processing."""
     
-    def __init__(self, process_url, temp_upload_dir, temp_upload_url_prefix):
-        self.process_url = process_url
-        
-        self.temp_dir = temp_upload_dir
-        self.static_url_prefix = temp_upload_url_prefix
-        self.queued_files = {}
-        
+    def __init__(self,):
         # UI Containers (Injected later by the Orchestrator)
         self.queue_container = None
         self.empty_state = None
 
     def remove_file(self, file_id):
-        info = self.queued_files.pop(file_id, None)
+        info = app_state.queued_files.pop(file_id, None)
         if info:
-            is_active = 'bg-[#1A1A1A]' in info['row_ui'].classes
-            info['row_ui'].delete()
-            info['path'].unlink(missing_ok=True)
-            if info.get('json_path'):
-                info['json_path'].unlink(missing_ok=True)
+            is_active = 'bg-[#1A1A1A]' in info.row_ui.classes
+            info.row_ui.delete()
+            info.path.unlink(missing_ok=True)
+            if info.json_path:
+                info.json_path.unlink(missing_ok=True)
                 
             # Clear the main workspace if we deleted the image we were actively viewing
-            if is_active or not self.queued_files:
+            if is_active or not app_state.queued_files:
                 clear_views.emit(None)
                         
-        if not self.queued_files:
+        if not app_state.queued_files:
             self.empty_state.set_visibility(True)
             
     def load_result(self, file_id):
-        info = self.queued_files.get(file_id)
+        info = app_state.queued_files.get(file_id)
         if not info: return
             
         try:
-            for f_info in self.queued_files.values():
-                f_info['row_ui'].classes(remove='active')
-            info['row_ui'].classes(add='active')
+            for f_info in app_state.queued_files.values():
+                f_info.row_ui.classes(remove='active')
+            info.row_ui.classes(add='active')
 
-            json_path = info.get('json_path')
+            json_path = info.json_path
             if json_path and json_path.exists():
                 with open(json_path, 'r') as f:
                     raw_json = json.load(f)
                 result = PipelineResult.model_validate(raw_json)
                 
                 # Emit success event
-                image_selected.emit((info['path'], result, raw_json))
+                image_selected.emit((info.path, result, raw_json))
             else:
                 # Emit pending event
-                image_pending.emit(info['img_src'])
+                image_pending.emit(info.img_src)
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
 
@@ -82,17 +77,15 @@ class UploaderController:
                     .classes('btn-delete') \
                     .on('click.stop', lambda e, fid=file_id: self.remove_file(fid))
 
-        # TODO move to pydantic model if we add more attributes
-        self.queued_files[file_id] = {
-            'name': file_name,
-            'path': file_path,
-            'json_path': None,
-            'img_src': img_src,
-            'row_ui': row_ui,
-            'status_label': status_label,
-            'spinner': spinner,
-            'delete_btn': delete_btn
-        }
+        app_state.queued_files[file_id] = QueuedFile(
+            name=file_name,
+            path=file_path,
+            img_src=img_src,
+            row_ui=row_ui,
+            status_label=status_label,
+            spinner=spinner,
+            delete_btn=delete_btn,
+        )
 
     async def handle_upload(self, e):
         if hasattr(e, 'content'): file_obj = e.content
@@ -121,7 +114,7 @@ class UploaderController:
             file_bytes = file_obj
 
         file_id = uuid.uuid4().hex
-        file_path = self.temp_dir / file_name
+        file_path = app_state.temp_upload_dir / file_name
         with open(file_path, "wb") as f:
             f.write(file_bytes)
             
@@ -136,49 +129,49 @@ class UploaderController:
         e.sender.run_method('removeUploadedFiles')
 
     async def process_batch(self, e):
-        if not self.queued_files:
+        if not app_state.queued_files:
             ui.notify("Please upload images first.", type='warning')
             return
             
         e.sender.disable()
-        for info in self.queued_files.values():
-            info['delete_btn'].set_visibility(False)
+        for info in app_state.queued_files.values():
+            info.delete_btn.set_visibility(False)
             
         ui.notify("Processing images...")
         
-        for file_id, info in self.queued_files.items():
-            if info['status_label'].text in ['PASS', 'FAIL']: continue
+        for file_id, info in app_state.queued_files.items():
+            if info.status_label.text in ['PASS', 'FAIL']: continue
                 
-            for f_info in self.queued_files.values():
-                f_info['row_ui'].classes(remove='active')
-            info['row_ui'].classes(add='active')
-            info['status_label'].set_text('PROCESSING')
-            info['status_label'].style('color: #60a5fa !important')
-            info['spinner'].set_visibility(True)
+            for f_info in app_state.queued_files.values():
+                f_info.row_ui.classes(remove='active')
+            info.row_ui.classes(add='active')
+            info.status_label.set_text('PROCESSING')
+            info.status_label.style('color: #60a5fa !important')
+            info.spinner.set_visibility(True)
             image_pending.emit(None) # Signal spinner
             
             try:
                 # Pass the temporary file path directly to the API
-                result, raw_json = await analyze_image(self.process_url, str(info['path']))
+                result, raw_json = await analyze_image(app_state.process_url, str(info.path))
                 
-                json_path = info['path'].with_suffix('.json')
+                json_path = info.path.with_suffix('.json')
                 with open(json_path, 'w') as f:
                     json.dump(raw_json, f)
-                info['json_path'] = json_path
+                info.json_path = json_path
                 
-                image_selected.emit((info['path'], result, raw_json))
+                image_selected.emit((info.path, result, raw_json))
                 status = result.qc_summary
-                info['status_label'].set_text(status)
-                info['status_label'].style(f'color: var(--{"pass" if status == "PASS" else "fail"}-color) !important')
+                info.status_label.set_text(status)
+                info.status_label.style(f'color: var(--{"pass" if status == "PASS" else "fail"}-color) !important')
             except Exception as exc:
-                info['status_label'].set_text('ERROR')
-                info['status_label'].style('color: var(--fail-color) !important')
+                info.status_label.set_text('ERROR')
+                info.status_label.style('color: var(--fail-color) !important')
                 image_error.emit("Backend Error")
                     
-            info['spinner'].set_visibility(False)        
+            info.spinner.set_visibility(False)        
             await asyncio.sleep(1.0)
             
         e.sender.enable()
-        for info in self.queued_files.values():
-            info['delete_btn'].set_visibility(True)
+        for info in app_state.queued_files.values():
+            info.delete_btn.set_visibility(True)
         ui.notify("Batch processing complete!", type='positive')

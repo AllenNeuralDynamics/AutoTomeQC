@@ -2,7 +2,8 @@
 # This is what the backend sends to the frontend.
 from autotomeqc.config.schemas import resolve_path
 from pydantic import BaseModel, ConfigDict
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
@@ -31,6 +32,19 @@ class PipelineResult(BaseModel):
     fail_reason: str
     processing_time_sec: Optional[float] = None
     sections: List[SectionResult] = []
+
+class QueuedFile(BaseModel):
+    """Represents a file in the upload queue."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    name: str
+    path: Path
+    img_src: str
+    row_ui: Any
+    status_label: Any
+    spinner: Any
+    delete_btn: Any
+    json_path: Optional[Path] = None
 
 # -- Config Schema --
 

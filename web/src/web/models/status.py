@@ -2,14 +2,15 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional
-from web.models.schemas import AppConfig
+from typing import Optional, Dict
+from web.models.schemas import AppConfig, QueuedFile
 
 class AppState:
     """Holds the global state of the frontend, including the backend configuration."""
 
     def __init__(self):
         self.config: Optional[AppConfig] = None
+        self.queued_files: Dict[str, QueuedFile] = {}
         self.is_backend_ready: bool = False
 
         # Centralize backend URL configuration
