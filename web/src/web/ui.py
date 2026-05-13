@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from nicegui import ui, app
 
+from web.models.status import app_state
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
 from web.components.inspector_sidebar import render_inspector_sidebar, update_inspector_sidebar, set_inspector_idle, set_inspector_pending, set_inspector_error
@@ -33,23 +34,17 @@ def index():
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
     ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')  # connect to theme
 
-    # Read from environment variable, fallback to localhost for local development
-    BACKEND_URL = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000")
-    PROCESS_URL = f"{BACKEND_URL}/api/v1/process"
-    IS_READY_URL = f"{BACKEND_URL}/api/v1/is_ready"
-    CONFIG_URL = f"{BACKEND_URL}/api/v1/config"
-
-    # --- 0. LOADING OVERLAY ---
-    render_loading_overlay(IS_READY_URL, CONFIG_URL)
+    # --- LOADING OVERLAY ---
+    render_loading_overlay(app_state.is_ready_url, app_state.config_url)
 
     # --- 1. RIGHT SIDEBAR (Inspector) ---
-    right_drawer, inspector_container = render_inspector_sidebar()
+    _, inspector_container = render_inspector_sidebar()
 
     # --- 2. MAIN WORKSPACE (Image Viewer) ---
     image_container = render_main_workspace()
 
     # --- 3. CONTROLLERS ---
-    uploader_controller = UploaderController(PROCESS_URL, temp_upload_dir, temp_upload_url_prefix)
+    uploader_controller = UploaderController(app_state.process_url, temp_upload_dir, temp_upload_url_prefix)
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
     left_drawer, q_container, e_state = render_uploader_sidebar(

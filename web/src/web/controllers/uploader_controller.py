@@ -1,8 +1,6 @@
 import asyncio
 import base64
-import httpx
 import json
-import tempfile
 import uuid
 from pathlib import Path
 from nicegui import ui
@@ -14,8 +12,8 @@ from web.protocol.events import image_selected, image_pending, image_error, clea
 class UploaderController:
     """Handles the state and logic for the batch uploader and queue processing."""
     
-    def __init__(self, backend_url, temp_upload_dir, temp_upload_url_prefix):
-        self.backend_url = backend_url
+    def __init__(self, process_url, temp_upload_dir, temp_upload_url_prefix):
+        self.process_url = process_url
         
         self.temp_dir = temp_upload_dir
         self.static_url_prefix = temp_upload_url_prefix
@@ -161,7 +159,7 @@ class UploaderController:
             
             try:
                 # Pass the temporary file path directly to the API
-                result, raw_json = await analyze_image(self.backend_url, str(info['path']))
+                result, raw_json = await analyze_image(self.process_url, str(info['path']))
                 
                 json_path = info['path'].with_suffix('.json')
                 with open(json_path, 'w') as f:

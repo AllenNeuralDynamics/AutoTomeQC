@@ -8,7 +8,7 @@ from web.models.schemas import PipelineResult, AppConfig
 from web.models.status import app_state
 
 
-async def analyze_image(backend_url: str, file_path: str) -> Tuple[PipelineResult, dict]:
+async def analyze_image(process_url: str, file_path: str) -> Tuple[PipelineResult, dict]:
     """
     Sends the image path to the FastAPI backend, validates the response, 
     and returns both the Pydantic object and the raw JSON dictionary.
@@ -16,7 +16,7 @@ async def analyze_image(backend_url: str, file_path: str) -> Tuple[PipelineResul
     async with httpx.AsyncClient() as client:
         # Send the POST request asynchronously with the file path as a query parameter
         params = {"img_path": file_path}
-        response = await client.post(backend_url, params=params, timeout=60.0)
+        response = await client.post(process_url, params=params, timeout=60.0)
         
         # Raise an exception if the status code is not 200 OK
         response.raise_for_status()
