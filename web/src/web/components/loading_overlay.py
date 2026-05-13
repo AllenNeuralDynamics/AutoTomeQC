@@ -1,6 +1,8 @@
 # web/components/loading_overlay.py
 from nicegui import ui
 from web.protocol.state_events import is_running, fetch_config
+#from web.protocol.events import is_running, fetch_config
+
 
 def render_loading_overlay():
     """Renders a full-screen loading dialog that waits for the backend to become ready."""
@@ -15,10 +17,10 @@ def render_loading_overlay():
     async def _check_backend_ready():
         
         try:
-            await is_running.call()
+            await is_running.call()  # wait for the subscribed callbacks to complete
             # Backend is ready! Fetch the configuration before closing the overlay
             try:
-                await fetch_config.call()
+                await fetch_config.call()  # wait for the subscribed callbacks to complete
                 loading_dialog.close()
                 health_timer.deactivate()
             except Exception as e:

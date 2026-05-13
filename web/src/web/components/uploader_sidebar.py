@@ -1,7 +1,8 @@
 from nicegui import ui
-from pathlib import Path
+from web.protocol.state_events import on_upload, on_process
 
-def render_uploader_sidebar(on_upload, on_process):
+def render_uploader_sidebar():
+
     """Renders the left sidebar and contains the upload logic."""
     with ui.left_drawer(fixed=True).classes('sidebar') as left_drawer:
         
@@ -22,11 +23,11 @@ def render_uploader_sidebar(on_upload, on_process):
                 ui.label('NO DATA LOADED').classes('queue-empty-text')
                 
         # Hidden native uploader triggered by the header button
-        uploader = ui.upload(on_upload=on_upload, multiple=True, auto_upload=True).props('accept="image/*"').classes('hidden-uploader')
+        uploader = ui.upload(on_upload=lambda e: on_upload.emit(e), multiple=True, auto_upload=True).props('accept="image/*"').classes('hidden-uploader')
         upload_btn.on('click', lambda: uploader.run_method('pickFiles'))
         
         with ui.row().classes('sidebar-footer'):
-            ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=on_process).classes('btn-process')
+            ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=lambda e: on_process.emit(e)).classes('btn-process')
             
     return left_drawer, queue_container, empty_state
 

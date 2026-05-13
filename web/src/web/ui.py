@@ -6,7 +6,7 @@ from nicegui import ui, app
 
 from web.models.status import app_state
 from web.controllers.state_controller import wait_backend_ready, on_fetch_config
-from web.protocol.state_events import is_running, fetch_config
+from web.protocol.state_events import is_running, fetch_config, on_upload, on_process
 
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
@@ -14,7 +14,7 @@ from web.components.inspector_sidebar import render_inspector_sidebar, update_in
 from web.components.uploader_sidebar import render_uploader_sidebar
 from web.components.loading_overlay import render_loading_overlay
 from web.controllers.uploader_controller import UploaderController
-from web.protocol.events import image_selected, image_pending, image_error, clear_views
+from web.protocol.events import image_selected, image_pending, image_error, clear_views 
 
 
 # Parse arguments for port mapping
@@ -46,15 +46,19 @@ def index():
     uploader_controller = UploaderController()
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
-    # TODO: Move into Event (UI -> Controller)
-    left_drawer, q_container, e_state = render_uploader_sidebar(
-        on_upload=uploader_controller.handle_upload,
-        on_process=uploader_controller.process_batch
-    )
+    left_drawer, q_container, e_state = render_uploader_sidebar()
     uploader_controller.queue_container = q_container
     uploader_controller.empty_state = e_state
 
     # --- 5. WIRE UP EVENT SUBSCRIBERS ---
+    @on_upload.subscribe  # UI -> controller event
+    async def _handle_upload(e):
+        await uploader_controller.handle_upload(e)
+
+    @on_process.subscribe  # UI -> controller event
+    async def _handle_process(e):
+        await uploader_controller.process_batch(e)
+
     @image_selected.subscribe  # Controller -> UI event
     def _handle_image_selected(data):
         path, result, raw_json = data
