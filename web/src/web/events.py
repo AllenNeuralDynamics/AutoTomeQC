@@ -1,5 +1,6 @@
 from nicegui import Event
 
-# components/loading_overlay.py calls 
-is_running = Event[str]()
-fetch_config = Event[str]()
+# caller: components/loading_overlay.py
+# subscribers: controllers/state_controller.py
+is_running = Event()
+fetch_config = Event()
