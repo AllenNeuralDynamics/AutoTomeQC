@@ -7,62 +7,49 @@ from web.models.status import app_state
 
 @ui.refreshable
 def render_main_workspace():
-    """Renders the central image workspace reactively based on app_state."""
+    # Standard container for centering everything
     image_container = ui.element('div').classes(
-        'w-full h-full flex-1 flex-grow min-h-0 '
+        'w-[640px] h-[640px] flex-none '
         'flex items-center justify-center '
-        'bg-black overflow-hidden self-center'
+        'bg-black overflow-hidden m-auto '
+        'self-center rounded-lg border border-[#222222]'
     )
-
-    # Check state, default to idle
+    
     status = getattr(app_state, 'view_status', 'idle')
 
     with image_container:
+        # --- IDLE: No image selected ---
         if status == 'idle':
-            with ui.element('div').classes(
-                'w-[640px] h-[640px] flex-none '
-                'flex items-center justify-center '
-                'bg-black overflow-hidden m-auto '
-                'self-center rounded-lg border border-[#222222]'
-            ):
-                with ui.column().classes('viewport-idle items-center justify-center text-center text-gray-500'):
-                    ui.icon('aspect_ratio', size='6rem')
-                    ui.label('VIEWPORT_IDLE')
-                    
-        elif status == 'processing':
-            img_src = None
-            for info in app_state.queued_files.values():
-                if info.is_active:
-                    img_src = info.img_src
-                    break
-                    
+            with ui.column().classes('items-center justify-center text-gray-500'):
+                ui.icon('aspect_ratio', size='6rem')
+                ui.label('VIEWPORT_IDLE')
+
+        # --- PENDING: Show raw image for manual inspection (no spinner) ---
+        elif status == 'pending':
+            img_src = next((f.img_src for f in app_state.queued_files.values() if f.is_active), None)
             if img_src:
                 with ui.element('div').classes('image-wrapper'):
-                    ui.image(img_src).classes('image-preview')
+                    ui.image(img_src).classes('image-preview').style('width: 640px; height: 640px; object-fit: contain;')
             else:
                 ui.spinner('dots', size='lg')
 
-        if status == 'pending':
-            # 1. Find the active image source
+        # --- PROCESSING: Show dimmed image with "Analyzing" overlay ---
+        elif status == 'processing':
             active_info = next((f for f in app_state.queued_files.values() if f.is_active), None)
             
             with ui.element('div').classes('relative w-[640px] h-[640px] flex items-center justify-center'):
                 if active_info and active_info.img_src:
-                    # Show the image as a background
-                    ui.image(active_info.img_src).style('width: 640px; height: 640px; object-fit: contain; opacity: 0.6;')
+                    # Dimmed background image
+                    ui.image(active_info.img_src).style('width: 640px; height: 640px; object-fit: contain; opacity: 0.4;')
                     
-                    # Overlay the spinner and a "Processing" label
-                    with ui.column().classes('absolute inset-0 flex items-center justify-center bg-black/20'):
+                    # Active overlay
+                    with ui.column().classes('absolute inset-0 flex items-center justify-center'):
                         ui.spinner('dots', size='lg', color='orange')
-                        ui.label('ANALYZING...').classes('text-white font-bold mt-2')
+                        ui.label('ANALYZING...').classes('text-orange font-bold mt-2 tracking-widest')
                 else:
-                    # Fallback if no image data exists yet
                     ui.spinner('dots', size='lg', color='orange')
-                
-        elif status == 'error':
-            msg = getattr(app_state, 'view_error', 'An unknown error occurred')
-            ui.label(msg).classes('text-red-600 font-bold')
-            
+
+        # --- RESULT: Show image with interactive SVG masks ---
         elif status == 'result':
             result = getattr(app_state, 'view_result', None)
             
@@ -104,3 +91,8 @@ def render_main_workspace():
                             toggle_btn = ui.button(icon='visibility', on_click=toggle_mask) \
                                 .props('flat round color=white') \
                                 .classes('absolute top-2 right-2 bg-black/50 z-10')
+
+        # --- ERROR: Show failure message ---
+        elif status == 'error':
+            msg = getattr(app_state, 'view_error', 'Backend Error')
+            ui.label(msg).classes('text-red-600 font-bold')

@@ -31,7 +31,12 @@ def inspector_content():
             with ui.column().classes('viewport-idle items-center justify-center p-8 text-center text-gray-500'):
                 ui.icon('info', size='2rem')
                 ui.label('Pending image processing...')
-                
+
+        elif status == 'processing':
+            with ui.column().classes('viewport-idle items-center justify-center p-8 text-center text-gray-500'):
+                ui.icon('info', size='2rem')
+                ui.label('Processing image...')
+
         elif status == 'error':
             msg = getattr(app_state, 'view_error', 'An unknown error occurred')
             ui.label(msg).classes('text-red-600 font-bold')

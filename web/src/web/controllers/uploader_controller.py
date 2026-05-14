@@ -137,8 +137,8 @@ class UploaderController:
             info.is_active = True # Turn on the new one
             previous_info = info  # Remember this one for the next cycle
             
-            # Update view to pending and refresh the sidebar UI
-            self.set_view_state('pending')
+            # Update view to processing and refresh the sidebar UI
+            self.set_view_state('processing')
             
             try:
                 result, raw_json = await analyze_image(app_state.process_url, str(info.path))
