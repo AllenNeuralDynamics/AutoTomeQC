@@ -115,7 +115,7 @@ class UploaderController:
                 f_info.is_active = False
             info.is_active = True
             info.status = 'PROCESSING'
-            self.refresh_ui()
+            #self.refresh_ui()
             image_pending.emit(None) 
             
             try:
@@ -132,7 +132,7 @@ class UploaderController:
                 info.status = 'ERROR'
                 image_error.emit("Backend Error")
                     
-            self.refresh_ui()        
+            #self.refresh_ui()        
             await asyncio.sleep(1.0)
             
         app_state.is_processing = False
