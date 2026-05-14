@@ -13,9 +13,11 @@ def render_queue_list(on_item_click, on_item_delete):
         return
 
     for file_id, info in app_state.queued_files.items():
-        render_file_row(file_id, info, on_item_click, on_item_delete)
+        _render_file_row(file_id, info, on_item_click, on_item_delete)
+    
+    print("[DEBUG] Queue list refreshed. Current files:", list(app_state.queued_files.keys()))
 
-def render_file_row(file_id, info, on_click_callback, on_delete_callback):
+def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
     """Renders a single file row purely from data."""
     # Determine styles based on pure state
     row_classes = 'queue-item shrink-0 active' if info.is_active else 'queue-item shrink-0'
@@ -23,7 +25,7 @@ def render_file_row(file_id, info, on_click_callback, on_delete_callback):
     with ui.row().classes(row_classes).on('click', lambda e, fid=file_id: on_click_callback(fid)):
         with ui.element('div').classes('queue-thumb'):
             ui.image(info.img_src).classes('queue-img')
-        
+
         with ui.element('div').classes('queue-details'):
             ui.label(info.name).classes('queue-filename')
             with ui.row().classes('queue-status-row'):
@@ -40,11 +42,14 @@ def render_file_row(file_id, info, on_click_callback, on_delete_callback):
                     status_label.style('color: var(--fail-color) !important')
 
         # Hide delete button if currently processing
+        # TODO This sould be global status check instead of per item to prevent any deletion during processing
         if info.status != 'PROCESSING':
             ui.button(icon='delete', color='red') \
                 .props('flat dense') \
                 .classes('btn-delete') \
                 .on('click.stop', lambda e, fid=file_id: on_delete_callback(fid))
+
+            print("[DEBUG] Rendered file row:", info.name, "Status:", info.status)
 
 
 def render_uploader_sidebar(on_upload_callback, on_process_callback, on_item_click, on_item_delete):

@@ -42,16 +42,6 @@ class QueuedFile(BaseModel):
     json_path: Optional[Path] = None
     status: str = 'PENDING'  # 'PENDING', 'PROCESSING', 'PASS', 'FAIL', 'ERROR'
     is_active: bool = False
-    """
-    name: str
-    path: Path
-    img_src: str
-    row_ui: Any
-    status_label: Any
-    spinner: Any
-    delete_btn: Any
-    json_path: Optional[Path] = None
-    """
 
 # -- Config Schema --
 
