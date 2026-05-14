@@ -9,9 +9,13 @@ class AppState:
     """Holds the global state of the frontend, including the backend configuration."""
 
     def __init__(self):
-        self.config: Optional[AppConfig] = None
-        self.queued_files: Dict[str, QueuedFile] = {}
+        # backend state
         self.is_backend_ready: bool = False
+        self.config: Optional[AppConfig] = None
+
+        # upload queue state
+        self.queued_files: Dict[str, QueuedFile] = {}
+        self.is_processing: bool = False    
 
         # Centralize backend URL configuration
         self.backend_url: str = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000")

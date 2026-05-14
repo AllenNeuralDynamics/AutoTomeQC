@@ -104,6 +104,7 @@ class UploaderController:
             return
             
         e.sender.disable()
+        app_state.is_processing = True
         ui.notify("Processing images...")
         
         for file_id, info in app_state.queued_files.items():
@@ -134,5 +135,7 @@ class UploaderController:
             self.refresh_ui()        
             await asyncio.sleep(1.0)
             
+        app_state.is_processing = False
+        self.refresh_ui()
         e.sender.enable()
         ui.notify("Batch processing complete!", type='positive')

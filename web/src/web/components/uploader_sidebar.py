@@ -41,9 +41,8 @@ def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
                 elif info.status == 'ERROR':
                     status_label.style('color: var(--fail-color) !important')
 
-        # Hide delete button if currently processing
-        # TODO This sould be global status check instead of per item to prevent any deletion during processing
-        if info.status != 'PROCESSING':
+        # Hide delete button on batch processing
+        if not app_state.is_processing:
             ui.button(icon='delete', color='red') \
                 .props('flat dense') \
                 .classes('btn-delete') \
