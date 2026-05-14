@@ -6,7 +6,7 @@ from nicegui import ui, app
 
 from web.models.status import app_state
 from web.controllers.state_controller import wait_backend_ready, on_fetch_config
-from web.protocol.state_events import is_running, fetch_config, on_upload, on_process
+from web.protocol.state_events import on_upload, on_process
 
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
@@ -34,7 +34,7 @@ def index():
     ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')  # connect to theme
 
     # --- LOADING OVERLAY ---
-    render_loading_overlay()
+    render_loading_overlay(wait_backend_ready, on_fetch_config)
 
     # --- 1. RIGHT SIDEBAR (Inspector) ---
     _, inspector_container = render_inspector_sidebar()
@@ -79,14 +79,6 @@ def index():
     def _handle_clear_views(_=None):
         set_workspace_idle(image_container)
         set_inspector_idle(inspector_container)
-
-    @is_running.subscribe  # UI -> controller event
-    async def _handle_is_running():
-        await wait_backend_ready()
-    
-    @fetch_config.subscribe  # UI -> controller event
-    async def _handle_fetch_config():
-        await on_fetch_config()
 
     # --- 6. TOOLBAR (Header) ---
     render_header(left_drawer)
