@@ -49,14 +49,6 @@ def index():
     uploader_controller = UploaderController(refresh_ui_callback=render_queue_list.refresh)
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
-    """
-    left_drawer, q_container, e_state = render_uploader_sidebar(
-        on_upload_callback=uploader_controller.handle_upload,
-        on_process_callback=uploader_controller.process_batch
-    )
-    uploader_controller.queue_container = q_container
-    uploader_controller.empty_state = e_state
-    """
     # Pass all user interactions as callbacks to the controller
     left_drawer = render_uploader_sidebar(
         on_upload_callback=uploader_controller.handle_upload,
@@ -99,7 +91,7 @@ if __name__ in {"__main__", "__mp_main__"}:
 
     # Start the NiceGUI engine outside the page route
     # WEB UI
-    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False)
+    #ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False)
     
     # Desktop option
-    #ui.run(native=True, reload=False, title="AutoTomeQC", port=args.port)
+    ui.run(native=True, reload=False, title="AutoTomeQC", port=args.port)

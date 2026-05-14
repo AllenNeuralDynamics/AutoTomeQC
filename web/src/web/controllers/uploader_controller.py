@@ -38,7 +38,7 @@ class UploaderController:
                 f_info.is_active = False
             info.is_active = True
             
-            self.refresh_ui()
+            #self.refresh_ui()
 
             json_path = info.json_path
             if json_path and json_path.exists():
@@ -107,15 +107,16 @@ class UploaderController:
         app_state.is_processing = True
         ui.notify("Processing images...")
         
+        # Find the currently active item ONCE before the batch starts
+        active_id = None
+        for f_id, f_info in app_state.queued_files.items():
+            if f_info.is_active:
+                active_id = f_id
+                break
+        
         for file_id, info in app_state.queued_files.items():
             if info.status in ['PASS', 'FAIL']: continue
-                
-            # Update state for current processing item
-            for f_info in app_state.queued_files.values():
-                f_info.is_active = False
-            info.is_active = True
             info.status = 'PROCESSING'
-            #self.refresh_ui()
             image_pending.emit(None) 
             
             try:
@@ -132,10 +133,9 @@ class UploaderController:
                 info.status = 'ERROR'
                 image_error.emit("Backend Error")
                     
-            #self.refresh_ui()        
             await asyncio.sleep(1.0)
             
         app_state.is_processing = False
-        self.refresh_ui()
+        self.refresh_ui() 
         e.sender.enable()
         ui.notify("Batch processing complete!", type='positive')

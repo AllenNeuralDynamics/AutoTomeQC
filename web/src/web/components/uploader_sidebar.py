@@ -15,14 +15,34 @@ def render_queue_list(on_item_click, on_item_delete):
     for file_id, info in app_state.queued_files.items():
         _render_file_row(file_id, info, on_item_click, on_item_delete)
     
-    print("[DEBUG] Queue list refreshed. Current files:", list(app_state.queued_files.keys()))
-
 def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
     """Renders a single file row using reactive bindings for high performance."""
+    # Check if this specific row should be active when the list is rendered
+    row_classes = 'queue-item shrink-0 active' if info.is_active else 'queue-item shrink-0'
     
-    # 1. Bind row classes to the 'is_active' state automatically
-    row = ui.row().classes('queue-item shrink-0').on('click', lambda e, fid=file_id: on_click_callback(fid))
-    print("[DEBUG] Rendering file row:", info.name, "Active:", info.is_active, "Status:", info.status)
+    # Create the row AND assign it a unique HTML ID
+    row = ui.row().classes(row_classes).props(f'id="row-{file_id}"')
+    
+    # Create the click handler (MUST accept 'e' to prevent Python errors)
+    def handle_click(e):
+        # Instantly update UI via Javascript
+        # Use java script to avoid rendering again when user clickes on the active item. 
+        # Because JavaScript runs directly in the user's browser, 
+        # allowing instantly update visual elements without waiting for a server round-trip.
+        ui.run_javascript(f'''
+            document.querySelectorAll('.queue-item').forEach(el => el.classList.remove('active'));
+            const targetRow = document.getElementById('row-{file_id}');
+            if (targetRow) {{
+                targetRow.classList.add('active');
+            }} else {{
+                console.warn('Could not find row with ID: row-{file_id}');
+            }}
+        ''')
+        # Trigger the heavy Python logic in the background
+        on_click_callback(file_id)
+        
+    # Bind our new handler to the row
+    row.on('click', handle_click)
     
     with row:
         with ui.element('div').classes('queue-thumb'):
@@ -60,40 +80,6 @@ def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
             .on('click.stop', lambda e, fid=file_id: on_delete_callback(fid))
             
         del_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda is_proc: not is_proc)
-
-def _render_file_row__deprecated(file_id, info, on_click_callback, on_delete_callback):
-    """Renders a single file row purely from data."""
-    # Determine styles based on pure state
-    row_classes = 'queue-item shrink-0 active' if info.is_active else 'queue-item shrink-0'
-    
-    with ui.row().classes(row_classes).on('click', lambda e, fid=file_id: on_click_callback(fid)):
-        with ui.element('div').classes('queue-thumb'):
-            ui.image(info.img_src).classes('queue-img')
-
-        with ui.element('div').classes('queue-details'):
-            ui.label(info.name).classes('queue-filename')
-            with ui.row().classes('queue-status-row'):
-                if info.status == 'PROCESSING':
-                    ui.spinner('dots', size='1em', color='blue-400')
-                
-                # Apply dynamic text and colors based on status state
-                status_label = ui.label(info.status).classes('queue-status-text')
-                if info.status == 'PROCESSING':
-                    status_label.style('color: #60a5fa !important')
-                elif info.status in ['PASS', 'FAIL']:
-                    status_label.style(f'color: var(--{"pass" if info.status == "PASS" else "fail"}-color) !important')
-                elif info.status == 'ERROR':
-                    status_label.style('color: var(--fail-color) !important')
-
-        # Hide delete button on batch processing
-        if not app_state.is_processing:
-            ui.button(icon='delete', color='red') \
-                .props('flat dense') \
-                .classes('btn-delete') \
-                .on('click.stop', lambda e, fid=file_id: on_delete_callback(fid))
-
-            print("[DEBUG] Rendered file row:", info.name, "Status:", info.status)
-
 
 def render_uploader_sidebar(on_upload_callback, on_process_callback, on_item_click, on_item_delete):
     """Renders the static sidebar wrapper."""
