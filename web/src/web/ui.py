@@ -6,7 +6,6 @@ from nicegui import ui, app
 
 from web.models.status import app_state
 from web.controllers.state_controller import wait_backend_ready, on_fetch_config
-from web.protocol.state_events import on_upload, on_process
 
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
