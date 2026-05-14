@@ -37,8 +37,6 @@ class UploaderController:
             for f_info in app_state.queued_files.values():
                 f_info.is_active = False
             info.is_active = True
-            
-            #self.refresh_ui()
 
             json_path = info.json_path
             if json_path and json_path.exists():
