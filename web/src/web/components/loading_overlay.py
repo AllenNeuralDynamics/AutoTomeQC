@@ -1,7 +1,7 @@
 # web/components/loading_overlay.py
 from nicegui import ui
 
-def render_loading_overlay(is_backend_ready_callback, fetch_config_callback):
+def render_loading_overlay(wait_backend_ready_callback=None, fetch_config_callback=None):
     """Renders a full-screen loading dialog that waits for the backend to become ready."""
     with ui.dialog().props('persistent maximized') as loading_dialog:
         with ui.column().classes('w-full h-full items-center justify-center bg-[#151515]'):
@@ -12,12 +12,14 @@ def render_loading_overlay(is_backend_ready_callback, fetch_config_callback):
     loading_dialog.open()
 
     async def _check_backend_ready():
-        await is_backend_ready_callback()  # wait for the subscribed callbacks to complete
         try:
-            # Backend is ready! Fetch the configuration before closing the overlay
+            if wait_backend_ready_callback:
+                await wait_backend_ready_callback()  # wait for the subscribed callbacks to complete
             try:
-                await fetch_config_callback()  # wait for the subscribed callbacks to complete
-                loading_dialog.close()
+            # Backend is ready! Fetch the configuration before closing the overlay
+                if fetch_config_callback:
+                    await fetch_config_callback()  # wait for the subscribed callbacks to complete
+                    loading_dialog.close()
                 health_timer.deactivate()
             except Exception as e:
                 ui.notify(f"Failed to fetch config: {str(e)}", type='negative')

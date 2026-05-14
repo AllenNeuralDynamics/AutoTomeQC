@@ -34,7 +34,10 @@ def index():
     ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')  # connect to theme
 
     # --- LOADING OVERLAY ---
-    render_loading_overlay(wait_backend_ready, on_fetch_config)
+    render_loading_overlay(
+        wait_backend_ready_callback=wait_backend_ready,
+        fetch_config_callback=on_fetch_config
+    )
 
     # --- 1. RIGHT SIDEBAR (Inspector) ---
     _, inspector_container = render_inspector_sidebar()
@@ -46,19 +49,14 @@ def index():
     uploader_controller = UploaderController()
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
-    left_drawer, q_container, e_state = render_uploader_sidebar()
+    left_drawer, q_container, e_state = render_uploader_sidebar(
+        on_upload_callback=uploader_controller.handle_upload,
+        on_process_callback=uploader_controller.process_batch
+    )
     uploader_controller.queue_container = q_container
     uploader_controller.empty_state = e_state
 
     # --- 5. WIRE UP EVENT SUBSCRIBERS ---
-    @on_upload.subscribe  # UI -> controller event
-    async def _handle_upload(e):
-        await uploader_controller.handle_upload(e)
-
-    @on_process.subscribe  # UI -> controller event
-    async def _handle_process(e):
-        await uploader_controller.process_batch(e)
-
     @image_selected.subscribe  # Controller -> UI event
     def _handle_image_selected(data):
         path, result, raw_json = data
