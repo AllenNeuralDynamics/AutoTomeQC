@@ -8,13 +8,28 @@ from nicegui import ui
 from web.models.status import app_state
 from web.services.api import analyze_image
 from web.models.schemas import PipelineResult, QueuedFile
-from web.protocol.events import image_selected, image_pending, image_error, clear_views
 
 class UploaderController:
-    """Handles the state and logic. Does NOT manipulate UI elements directly."""
+    """Handles the state and logic. Mutates app_state and triggers UI refreshes."""
     
-    def __init__(self, refresh_ui_callback):
+    def __init__(self, refresh_ui_callback, refresh_workspace, refresh_inspector):
         self.refresh_ui = refresh_ui_callback
+        self.refresh_workspace = refresh_workspace
+        self.refresh_inspector = refresh_inspector
+
+        # Initialize the view state on app_state if it doesn't exist yet
+        if not hasattr(app_state, 'view_status'):
+            self.set_view_state('idle')
+
+    def set_view_state(self, status, error=None, result=None, raw_json=None):
+        """Updates the global state for the active view and triggers UI refreshes."""
+        app_state.view_status = status
+        app_state.view_error = error
+        app_state.view_result = result
+        app_state.view_raw_json = raw_json
+        
+        self.refresh_workspace()
+        self.refresh_inspector()
 
     def remove_file(self, file_id):
         info = app_state.queued_files.pop(file_id, None)
@@ -23,8 +38,9 @@ class UploaderController:
             if info.json_path:
                 info.json_path.unlink(missing_ok=True)
                 
+            # Clear views if the deleted item was currently active
             if info.is_active or not app_state.queued_files:
-                clear_views.emit(None)
+                self.set_view_state('idle')
                 
         self.refresh_ui()
             
@@ -33,7 +49,7 @@ class UploaderController:
         if not info: return
             
         try:
-            # Update state
+            # Update active flags
             for f_info in app_state.queued_files.values():
                 f_info.is_active = False
             info.is_active = True
@@ -43,9 +59,9 @@ class UploaderController:
                 with open(json_path, 'r') as f:
                     raw_json = json.load(f)
                 result = PipelineResult.model_validate(raw_json)
-                image_selected.emit((info.path, result, raw_json))
+                self.set_view_state('result', result=result, raw_json=raw_json)
             else:
-                image_pending.emit(info.img_src)
+                self.set_view_state('pending')
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
 
@@ -84,7 +100,6 @@ class UploaderController:
         base64_img = base64.b64encode(file_bytes).decode('utf-8')
         img_src = f"data:{mime_type};base64,{base64_img}"
         
-        # Instantiate pure data model instead of UI elements
         app_state.queued_files[file_id] = QueuedFile(
             name=file_name,
             path=file_path,
@@ -96,6 +111,49 @@ class UploaderController:
         self.refresh_ui()
         e.sender.run_method('removeUploadedFiles')
 
+    async def process_batch__(self, e):
+        if not app_state.queued_files:
+            ui.notify("Please upload images first.", type='warning')
+            return
+            
+        e.sender.disable()
+        app_state.is_processing = True
+        ui.notify("Processing images...")
+        
+        for file_id, info in app_state.queued_files.items():
+            if info.status in ['PASS', 'FAIL']: continue
+            info.status = 'PROCESSING'
+            
+            # If processing the currently active image, update the view to pending
+            if info.is_active:
+                self.set_view_state('pending')
+            
+            try:
+                result, raw_json = await analyze_image(app_state.process_url, str(info.path))
+                
+                json_path = info.path.with_suffix('.json')
+                with open(json_path, 'w') as f:
+                    json.dump(raw_json, f)
+                info.json_path = json_path
+                info.status = result.qc_summary
+                
+                # If processing finished for the active image, display the result
+                if info.is_active:
+                    self.set_view_state('result', result=result, raw_json=raw_json)
+                    
+            except Exception as exc:
+                info.status = 'ERROR'
+                if info.is_active:
+                    self.set_view_state('error', error="Backend Error")
+                    
+            await asyncio.sleep(1.0)
+            
+        app_state.is_processing = False
+        self.refresh_ui() 
+        e.sender.enable()
+        ui.notify("Batch processing complete!", type='positive')
+
+
     async def process_batch(self, e):
         if not app_state.queued_files:
             ui.notify("Please upload images first.", type='warning')
@@ -105,17 +163,28 @@ class UploaderController:
         app_state.is_processing = True
         ui.notify("Processing images...")
         
-        # Find the currently active item ONCE before the batch starts
-        active_id = None
-        for f_id, f_info in app_state.queued_files.items():
-            if f_info.is_active:
-                active_id = f_id
-                break
+        # 1. Clear active state from ALL items exactly ONCE before the loop starts
+        for f_info in app_state.queued_files.values():
+            f_info.is_active = False
+            
+        previous_info = None # Track the previously active item
         
         for file_id, info in app_state.queued_files.items():
-            if info.status in ['PASS', 'FAIL']: continue
+            if info.status in ['PASS', 'FAIL']: 
+                continue
+                
             info.status = 'PROCESSING'
-            image_pending.emit(None) 
+            
+            # 2. Effortlessly switch active states without an inner loop
+            if previous_info:
+                previous_info.is_active = False # Turn off the old one
+                
+            info.is_active = True # Turn on the new one
+            previous_info = info  # Remember this one for the next cycle
+            
+            # Update view to pending and refresh the sidebar UI
+            self.set_view_state('pending')
+            #self.refresh_ui() 
             
             try:
                 result, raw_json = await analyze_image(app_state.process_url, str(info.path))
@@ -124,12 +193,16 @@ class UploaderController:
                 with open(json_path, 'w') as f:
                     json.dump(raw_json, f)
                 info.json_path = json_path
-                
-                image_selected.emit((info.path, result, raw_json))
                 info.status = result.qc_summary
+                
+                self.set_view_state('result', result=result, raw_json=raw_json)
+                    
             except Exception as exc:
                 info.status = 'ERROR'
-                image_error.emit("Backend Error")
+                self.set_view_state('error', error="Backend Error")
+            
+            # Refresh the sidebar again to show the final PASS/FAIL/ERROR badge
+            #self.refresh_ui()
                     
             await asyncio.sleep(1.0)
             

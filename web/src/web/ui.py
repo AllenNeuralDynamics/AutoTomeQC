@@ -1,36 +1,28 @@
-#he "glue" that connects the Services to the Components when a user visits a URL or clicks a button.
-import os
+# main.py
 import argparse
 from pathlib import Path
 from nicegui import ui, app
 
 from web.models.status import app_state
 from web.controllers.state_controller import wait_backend_ready, on_fetch_config
-
 from web.components.app_header import render_header
-from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
-from web.components.inspector_sidebar import render_inspector_sidebar, update_inspector_sidebar, set_inspector_idle, set_inspector_pending, set_inspector_error
+from web.components.main_workspace import render_main_workspace
+from web.components.inspector_sidebar import render_inspector_sidebar, inspector_content
 from web.components.loading_overlay import render_loading_overlay
 from web.components.uploader_sidebar import render_uploader_sidebar, render_queue_list
 from web.controllers.uploader_controller import UploaderController
-from web.protocol.events import image_selected, image_pending, image_error, clear_views 
+# from web.protocol.events import ... (Deleted!)
 
-
-# Parse arguments for port mapping
 parser = argparse.ArgumentParser()
-
-# Mount the static directory so the browser can access files inside it
 static_dir = Path(__file__).resolve().parent / "static"
 app.add_static_files("/static", str(static_dir))
-
-# Add the temporary directory as a static path, now managed by app_state
 app.add_static_files(app_state.temp_upload_url_prefix, str(app_state.temp_upload_dir))
 
 @ui.page('/')
 def index():
     ui.dark_mode().enable()
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
-    ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')  # connect to theme
+    ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')
 
     # --- LOADING OVERLAY ---
     render_loading_overlay(
@@ -39,17 +31,20 @@ def index():
     )
 
     # --- 1. RIGHT SIDEBAR (Inspector) ---
-    _, inspector_container = render_inspector_sidebar()
+    render_inspector_sidebar()
 
     # --- 2. MAIN WORKSPACE (Image Viewer) ---
-    image_container = render_main_workspace()
+    render_main_workspace()
 
     # --- 3. CONTROLLERS ---
-    #uploader_controller = UploaderController()
-    uploader_controller = UploaderController(refresh_ui_callback=render_queue_list.refresh)
+    # Pass all component .refresh methods into the controller
+    uploader_controller = UploaderController(
+        refresh_ui_callback=render_queue_list.refresh,
+        refresh_workspace=render_main_workspace.refresh,
+        refresh_inspector=inspector_content.refresh
+    )
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
-    # Pass all user interactions as callbacks to the controller
     left_drawer = render_uploader_sidebar(
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch,
@@ -57,41 +52,11 @@ def index():
         on_item_delete=uploader_controller.remove_file
     )
 
-    # --- 5. WIRE UP EVENT SUBSCRIBERS ---
-    @image_selected.subscribe  # Controller -> UI event
-    def _handle_image_selected(data):
-        path, result, raw_json = data
-        update_main_workspace(image_container, path, result)
-        update_inspector_sidebar(inspector_container, result, raw_json)
-        
-    @image_pending.subscribe  # Controller -> UI event
-    def _handle_image_pending(img_src):
-        set_workspace_pending(image_container, img_src)
-        set_inspector_pending(inspector_container)
-        
-    @image_error.subscribe  # Controller -> UI event
-    def _handle_image_error(msg):
-        set_workspace_error(image_container, msg)
-        set_inspector_error(inspector_container, msg)
-        
-    @clear_views.subscribe  # # Controller -> UI event
-    def _handle_clear_views(_=None):
-        set_workspace_idle(image_container)
-        set_inspector_idle(inspector_container)
-
-    # --- 6. TOOLBAR (Header) ---
+    # --- 5. TOOLBAR (Header) ---
     render_header(left_drawer)
 
-    
 if __name__ in {"__main__", "__mp_main__"}:
-    # Parse command-line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8080, help="Port to run the NiceGUI server on")
+    parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
-
-    # Start the NiceGUI engine outside the page route
-    # WEB UI
     ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False)
-    
-    # Desktop option
-    #ui.run(native=True, reload=False, title="AutoTomeQC", port=args.port)

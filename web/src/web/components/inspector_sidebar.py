@@ -1,47 +1,46 @@
+# web/components/inspector_sidebar.py
 from nicegui import ui
-from web.models.schemas import PipelineResult
 import json
-from nicegui import ui
 from web.models.schemas import PipelineResult
-
-def set_inspector_idle(inspector_container):
-    inspector_container.clear()
-    with inspector_container:
-        with ui.column().classes('viewport-idle'):
-            ui.icon('info', size='2rem')
-            ui.label('Select an image or run batch to view informatics')
-
-def set_inspector_pending(inspector_container):
-    inspector_container.clear()
-    with inspector_container:
-        with ui.column().classes('viewport-idle'):
-            ui.icon('info', size='2rem')
-            ui.label('Image pending processing...')
-
-def set_inspector_error(inspector_container, msg):
-    inspector_container.clear()
-    with inspector_container:
-        ui.label(msg).classes('text-red-600 font-bold')
+from web.models.status import app_state
 
 def render_inspector_sidebar():
-    """Renders the right sidebar and returns the inspector container."""
-    with ui.right_drawer(fixed=True).classes('sidebar') as right_drawer:
+    """Renders the right sidebar structure."""
+    with ui.right_drawer(fixed=True).classes('sidebar'):
         with ui.row().classes('sidebar-header'):
             with ui.row().classes('sidebar-title'):
                 ui.icon('terminal').classes('text-accent text-lg')
                 ui.label('Inspector').classes('sidebar-title-text')
         
-        # Store reference so the callback can push data here
-        inspector_container = ui.column().classes('inspector-content')
-        set_inspector_idle(inspector_container)
-    
-    return right_drawer, inspector_container
+        # Render the reactive content inside the drawer
+        inspector_content()
 
-def update_inspector_sidebar(inspector_container, result: PipelineResult, raw_json: dict):
-    """Updates the inspector panel with new QC results."""
-    inspector_container.clear()
+@ui.refreshable
+def inspector_content():
+    """Reactively renders the inspector content based on app_state."""
+    inspector_container = ui.column().classes('inspector-content w-full h-full')
+    status = getattr(app_state, 'view_status', 'idle')
+    
     with inspector_container:
-        display_qc_result(result, raw_json)
+        if status == 'idle':
+            with ui.column().classes('viewport-idle items-center justify-center p-8 text-center text-gray-500'):
+                ui.icon('info', size='2rem')
+                ui.label('Select an image or run batch to view informatics')
+                
+        elif status == 'pending':
+            with ui.column().classes('viewport-idle items-center justify-center p-8 text-center text-gray-500'):
+                ui.icon('info', size='2rem')
+                ui.label('Image pending processing...')
+                
+        elif status == 'error':
+            msg = getattr(app_state, 'view_error', 'An unknown error occurred')
+            ui.label(msg).classes('text-red-600 font-bold')
+            
+        elif status == 'result':
+            result = getattr(app_state, 'view_result', None)
+            raw_json = getattr(app_state, 'view_raw_json', {})
+            if result:
+                display_qc_result(result, raw_json)
 
 def display_qc_result(result: PipelineResult, raw_json: dict):
     """Renders the QC results breakdown on the screen."""

@@ -15,6 +15,8 @@ def render_queue_list(on_item_click, on_item_delete):
     for file_id, info in app_state.queued_files.items():
         _render_file_row(file_id, info, on_item_click, on_item_delete)
     
+    print("[debug] Queue list rendered with files:", list(app_state.queued_files.keys()))
+    
 def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
     """Renders a single file row using reactive bindings for high performance."""
     # Check if this specific row should be active when the list is rendered
@@ -22,6 +24,7 @@ def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
     
     # Create the row AND assign it a unique HTML ID
     row = ui.row().classes(row_classes).props(f'id="row-{file_id}"')
+    print("[debug] Rendering row for file_id:", file_id, "with status:", info.status)
     
     # Create the click handler (MUST accept 'e' to prevent Python errors)
     def handle_click(e):
