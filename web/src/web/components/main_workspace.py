@@ -1,6 +1,5 @@
 # web/components/main_workspace.py
 from nicegui import ui
-from typing import Union
 from pathlib import Path
 from PIL import Image
 from web.models.status import app_state
@@ -14,8 +13,9 @@ def render_main_workspace():
         'bg-black overflow-hidden m-auto '
         'self-center rounded-lg border border-[#222222]'
     )
-    
     status = getattr(app_state, 'view_status', 'idle')
+
+    
 
     with image_container:
         # --- IDLE: No image selected ---

@@ -108,6 +108,14 @@ def render_uploader_sidebar(on_upload_callback, on_process_callback, on_item_cli
         
         with ui.row().classes('sidebar-footer'):
             if on_process_callback:
-                ui.button('PROCESS BATCH', icon='play_arrow', color=None, on_click=on_process_callback).classes('btn-process')
+                btn = ui.button('', on_click=on_process_callback).classes('btn-process')
+        
+                # Change icon: 'pause' if processing, else 'play_arrow'
+                btn.bind_icon_from(app_state, 'is_processing', 
+                                backward=lambda proc: 'pause' if proc else 'play_arrow')
+                
+                # Change text: 'PAUSE' if processing, else 'PROCESS'
+                btn.bind_text_from(app_state, 'is_processing', 
+                                backward=lambda proc: 'PAUSE BATCH' if proc else 'PROCESS BATCH')
             
     return left_drawer

@@ -110,11 +110,15 @@ class UploaderController:
         e.sender.run_method('removeUploadedFiles')
 
     async def process_batch(self, e):
+        # If already running, this click means "Stop/Pause"
+        if app_state.is_processing:
+            app_state.is_processing = False
+            return
+    
         if not app_state.queued_files:
             ui.notify("Please upload images first.", type='warning')
             return
             
-        e.sender.disable()
         app_state.is_processing = True
         ui.notify("Processing images...")
         
@@ -125,6 +129,10 @@ class UploaderController:
         previous_info = None # Track the previously active item
         
         for file_id, info in app_state.queued_files.items():
+            if not app_state.is_processing:
+                print("[debug] Stop signal detected. Breaking loop.")
+                break
+
             if info.status in ['PASS', 'FAIL']: 
                 continue
                 
@@ -156,8 +164,8 @@ class UploaderController:
                 self.set_view_state('error', error="Backend Error")
                     
             await asyncio.sleep(1.0)
-            
+        
+        msg = "Batch complete!" if app_state.is_processing else "Processing paused."
         app_state.is_processing = False
         self.refresh_ui() 
-        e.sender.enable()
-        ui.notify("Batch processing complete!", type='positive')
+        ui.notify(msg)
