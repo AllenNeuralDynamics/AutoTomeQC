@@ -109,49 +109,6 @@ class UploaderController:
         self.refresh_ui()
         e.sender.run_method('removeUploadedFiles')
 
-    async def process_batch__(self, e):
-        if not app_state.queued_files:
-            ui.notify("Please upload images first.", type='warning')
-            return
-            
-        e.sender.disable()
-        app_state.is_processing = True
-        ui.notify("Processing images...")
-        
-        for file_id, info in app_state.queued_files.items():
-            if info.status in ['PASS', 'FAIL']: continue
-            info.status = 'PROCESSING'
-            
-            # If processing the currently active image, update the view to pending
-            if info.is_active:
-                self.set_view_state('pending')
-            
-            try:
-                result, raw_json = await analyze_image(app_state.process_url, str(info.path))
-                
-                json_path = info.path.with_suffix('.json')
-                with open(json_path, 'w') as f:
-                    json.dump(raw_json, f)
-                info.json_path = json_path
-                info.status = result.qc_summary
-                
-                # If processing finished for the active image, display the result
-                if info.is_active:
-                    self.set_view_state('result', result=result, raw_json=raw_json)
-                    
-            except Exception as exc:
-                info.status = 'ERROR'
-                if info.is_active:
-                    self.set_view_state('error', error="Backend Error")
-                    
-            await asyncio.sleep(1.0)
-            
-        app_state.is_processing = False
-        self.refresh_ui() 
-        e.sender.enable()
-        ui.notify("Batch processing complete!", type='positive')
-
-
     async def process_batch(self, e):
         if not app_state.queued_files:
             ui.notify("Please upload images first.", type='warning')
@@ -182,7 +139,6 @@ class UploaderController:
             
             # Update view to pending and refresh the sidebar UI
             self.set_view_state('pending')
-            #self.refresh_ui() 
             
             try:
                 result, raw_json = await analyze_image(app_state.process_url, str(info.path))
@@ -198,9 +154,6 @@ class UploaderController:
             except Exception as exc:
                 info.status = 'ERROR'
                 self.set_view_state('error', error="Backend Error")
-            
-            # Refresh the sidebar again to show the final PASS/FAIL/ERROR badge
-            #self.refresh_ui()
                     
             await asyncio.sleep(1.0)
             

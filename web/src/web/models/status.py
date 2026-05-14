@@ -30,7 +30,7 @@ class AppState(BaseModel):
     is_processing: bool = False
 
     # View State
-    view_status: str = 'idle'  # 'idle', 'pending', 'result', 'error'
+    view_status: str = 'idle'  # 'idle', 'pending', 'result', 'error', 'processing'
     view_error: Optional[str] = None
     view_result: Optional[PipelineResult] = None
     view_raw_json: Optional[Dict] = None
