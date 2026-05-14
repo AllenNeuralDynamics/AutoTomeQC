@@ -2,9 +2,8 @@
 # It shouldn't know about anything related to UI.
 
 import httpx
-import time
-from typing import Tuple, Dict, Any
-from web.models.schemas import PipelineResult, AppConfig
+from typing import Tuple
+from web.models.backend_schemas import PipelineResult, AppConfig
 from web.models.status import app_state
 
 
@@ -30,8 +29,7 @@ async def fetch_config_async(config_url: str) -> AppConfig:
     async with httpx.AsyncClient() as client:
         response = await client.get(config_url, timeout=5.0)
         response.raise_for_status()
-        from web.models.status import app_state
- 
+        
         return AppConfig.model_validate(response.json())
 
 async def is_running_async(health_url: str) -> bool:

@@ -1,7 +1,7 @@
 # web/components/inspector_sidebar.py
 from nicegui import ui
 import json
-from web.models.schemas import PipelineResult
+from web.models.backend_schemas import PipelineResult
 from web.models.status import app_state
 
 def render_inspector_sidebar():
@@ -30,7 +30,7 @@ def inspector_content():
         elif status == 'pending':
             with ui.column().classes('viewport-idle items-center justify-center p-8 text-center text-gray-500'):
                 ui.icon('info', size='2rem')
-                ui.label('Image pending processing...')
+                ui.label('Pending image processing...')
                 
         elif status == 'error':
             msg = getattr(app_state, 'view_error', 'An unknown error occurred')

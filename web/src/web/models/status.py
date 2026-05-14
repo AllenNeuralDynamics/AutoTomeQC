@@ -1,31 +1,62 @@
-# Store Config from backend
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional, Dict
-from web.models.schemas import AppConfig, QueuedFile
+from typing import Dict, Optional
+from pydantic import BaseModel, Field, ConfigDict, computed_field
+from web.models.backend_schemas import PipelineResult, AppConfig
 
-class AppState:
-    """Holds the global state of the frontend, including the backend configuration."""
+class QueuedFile(BaseModel):
+    """Represents a file in the upload queue."""
+    #model_config = ConfigDict(arbitrary_types_allowed=True)
+    name: str
+    path: Path
+    img_src: str
+    json_path: Optional[Path] = None
+    status: str = 'PENDING'  # 'PENDING', 'PROCESSING', 'PASS', 'FAIL', 'ERROR'
+    is_active: bool = False
 
-    def __init__(self):
-        # backend state
-        self.is_backend_ready: bool = False
-        self.config: Optional[AppConfig] = None
 
-        # upload queue state
-        self.queued_files: Dict[str, QueuedFile] = {}
-        self.is_processing: bool = False    
+class AppState(BaseModel):
+    """Holds the global state of the frontend using Pydantic for validation."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-        # Centralize backend URL configuration
-        self.backend_url: str = os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000")
-        self.process_url: str = f"{self.backend_url}/api/v1/process"
-        self.is_ready_url: str = f"{self.backend_url}/api/v1/is_ready"
-        self.config_url: str = f"{self.backend_url}/api/v1/config"
+    # Backend state
+    is_backend_ready: bool = False
+    config: Optional[AppConfig] = None
+    backend_url: str = Field(default_factory=lambda: os.getenv("AUTOTOME_BACKEND_URL", "http://localhost:8000"))
 
-        # Create a persistent temporary directory for uploaded files for the session
-        self.temp_upload_dir = Path(tempfile.mkdtemp(prefix="autotome_"))
-        self.temp_upload_url_prefix = f"/temp_files/{self.temp_upload_dir.name}"
+    # Upload queue state
+    queued_files: Dict[str, QueuedFile] = Field(default_factory=dict)
+    is_processing: bool = False
+
+    # View State
+    view_status: str = 'idle'  # 'idle', 'pending', 'result', 'error'
+    view_error: Optional[str] = None
+    view_result: Optional[PipelineResult] = None
+    view_raw_json: Optional[Dict] = None
+
+    # Storage paths
+    temp_upload_dir: Path = Field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="autotome_")))
+
+    @computed_field
+    @property
+    def temp_upload_url_prefix(self) -> str:
+        return f"/temp_files/{self.temp_upload_dir.name}"
+
+    @computed_field
+    @property
+    def process_url(self) -> str:
+        return f"{self.backend_url}/api/v1/process"
+
+    @computed_field
+    @property
+    def is_ready_url(self) -> str:
+        return f"{self.backend_url}/api/v1/is_ready"
+
+    @computed_field
+    @property
+    def config_url(self) -> str:
+        return f"{self.backend_url}/api/v1/config"
 
 # Create a global instance to be imported and used across frontend components
 app_state = AppState()

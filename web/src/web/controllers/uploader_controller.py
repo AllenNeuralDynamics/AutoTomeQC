@@ -7,7 +7,8 @@ from nicegui import ui
 
 from web.models.status import app_state
 from web.services.api import analyze_image
-from web.models.schemas import PipelineResult, QueuedFile
+from web.models.backend_schemas import PipelineResult
+from web.models.status import QueuedFile
 
 class UploaderController:
     """Handles the state and logic. Mutates app_state and triggers UI refreshes."""
@@ -16,10 +17,7 @@ class UploaderController:
         self.refresh_ui = refresh_ui_callback
         self.refresh_workspace = refresh_workspace
         self.refresh_inspector = refresh_inspector
-
-        # Initialize the view state on app_state if it doesn't exist yet
-        if not hasattr(app_state, 'view_status'):
-            self.set_view_state('idle')
+        self.set_view_state('idle')
 
     def set_view_state(self, status, error=None, result=None, raw_json=None):
         """Updates the global state for the active view and triggers UI refreshes."""

@@ -29,7 +29,7 @@ def render_main_workspace():
                     ui.icon('aspect_ratio', size='6rem')
                     ui.label('VIEWPORT_IDLE')
                     
-        elif status == 'pending':
+        elif status == 'processing':
             img_src = None
             for info in app_state.queued_files.values():
                 if info.is_active:
@@ -41,6 +41,23 @@ def render_main_workspace():
                     ui.image(img_src).classes('image-preview')
             else:
                 ui.spinner('dots', size='lg')
+
+        if status == 'pending':
+            # 1. Find the active image source
+            active_info = next((f for f in app_state.queued_files.values() if f.is_active), None)
+            
+            with ui.element('div').classes('relative w-[640px] h-[640px] flex items-center justify-center'):
+                if active_info and active_info.img_src:
+                    # Show the image as a background
+                    ui.image(active_info.img_src).style('width: 640px; height: 640px; object-fit: contain; opacity: 0.6;')
+                    
+                    # Overlay the spinner and a "Processing" label
+                    with ui.column().classes('absolute inset-0 flex items-center justify-center bg-black/20'):
+                        ui.spinner('dots', size='lg', color='orange')
+                        ui.label('ANALYZING...').classes('text-white font-bold mt-2')
+                else:
+                    # Fallback if no image data exists yet
+                    ui.spinner('dots', size='lg', color='orange')
                 
         elif status == 'error':
             msg = getattr(app_state, 'view_error', 'An unknown error occurred')

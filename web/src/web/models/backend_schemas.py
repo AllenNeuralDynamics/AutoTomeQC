@@ -33,15 +33,7 @@ class PipelineResult(BaseModel):
     processing_time_sec: Optional[float] = None
     sections: List[SectionResult] = []
 
-class QueuedFile(BaseModel):
-    """Represents a file in the upload queue."""
-    #model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str
-    path: Path
-    img_src: str
-    json_path: Optional[Path] = None
-    status: str = 'PENDING'  # 'PENDING', 'PROCESSING', 'PASS', 'FAIL', 'ERROR'
-    is_active: bool = False
+
 
 # -- Config Schema --
 
