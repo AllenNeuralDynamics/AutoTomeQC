@@ -10,8 +10,8 @@ from web.controllers.state_controller import wait_backend_ready, on_fetch_config
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace, update_main_workspace, set_workspace_idle, set_workspace_pending, set_workspace_error
 from web.components.inspector_sidebar import render_inspector_sidebar, update_inspector_sidebar, set_inspector_idle, set_inspector_pending, set_inspector_error
-from web.components.uploader_sidebar import render_uploader_sidebar
 from web.components.loading_overlay import render_loading_overlay
+from web.components.uploader_sidebar import render_uploader_sidebar, render_queue_list
 from web.controllers.uploader_controller import UploaderController
 from web.protocol.events import image_selected, image_pending, image_error, clear_views 
 
@@ -45,15 +45,25 @@ def index():
     image_container = render_main_workspace()
 
     # --- 3. CONTROLLERS ---
-    uploader_controller = UploaderController()
+    #uploader_controller = UploaderController()
+    uploader_controller = UploaderController(refresh_ui_callback=render_queue_list.refresh)
 
     # --- 4. LEFT SIDEBAR (Uploader) ---
+    """
     left_drawer, q_container, e_state = render_uploader_sidebar(
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch
     )
     uploader_controller.queue_container = q_container
     uploader_controller.empty_state = e_state
+    """
+    # Pass all user interactions as callbacks to the controller
+    left_drawer = render_uploader_sidebar(
+        on_upload_callback=uploader_controller.handle_upload,
+        on_process_callback=uploader_controller.process_batch,
+        on_item_click=uploader_controller.load_result,
+        on_item_delete=uploader_controller.remove_file
+    )
 
     # --- 5. WIRE UP EVENT SUBSCRIBERS ---
     @image_selected.subscribe  # Controller -> UI event
