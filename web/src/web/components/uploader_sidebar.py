@@ -28,6 +28,9 @@ def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
     
     # Create the click handler (MUST accept 'e' to prevent Python errors)
     def handle_click(e):
+        if app_state.is_processing:
+            ui.notify("Cannot select images while processing batch", type='warning')
+            return
         # Instantly update UI via Javascript
         # Use java script to avoid rendering again when user clickes on the active item. 
         # Because JavaScript runs directly in the user's browser, 
