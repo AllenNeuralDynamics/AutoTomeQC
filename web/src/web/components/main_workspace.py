@@ -6,6 +6,7 @@ from web.models.status import app_state
 
 @ui.refreshable
 def render_main_workspace(on_next_callback=None, on_prev_callback=None):
+
     # Standard container for centering everything
     image_container = ui.element('div').classes(
         'w-full h-full max-w-[1200px] max-h-[1200px] aspect-square flex-none '

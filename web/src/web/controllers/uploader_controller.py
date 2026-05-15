@@ -50,6 +50,7 @@ class UploaderController:
             
         try:
             app_state.active_file_id = file_id
+            print("Active file id set to:", file_id)
 
             json_path = info.json_path
             if json_path and json_path.exists():
@@ -107,7 +108,7 @@ class UploaderController:
             height=height
         )
         
-        self.refresh_ui()
+        self.refresh_ui()  # TODO optimize to only refresh sidebar, not entire UI
         e.sender.run_method('removeUploadedFiles')
 
     async def process_batch(self, e):
@@ -136,6 +137,7 @@ class UploaderController:
                 
             info.status = 'PROCESSING'
             app_state.active_file_id = file_id
+            print("Active file id set to:", file_id)
             
             # Update view to processing and refresh the sidebar UI
             self._set_view_state('processing')

@@ -34,7 +34,6 @@ class PipelineResult(BaseModel):
     sections: List[SectionResult] = []
 
 
-
 # -- Config Schema --
 
 class YoloSettings(BaseModel):

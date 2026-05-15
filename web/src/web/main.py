@@ -55,7 +55,7 @@ def index():
     )
 
     # --- 5. TOOLBAR (Header) ---
-    render_header(left_drawer)
+    render_header(left_drawer=left_drawer)
 
 if __name__ in {"__main__", "__mp_main__"}:
     parser = argparse.ArgumentParser()
