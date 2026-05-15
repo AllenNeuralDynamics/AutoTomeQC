@@ -14,9 +14,7 @@ def render_main_workspace():
         'self-center rounded-lg border border-[#222222]'
     )
     status = getattr(app_state, 'view_status', 'idle')
-
-    
-
+ 
     with image_container:
         # --- IDLE: No image selected ---
         if status == 'idle':
@@ -59,38 +57,32 @@ def render_main_workspace():
                 if info.is_active:
                     img_src = info.path
                     break
-            
+            # TODO
             if img_src:
-                if isinstance(img_src, Path) and img_src.exists():
-                    img_src = Image.open(img_src).resize((640, 640))
-                elif isinstance(img_src, str) and Path(img_src).exists():
-                    img_src = Image.open(img_src).resize((640, 640))
-
+                if isinstance(img_src, (Path, str)) and Path(img_src).exists():
+                    img_src = Image.open(img_src).resize((640, 640))  #TODO
                 with ui.element('div').classes('relative'):
                     image_view = ui.interactive_image(img_src).style('width: 640px; height: 640px;')
                     
-                    if result and result.sections:
+                    # the SVG string creation logic
+                    def generate_svg_string(show_masks):
+                        if not show_masks or not result or not result.sections:
+                            return ""
                         svg_content = ""
                         for sec in result.sections:
                             if sec.mask:
                                 points_str = " ".join([f"{p[0]},{p[1]}" for p in sec.mask])
                                 svg_content += f'<polygon points="{points_str}" fill="rgba(242, 125, 38, 0.2)" stroke="#F27D26" stroke-width="2" />'
-                        
-                        if svg_content:
-                            image_view.content = svg_content
-                            
-                            def toggle_mask():
-                                if image_view.content:
-                                    image_view.content = ""
-                                    toggle_btn._props['icon'] = 'visibility_off'
-                                else:
-                                    image_view.content = svg_content
-                                    toggle_btn._props['icon'] = 'visibility'
-                                toggle_btn.update()
-                                
-                            toggle_btn = ui.button(icon='visibility', on_click=toggle_mask) \
-                                .props('flat round color=white') \
-                                .classes('absolute top-2 right-2 bg-black/50 z-10')
+                        return svg_content
+
+                    # Bind the view content directly to the state variable.
+                    # NiceGUI will automatically update ONLY the SVG overlay layer 
+                    # whenever app_state.view_show_masks changes value.
+                    image_view.bind_content_from(
+                        app_state, 
+                        'view_show_masks', 
+                        backward=generate_svg_string
+                    )
 
         # --- ERROR: Show failure message ---
         elif status == 'error':

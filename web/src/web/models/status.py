@@ -34,7 +34,7 @@ class AppState(BaseModel):
     view_error: Optional[str] = None
     view_result: Optional[PipelineResult] = None
     view_raw_json: Optional[Dict] = None
-    view_show_masks: bool = False
+    view_show_masks: bool = True
 
     # Storage paths
     temp_upload_dir: Path = Field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="autotome_")))

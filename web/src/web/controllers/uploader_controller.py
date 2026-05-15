@@ -165,7 +165,11 @@ class UploaderController:
                     
             await asyncio.sleep(1.0)
         
-        msg = "Batch complete!" if app_state.is_processing else "Processing paused."
-        app_state.is_processing = False
-        self.refresh_ui() 
-        ui.notify(msg)
+        # Final cleanup at the end of process_batch loop
+        if app_state.is_processing:
+            app_state.is_processing = False
+            self.refresh_ui() 
+            ui.notify("Batch complete!", type='positive')  # Green toast
+        else:
+            self.refresh_ui() 
+            ui.notify("Processing paused.", type='warning')  # Amber/Yellow toast
