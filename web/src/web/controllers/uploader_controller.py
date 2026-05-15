@@ -18,14 +18,14 @@ class UploaderController:
         self.refresh_ui = refresh_ui_callback
         self.refresh_workspace = refresh_workspace
         self.refresh_inspector = refresh_inspector
-        self.set_view_state('idle')
+        self._set_view_state('idle')
 
-    def set_view_state(self, status, error=None, result=None, raw_json=None):
+    def _set_view_state(self, status, error=None, result=None, raw_json=None):
         """Updates the global state for the active view and triggers UI refreshes."""
-        app_state.view_status = status
-        app_state.view_error = error
-        app_state.view_result = result
-        app_state.view_raw_json = raw_json
+        app_state.view.status = status
+        app_state.view.error = error
+        app_state.view.result = result
+        app_state.view.raw_json = raw_json
         
         self.refresh_workspace()
         self.refresh_inspector()
@@ -39,7 +39,7 @@ class UploaderController:
                 
             # Clear views if the deleted item was currently active
             if info.is_active or not app_state.queued_files:
-                self.set_view_state('idle')
+                self._set_view_state('idle')
                 
         self.refresh_ui()
             
@@ -58,9 +58,9 @@ class UploaderController:
                 with open(json_path, 'r') as f:
                     raw_json = json.load(f)
                 result = PipelineResult.model_validate(raw_json)
-                self.set_view_state('result', result=result, raw_json=raw_json)
+                self._set_view_state('result', result=result, raw_json=raw_json)
             else:
-                self.set_view_state('pending')
+                self._set_view_state('pending')
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
 
@@ -150,7 +150,7 @@ class UploaderController:
             previous_info = info  # Remember this one for the next cycle
             
             # Update view to processing and refresh the sidebar UI
-            self.set_view_state('processing')
+            self._set_view_state('processing')
             
             try:
                 result, raw_json = await analyze_image(app_state.process_url, str(info.path))
@@ -161,11 +161,11 @@ class UploaderController:
                 info.json_path = json_path
                 info.status = result.qc_summary
                 
-                self.set_view_state('result', result=result, raw_json=raw_json)
+                self._set_view_state('result', result=result, raw_json=raw_json)
                     
             except Exception as exc:
                 info.status = 'ERROR'
-                self.set_view_state('error', error="Backend Error")
+                self._set_view_state('error', error="Backend Error")
                     
             await asyncio.sleep(1.0)
         
@@ -177,7 +177,6 @@ class UploaderController:
         else:
             self.refresh_ui() 
             ui.notify("Processing paused.", type='warning')  # Yellow
-
 
     def load_next(self):
         """Finds the active file and shifts state to the next item in the queue."""

@@ -14,9 +14,9 @@ def render_inspector_sidebar(toggle_masks_callback=None):
 
             # mask visiblity button
             visibility_btn = ui.button(on_click=toggle_masks_callback).props('flat dense round size=sm')
-            visibility_btn.bind_icon_from(app_state, 'view_show_masks', 
+            visibility_btn.bind_icon_from(app_state.view, 'show_masks', 
                                backward=lambda val: 'visibility' if val else 'visibility_off')
-            visibility_btn.bind_visibility_from(app_state, 'view_status', backward=lambda s: s == 'result')
+            visibility_btn.bind_visibility_from(app_state.view, 'status', backward=lambda s: s == 'result')
         
         # Render the reactive content inside the drawer
         inspector_content()
@@ -25,7 +25,7 @@ def render_inspector_sidebar(toggle_masks_callback=None):
 def inspector_content():
     """Reactively renders the inspector content based on app_state."""
     inspector_container = ui.column().classes('inspector-content w-full h-full')
-    status = getattr(app_state, 'view_status', 'idle')
+    status = getattr(app_state.view, 'status', 'idle')
     
     with inspector_container:
         if status == 'idle':
@@ -44,12 +44,12 @@ def inspector_content():
                 ui.label('Processing image...')
 
         elif status == 'error':
-            msg = getattr(app_state, 'view_error', 'An unknown error occurred')
+            msg = getattr(app_state.view, 'error', 'An unknown error occurred')
             ui.label(msg).classes('text-red-600 font-bold')
             
         elif status == 'result':
-            result = getattr(app_state, 'view_result', None)
-            raw_json = getattr(app_state, 'view_raw_json', {})
+            result = getattr(app_state.view, 'result', None)
+            raw_json = getattr(app_state.view, 'raw_json', {})
             if result:
                 display_qc_result(result, raw_json)
 

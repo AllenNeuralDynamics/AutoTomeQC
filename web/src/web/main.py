@@ -25,19 +25,7 @@ def index():
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
     ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')
 
-    # --- LOADING OVERLAY ---
-    render_loading_overlay(
-        wait_backend_ready_callback=wait_backend_ready,
-        fetch_config_callback=on_fetch_config
-    )
-
-    # --- 1. RIGHT SIDEBAR (Inspector) ---
-    render_inspector_sidebar(toggle_masks_callback=on_toggle_masks)
-
-    # --- 2. MAIN WORKSPACE (Image Viewer) ---
-    render_main_workspace()
-
-    # --- 3. CONTROLLERS ---
+    # --- CONTROLLERS ---
     # Pass all component .refresh methods into the controller
     uploader_controller = UploaderController(
         refresh_ui_callback=render_queue_list.refresh,
@@ -45,7 +33,20 @@ def index():
         refresh_inspector=inspector_content.refresh
     )
 
-    # --- 4. LEFT SIDEBAR (Uploader) ---
+    # --- LOADING OVERLAY ---
+    render_loading_overlay(
+        wait_backend_ready_callback=wait_backend_ready,
+        fetch_config_callback=on_fetch_config
+    )
+
+    # --- RIGHT SIDEBAR (Inspector) ---
+    render_inspector_sidebar(toggle_masks_callback=on_toggle_masks)
+
+    # --- MAIN WORKSPACE (Image Viewer) ---
+    render_main_workspace(on_prev_callback=uploader_controller.load_prev,
+                          on_next_callback=uploader_controller.load_next)
+
+    # --- LEFT SIDEBAR (Uploader) ---
     left_drawer = render_uploader_sidebar(
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch,

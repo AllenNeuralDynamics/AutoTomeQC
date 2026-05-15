@@ -17,4 +17,5 @@ async def on_fetch_config():
     app_state.is_backend_ready = True
 
 def on_toggle_masks():
-    app_state.view_show_masks = not app_state.view_show_masks
+    app_state.view.show_masks = not app_state.view.show_masks
+    print("Toggled show_masks to:", app_state.view.show_masks)

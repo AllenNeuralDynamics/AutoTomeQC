@@ -27,7 +27,7 @@ def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
     print("[debug] Rendering row for file_id:", file_id, "with status:", info.status)
     
     # Create the click handler (MUST accept 'e' to prevent Python errors)
-    def handle_click(e):
+    def handle_click(e):  # View current file_id in console when clicked
         if app_state.is_processing:
             ui.notify("Cannot select images while processing batch", type='warning')
             return

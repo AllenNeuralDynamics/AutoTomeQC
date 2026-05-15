@@ -13,8 +13,17 @@ class QueuedFile(BaseModel):
     img_src: str
     json_path: Optional[Path] = None
     status: str = 'PENDING'  # 'PENDING', 'PROCESSING', 'PASS', 'FAIL', 'ERROR'
-    is_active: bool = False
+    is_active: bool = False  # Whether this file is currently selected/viewed in the UI
+    width: Optional[int] = None
+    height: Optional[int] = None
 
+class ViewState(BaseModel):
+    """Encapsulates UI rendering and volatile screen states."""
+    status: str = 'idle'  # 'idle', 'pending', 'result', 'error', 'processing'
+    error: Optional[str] = None
+    result: Optional[PipelineResult] = None  # should be moved to queuefile
+    raw_json: Optional[Dict] = None
+    show_masks: bool = True
 
 class AppState(BaseModel):
     """Holds the global state of the frontend using Pydantic for validation."""
@@ -27,14 +36,11 @@ class AppState(BaseModel):
 
     # Upload queue state
     queued_files: Dict[str, QueuedFile] = Field(default_factory=dict)
+    active_file_id: Optional[str] = None
     is_processing: bool = False
 
-    # View State
-    view_status: str = 'idle'  # 'idle', 'pending', 'result', 'error', 'processing'
-    view_error: Optional[str] = None
-    view_result: Optional[PipelineResult] = None
-    view_raw_json: Optional[Dict] = None
-    view_show_masks: bool = True
+    # UI view state
+    view: ViewState = Field(default_factory=ViewState)
 
     # Storage paths
     temp_upload_dir: Path = Field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="autotome_")))
