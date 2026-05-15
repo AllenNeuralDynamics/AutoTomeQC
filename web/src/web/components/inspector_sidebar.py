@@ -4,7 +4,7 @@ import json
 from web.models.backend_schemas import PipelineResult
 from web.models.status import app_state
 
-def render_inspector_sidebar(on_toggle_masks_callback=None):
+def render_inspector_sidebar(toggle_masks_callback=None):
     """Renders the right sidebar structure."""
     with ui.right_drawer(fixed=True).classes('sidebar'):
         with ui.row().classes('sidebar-header'):
@@ -12,13 +12,11 @@ def render_inspector_sidebar(on_toggle_masks_callback=None):
                 ui.icon('terminal').classes('text-accent text-lg')
                 ui.label('Inspector').classes('sidebar-title-text')
 
-            btn = ui.button(on_click=ui.notify("toggle")).props('flat dense round size=sm')
-            
-            # Update icon shape based on state
-            btn.bind_icon_from(app_state, 'view_show_masks', 
+            # mask visiblity button
+            visibility_btn = ui.button(on_click=toggle_masks_callback).props('flat dense round size=sm')
+            visibility_btn.bind_icon_from(app_state, 'view_show_masks', 
                                backward=lambda val: 'visibility' if val else 'visibility_off')
-            # Only show this button when there is a result to look at
-            btn.bind_visibility_from(app_state, 'view_status', backward=lambda s: s == 'result')
+            visibility_btn.bind_visibility_from(app_state, 'view_status', backward=lambda s: s == 'result')
         
         # Render the reactive content inside the drawer
         inspector_content()

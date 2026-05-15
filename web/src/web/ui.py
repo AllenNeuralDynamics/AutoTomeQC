@@ -4,13 +4,14 @@ from pathlib import Path
 from nicegui import ui, app
 
 from web.models.status import app_state
-from web.controllers.state_controller import wait_backend_ready, on_fetch_config
+from web.controllers.state_controller import wait_backend_ready, on_fetch_config, on_toggle_masks
+from web.controllers.uploader_controller import UploaderController
 from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace
 from web.components.inspector_sidebar import render_inspector_sidebar, inspector_content
 from web.components.loading_overlay import render_loading_overlay
 from web.components.uploader_sidebar import render_uploader_sidebar, render_queue_list
-from web.controllers.uploader_controller import UploaderController
+
 # from web.protocol.events import ... (Deleted!)
 
 parser = argparse.ArgumentParser()
@@ -31,7 +32,7 @@ def index():
     )
 
     # --- 1. RIGHT SIDEBAR (Inspector) ---
-    render_inspector_sidebar()
+    render_inspector_sidebar(toggle_masks_callback=on_toggle_masks)
 
     # --- 2. MAIN WORKSPACE (Image Viewer) ---
     render_main_workspace()
