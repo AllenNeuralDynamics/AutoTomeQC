@@ -169,7 +169,7 @@ class UploaderController:
         if app_state.is_processing:
             app_state.is_processing = False
             self.refresh_ui() 
-            ui.notify("Batch complete!", type='positive')  # Green toast
+            ui.notify("Batch complete!", type='positive')  # Green
         else:
             self.refresh_ui() 
-            ui.notify("Processing paused.", type='warning')  # Amber/Yellow toast
+            ui.notify("Processing paused.", type='warning')  # Yellow
