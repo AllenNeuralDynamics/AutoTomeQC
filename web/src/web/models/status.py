@@ -11,9 +11,8 @@ class QueuedFile(BaseModel):
     name: str
     path: Path
     img_src: str
-    json_path: Optional[Path] = None
+    json_path: Optional[Path] = None  # just save the path to save memory, load content on demand
     status: str = 'PENDING'  # 'PENDING', 'PROCESSING', 'PASS', 'FAIL', 'ERROR'
-    is_active: bool = False  # Whether this file is currently selected/viewed in the UI
     width: Optional[int] = None
     height: Optional[int] = None
 
@@ -21,7 +20,7 @@ class ViewState(BaseModel):
     """Encapsulates UI rendering and volatile screen states."""
     status: str = 'idle'  # 'idle', 'pending', 'result', 'error', 'processing'
     error: Optional[str] = None
-    result: Optional[PipelineResult] = None  # should be moved to queuefile
+    result: Optional[PipelineResult] = None
     raw_json: Optional[Dict] = None
     show_masks: bool = True
 

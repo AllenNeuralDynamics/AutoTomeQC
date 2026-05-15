@@ -25,21 +25,20 @@ def render_main_workspace(on_next_callback=None, on_prev_callback=None):
 
         # --- PENDING: Show raw image for manual inspection (no spinner) ---
         elif status == 'pending':
-            img_src = next((f.img_src for f in app_state.queued_files.values() if f.is_active), None)
-            if img_src:
+            active_file = app_state.queued_files.get(app_state.active_file_id)
+            if active_file and active_file.img_src:
                 with ui.element('div').classes('image-wrapper'):
-                    ui.image(img_src).classes('image-preview').style('width: 640px; height: 640px; object-fit: contain;')
+                    ui.image(active_file.img_src).classes('image-preview').style('width: 640px; height: 640px; object-fit: contain;')
             else:
                 ui.spinner('dots', size='lg')
 
         # --- PROCESSING: Show dimmed image with "Analyzing" overlay ---
         elif status == 'processing':
-            active_info = next((f for f in app_state.queued_files.values() if f.is_active), None)
-            
+            active_file = app_state.queued_files.get(app_state.active_file_id)
             with ui.element('div').classes('relative w-[640px] h-[640px] flex items-center justify-center'):
-                if active_info and active_info.img_src:
+                if active_file and active_file.img_src:
                     # Dimmed background image
-                    ui.image(active_info.img_src).style('width: 640px; height: 640px; object-fit: contain; opacity: 0.4;')
+                    ui.image(active_file.img_src).style('width: 640px; height: 640px; object-fit: contain; opacity: 0.4;')
                     
                     # Active overlay
                     with ui.column().classes('absolute inset-0 flex items-center justify-center'):
@@ -52,16 +51,13 @@ def render_main_workspace(on_next_callback=None, on_prev_callback=None):
         # TODO: move into helper and use app_state for hardcoded values
         elif status == 'result':
             result = getattr(app_state.view, 'result', None)
+            info = app_state.queued_files.get(app_state.active_file_id)
             
-            img_src = None
-            for info in app_state.queued_files.values():
-                if info.is_active:
-                    img_src = info.path  # This is a Path object or string path
-                    native_width = info.width
-                    native_height = info.height
-                    break
+            if info:
+                img_src = info.path  # This is a Path object or string path
+                native_width = info.width
+                native_height = info.height
 
-            if img_src:
                 if isinstance(img_src, (Path, str)) and Path(img_src).exists():
                     # FIXED: Open the image with PIL just to read its native dimensions
                     with Image.open(img_src) as img:
@@ -117,9 +113,13 @@ def render_main_workspace(on_next_callback=None, on_prev_callback=None):
             ui.button(icon='chevron_left', on_click=on_prev_callback if on_prev_callback else lambda: None) \
                 .props('flat round dense size=lg').classes('text-gray-400 hover:text-white')
             
-            files_list = list(app_state.queued_files.values())
-            current_idx = next((idx for idx, f in enumerate(files_list) if f.is_active), 0)
-            ui.label(f"{current_idx + 1} / {len(files_list)}").classes('text-gray-400 font-medium')
+            files_keys = list(app_state.queued_files.keys())
+            try:
+                current_idx = files_keys.index(app_state.active_file_id)
+            except ValueError:
+                current_idx = 0
+                
+            ui.label(f"{current_idx + 1} / {len(files_keys)}").classes('text-gray-400 font-medium')
             
             ui.button(icon='chevron_right', on_click=on_next_callback if on_next_callback else lambda: None) \
                 .props('flat round dense size=lg').classes('text-gray-400 hover:text-white')

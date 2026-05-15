@@ -20,12 +20,13 @@ def render_queue_list(on_item_click, on_item_delete):
 def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
     """Renders a single file row using reactive bindings for high performance."""
     # Check if this specific row should be active when the list is rendered
-    row_classes = 'queue-item shrink-0 active' if info.is_active else 'queue-item shrink-0'
+    is_initially_active = (app_state.active_file_id == file_id)
+    row_classes = 'queue-item shrink-0 active' if is_initially_active else 'queue-item shrink-0'
     
     # Create the row AND assign it a unique HTML ID
     row = ui.row().classes(row_classes).props(f'id="row-{file_id}"')
     print("[debug] Rendering row for file_id:", file_id, "with status:", info.status)
-    
+
     # Create the click handler (MUST accept 'e' to prevent Python errors)
     def handle_click(e):  # View current file_id in console when clicked
         if app_state.is_processing:

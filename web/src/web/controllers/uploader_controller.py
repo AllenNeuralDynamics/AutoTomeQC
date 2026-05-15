@@ -38,7 +38,8 @@ class UploaderController:
                 info.json_path.unlink(missing_ok=True)
                 
             # Clear views if the deleted item was currently active
-            if info.is_active or not app_state.queued_files:
+            if app_state.active_file_id == file_id or not app_state.queued_files:
+                app_state.active_file_id = None
                 self._set_view_state('idle')
                 
         self.refresh_ui()
@@ -48,10 +49,7 @@ class UploaderController:
         if not info: return
             
         try:
-            # Update active flags
-            for f_info in app_state.queued_files.values():
-                f_info.is_active = False
-            info.is_active = True
+            app_state.active_file_id = file_id
 
             json_path = info.json_path
             if json_path and json_path.exists():
@@ -105,7 +103,6 @@ class UploaderController:
             path=file_path,
             img_src=img_src,
             status='PENDING',
-            is_active=False,
             width=width,
             height=height
         )
@@ -126,11 +123,8 @@ class UploaderController:
         app_state.is_processing = True
         ui.notify("Processing images...")
         
-        # 1. Clear active state from ALL items exactly ONCE before the loop starts
-        for f_info in app_state.queued_files.values():
-            f_info.is_active = False
-            
-        previous_info = None # Track the previously active item
+        app_state.active_file_id = None
+    
         
         for file_id, info in app_state.queued_files.items():
             if not app_state.is_processing:
@@ -141,13 +135,7 @@ class UploaderController:
                 continue
                 
             info.status = 'PROCESSING'
-            
-            # 2. Effortlessly switch active states without an inner loop
-            if previous_info:
-                previous_info.is_active = False # Turn off the old one
-                
-            info.is_active = True # Turn on the new one
-            previous_info = info  # Remember this one for the next cycle
+            app_state.active_file_id = file_id
             
             # Update view to processing and refresh the sidebar UI
             self._set_view_state('processing')
@@ -185,7 +173,7 @@ class UploaderController:
             return
 
         # Find the ID of the currently active file
-        current_id = next((f_id for f_id, f in app_state.queued_files.items() if f.is_active), None)
+        current_id = app_state.active_file_id
         
         if current_id is None:
             # Fallback: if nothing is active, select the first file
@@ -198,7 +186,7 @@ class UploaderController:
 
         # Use existing controller logic to update active flags, load json, and change view state
         self.load_result(target_id)
-        self.refresh_ui()  # Updates sidebar/queue lists if necessary
+        #self.refresh_ui()  # Updates sidebar/queue lists if necessary
 
     def load_prev(self):
         """Finds the active file and shifts state to the previous item in the queue."""
@@ -207,7 +195,7 @@ class UploaderController:
             return
 
         # Find the ID of the currently active file
-        current_id = next((f_id for f_id, f in app_state.queued_files.items() if f.is_active), None)
+        current_id = app_state.active_file_id
         
         if current_id is None:
             # Fallback: if nothing is active, select the last file
@@ -220,4 +208,4 @@ class UploaderController:
 
         # Use existing controller logic to update active flags, load json, and change view state
         self.load_result(target_id)
-        #self.refresh_ui()  # Updates sidebar/queue lists if necessary
+        
