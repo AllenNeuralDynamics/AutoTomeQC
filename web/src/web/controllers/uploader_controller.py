@@ -3,6 +3,7 @@ import asyncio
 import base64
 import json
 import uuid
+import imagesize
 from nicegui import ui
 
 from web.models.status import app_state
@@ -97,13 +98,16 @@ class UploaderController:
         mime_type = f"image/{'jpeg' if ext in ['jpg', 'jpeg'] else ext}"
         base64_img = base64.b64encode(file_bytes).decode('utf-8')
         img_src = f"data:{mime_type};base64,{base64_img}"
-        
+        width, height = imagesize.get(str(file_path))
+
         app_state.queued_files[file_id] = QueuedFile(
             name=file_name,
             path=file_path,
             img_src=img_src,
             status='PENDING',
-            is_active=False
+            is_active=False,
+            width=width,
+            height=height
         )
         
         self.refresh_ui()
@@ -173,3 +177,48 @@ class UploaderController:
         else:
             self.refresh_ui() 
             ui.notify("Processing paused.", type='warning')  # Yellow
+
+
+    def load_next(self):
+        """Finds the active file and shifts state to the next item in the queue."""
+        files_list = list(app_state.queued_files.keys())
+        if not files_list:
+            return
+
+        # Find the ID of the currently active file
+        current_id = next((f_id for f_id, f in app_state.queued_files.items() if f.is_active), None)
+        
+        if current_id is None:
+            # Fallback: if nothing is active, select the first file
+            target_id = files_list[0]
+        else:
+            current_idx = files_list.index(current_id)
+            # Calculate next index with wrapping (loops around to 0)
+            new_idx = (current_idx + 1) % len(files_list)
+            target_id = files_list[new_idx]
+
+        # Use existing controller logic to update active flags, load json, and change view state
+        self.load_result(target_id)
+        self.refresh_ui()  # Updates sidebar/queue lists if necessary
+
+    def load_prev(self):
+        """Finds the active file and shifts state to the previous item in the queue."""
+        files_list = list(app_state.queued_files.keys())
+        if not files_list:
+            return
+
+        # Find the ID of the currently active file
+        current_id = next((f_id for f_id, f in app_state.queued_files.items() if f.is_active), None)
+        
+        if current_id is None:
+            # Fallback: if nothing is active, select the last file
+            target_id = files_list[-1]
+        else:
+            current_idx = files_list.index(current_id)
+            # Calculate previous index with wrapping (loops around to last index)
+            new_idx = (current_idx - 1) % len(files_list)
+            target_id = files_list[new_idx]
+
+        # Use existing controller logic to update active flags, load json, and change view state
+        self.load_result(target_id)
+        #self.refresh_ui()  # Updates sidebar/queue lists if necessary

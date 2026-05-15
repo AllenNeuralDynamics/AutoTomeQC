@@ -9,6 +9,7 @@ dependencies = [
     "httpx>=0.25.0",
     "pydantic>=2.0.0",
     "pywebview",
+    "imagesize",
 ]
 
 [tool.uv.sources]
