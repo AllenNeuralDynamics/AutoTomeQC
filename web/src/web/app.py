@@ -69,7 +69,7 @@ def main():
     if local_ip != "127.0.0.1":
         log.info(f"        or http://{local_ip}:{args.ui_port}")
     
-    script_path = Path(__file__).resolve().parent / "ui.py"
+    script_path = Path(__file__).resolve().parent / "main.py"
     frontend_cmd = [
         "uv", "run", "python",
         str(script_path), 
