@@ -7,13 +7,10 @@ from web.models.status import app_state
 from web.controllers.state_controller import wait_backend_ready, on_fetch_config, on_toggle_masks
 from web.controllers.uploader_controller import UploaderController
 from web.components.app_header import render_header
-from web.components.main_workspace import render_main_workspace
+from web.components.main_workspace import MainWorkspace
 from web.components.inspector_sidebar import render_inspector_sidebar, inspector_content
 from web.components.loading_overlay import render_loading_overlay
-#from web.components.uploader_sidebar import render_uploader_sidebar, render_queue_list
 from web.components.uploader_sidebar import queue_renderer, render_uploader_sidebar
-
-# from web.protocol.events import ... (Deleted!)
 
 parser = argparse.ArgumentParser()
 static_dir = Path(__file__).resolve().parent / "static"
@@ -26,50 +23,41 @@ def index():
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
     ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')
 
-    # --- CONTROLLERS ---
-    # Pass all component .refresh methods into the controller
-    """
-    uploader_controller = UploaderController(
-        refresh_ui_callback=render_queue_list.refresh,
-        refresh_workspace=render_main_workspace.refresh,
-        refresh_inspector=inspector_content.refresh
-    )
-    """
-
-    uploader_controller = UploaderController(
-    add_ui_callback=queue_renderer.add_item,         # <-- Changed
-    remove_ui_callback=queue_renderer.remove_item,   # <-- Changed
-    refresh_workspace=render_main_workspace.refresh,
-    refresh_inspector=inspector_content.refresh
-)
-
     # --- LOADING OVERLAY ---
     render_loading_overlay(
         wait_backend_ready_callback=wait_backend_ready,
         fetch_config_callback=on_fetch_config
     )
 
+    # --- INSTANTIATE WORKSPACE ---
+    # Use lambdas here so it can reference uploader_controller before it's created
+    workspace = MainWorkspace(
+        on_prev_callback=lambda: uploader_controller.load_prev(),
+        on_next_callback=lambda: uploader_controller.load_next()
+    )
+
+    # --- CONTROLLERS ---
+    uploader_controller = UploaderController(
+        add_ui_callback=queue_renderer.add_item,
+        remove_ui_callback=queue_renderer.remove_item,
+        refresh_workspace=workspace.render.refresh,
+        refresh_inspector=inspector_content.refresh
+    )
+
     # --- RIGHT SIDEBAR (Inspector) ---
     render_inspector_sidebar(toggle_masks_callback=on_toggle_masks)
 
     # --- MAIN WORKSPACE (Image Viewer) ---
-    render_main_workspace(on_prev_callback=uploader_controller.load_prev,
-                          on_next_callback=uploader_controller.load_next)
+    # Render the class component into the UI layout
+    workspace.render()
 
     # --- LEFT SIDEBAR (Uploader) ---
-    left_drawer = render_uploader_sidebar(
-    on_upload_callback=uploader_controller.handle_upload,
-    on_process_callback=uploader_controller.process_batch,
-    on_item_click=uploader_controller.load_result,
-    on_item_delete=uploader_controller.remove_file
-)
-    """    
     left_drawer = render_uploader_sidebar(
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch,
         on_item_click=uploader_controller.load_result,
         on_item_delete=uploader_controller.remove_file
-    )"""
+    )
 
     # --- TOOLBAR (Header) ---
     render_header(left_drawer=left_drawer)
