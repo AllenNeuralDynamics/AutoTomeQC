@@ -104,12 +104,13 @@ class MainWorkspace:
         scale_y = native_height / self.yolo_h
         
         svg_content = ""
-        for sec in result.sections:
+        colors = app_state.view.section_colors
+        for i, sec in enumerate(result.sections):
             if sec.mask:
+                stroke_color, fill_color = colors[i % len(colors)]
                 scaled_points = [f"{p[0] * scale_x},{p[1] * scale_y}" for p in sec.mask]
                 points_str = " ".join(scaled_points)
-                svg_content += f'<polygon points="{points_str}" fill="rgba(242, 125, 38, 0.2)" stroke="#F27D26" stroke-width="2" />'
-        
+                svg_content += f'<polygon points="{points_str}" fill="{fill_color}" stroke="{stroke_color}" stroke-width="2" />'
         return svg_content
 
     def _render_error(self):

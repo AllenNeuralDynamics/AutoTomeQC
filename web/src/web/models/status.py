@@ -1,7 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, ConfigDict, computed_field
 from web.models.backend_schemas import PipelineResult, AppConfig
 
@@ -24,6 +24,16 @@ class ViewState(BaseModel):
     raw_json: Optional[Dict] = None
     show_masks: bool = True
 
+    # Centralized UI color palette for section rendering (Stroke Hex, Fill RGBA)
+    section_colors: List[Tuple[str, str]] = Field(default_factory=lambda: [
+        ("#F27D26", "rgba(242, 125, 38, 0.2)"),   # Orange (Original)
+        ("#26A69A", "rgba(38, 166, 154, 0.2)"),   # Teal
+        ("#EF5350", "rgba(239, 83, 80, 0.2)"),    # Red
+        ("#42A5F5", "rgba(66, 165, 245, 0.2)"),   # Blue
+        ("#AB47BC", "rgba(171, 71, 188, 0.2)"),   # Purple
+        ("#9CCC65", "rgba(156, 204, 101, 0.2)"),  # Light Green
+    ])
+
 class AppState(BaseModel):
     """Holds the global state of the frontend using Pydantic for validation."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -43,7 +53,7 @@ class AppState(BaseModel):
 
     # Storage paths
     temp_upload_dir: Path = Field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="autotome_")))
-    print("tmep upload dir:", temp_upload_dir)
+    print("temp upload dir:", temp_upload_dir)
 
     @computed_field
     @property

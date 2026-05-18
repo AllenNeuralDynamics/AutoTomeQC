@@ -38,7 +38,7 @@ def render_header(left_drawer):
         config_dialog.open()
 
     def _handle_export_click():
-        # 1. Filter the queue for files that actually have results (JSON exists)
+        # Filter the queue for files that actually have results (JSON exists)
         files_with_results = [
             info for info in app_state.queued_files.values() 
             if info.json_path is not None and info.json_path.exists()
@@ -49,7 +49,7 @@ def render_header(left_drawer):
             return
 
         try:
-            # 2. Package the existing Images and JSON files into an in-memory ZIP
+            # Package the existing Images and JSON files into an in-memory ZIP
             memory_file = io.BytesIO()
             with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
                 
@@ -64,8 +64,7 @@ def render_header(left_drawer):
 
             memory_file.seek(0)
             
-            # 3. Trigger native browser download 
-            # The browser will ask the user where to save this bundle.
+            # Trigger native browser download 
             ui.download(memory_file.read(), 'autotome_results.zip')
             ui.notify(f'Exporting {len(files_with_results)} results...', type='positive')
             

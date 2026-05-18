@@ -55,7 +55,8 @@ def inspector_content():
 
 def _display_qc_result(result: PipelineResult, raw_json: dict):
     """Renders the QC results breakdown on the screen."""
-    
+    colors = app_state.view.section_colors
+
     with ui.column().classes('inspector-list'):
         
         # Header Summary
@@ -72,9 +73,13 @@ def _display_qc_result(result: PipelineResult, raw_json: dict):
         # Sections Details
         if result.sections:
             for i, sec in enumerate(result.sections):
+                stroke_color, _ = colors[i % len(colors)]
+
                 with ui.column().classes('section-container'):
                     with ui.row().classes('section-header'):
-                        ui.label(f'SECTION {i + 1}').classes('badge-section')
+                        ui.label(f'SECTION {i + 1}') \
+                          .classes('badge-section') \
+                          .style(f'background-color: {stroke_color}; border-color: {stroke_color}; color: white;')
                         ui.element('div').classes('section-divider')
                     
                     # Metric Rows
