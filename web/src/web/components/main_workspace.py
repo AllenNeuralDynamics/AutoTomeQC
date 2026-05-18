@@ -59,14 +59,6 @@ def render_main_workspace(on_next_callback=None, on_prev_callback=None):
                 native_width = info.width
                 native_height = info.height
 
-                if isinstance(img_src, (Path, str)) and Path(img_src).exists():
-                    # FIXED: Open the image with PIL just to read its native dimensions
-                    with Image.open(img_src) as img:
-                        native_width, native_height = img.size
-                else:
-                    # Fallback defaults if the path is an external URL or missing
-                    native_width, native_height = 640, 640
-
                 with ui.element('div').classes('w-full h-full relative'):
                     # Pass the high-res path directly to NiceGUI so it renders crisp
                     image_view = ui.interactive_image(img_src).classes('w-full h-full').style('object-fit: contain;')
@@ -78,9 +70,9 @@ def render_main_workspace(on_next_callback=None, on_prev_callback=None):
                         if not show_masks or not result or not result.sections:
                             return ""
                         
-                        # Calculate how much we need to scale the 640x640 mask coordinates
-                        scale_x = native_width / 640
-                        scale_y = native_height / 640
+                        # Calculate how much we need to scale the yolo segmentation coordinates
+                        scale_x = native_width / app_state.config.qc.yolo.img_dim[0]
+                        scale_y = native_height / app_state.config.qc.yolo.img_dim[1]
                         
                         svg_content = ""
                         for sec in result.sections:
