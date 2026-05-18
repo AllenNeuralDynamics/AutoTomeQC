@@ -50,17 +50,23 @@ class MainWorkspace:
 
     def _render_pending(self):
         active_file = app_state.queued_files.get(app_state.active_file_id)
-        if active_file and active_file.img_src:
-            with ui.element('div').classes('image-wrapper'):
-                ui.image(active_file.img_src).classes('image-preview').style('width: 640px; height: 640px; object-fit: contain;')
-        else:
-            ui.spinner('dots', size='lg')
+        # Use a full-size flex container to center contents
+        with ui.element('div').classes('w-full h-full relative flex items-center justify-center'):
+            if active_file and active_file.img_src:
+                # Expand image to full container size and contain aspect ratio
+                ui.image(active_file.img_src).classes('w-full h-full').style('object-fit: contain;')
+            else:
+                ui.spinner('dots', size='lg')
 
     def _render_processing(self):
         active_file = app_state.queued_files.get(app_state.active_file_id)
-        with ui.element('div').classes('relative w-[640px] h-[640px] flex items-center justify-center'):
+
+        with ui.element('div').classes('w-full h-full relative flex items-center justify-center'):
             if active_file and active_file.img_src:
-                ui.image(active_file.img_src).style('width: 640px; height: 640px; object-fit: contain; opacity: 0.4;')
+                # Expand image to full container size
+                ui.image(active_file.img_src).classes('w-full h-full').style('object-fit: contain; opacity: 0.4;')
+                
+                # The absolute inset-0 overlay will now cover the entire w-full h-full parent
                 with ui.column().classes('absolute inset-0 flex items-center justify-center'):
                     ui.spinner('dots', size='lg', color='orange')
                     ui.label('ANALYZING...').classes('text-orange font-bold mt-2 tracking-widest')
