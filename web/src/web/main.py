@@ -10,7 +10,8 @@ from web.components.app_header import render_header
 from web.components.main_workspace import render_main_workspace
 from web.components.inspector_sidebar import render_inspector_sidebar, inspector_content
 from web.components.loading_overlay import render_loading_overlay
-from web.components.uploader_sidebar import render_uploader_sidebar, render_queue_list
+#from web.components.uploader_sidebar import render_uploader_sidebar, render_queue_list
+from web.components.uploader_sidebar import queue_renderer, render_uploader_sidebar
 
 # from web.protocol.events import ... (Deleted!)
 
@@ -27,11 +28,20 @@ def index():
 
     # --- CONTROLLERS ---
     # Pass all component .refresh methods into the controller
+    """
     uploader_controller = UploaderController(
         refresh_ui_callback=render_queue_list.refresh,
         refresh_workspace=render_main_workspace.refresh,
         refresh_inspector=inspector_content.refresh
     )
+    """
+
+    uploader_controller = UploaderController(
+    add_ui_callback=queue_renderer.add_item,         # <-- Changed
+    remove_ui_callback=queue_renderer.remove_item,   # <-- Changed
+    refresh_workspace=render_main_workspace.refresh,
+    refresh_inspector=inspector_content.refresh
+)
 
     # --- LOADING OVERLAY ---
     render_loading_overlay(
@@ -48,13 +58,20 @@ def index():
 
     # --- LEFT SIDEBAR (Uploader) ---
     left_drawer = render_uploader_sidebar(
+    on_upload_callback=uploader_controller.handle_upload,
+    on_process_callback=uploader_controller.process_batch,
+    on_item_click=uploader_controller.load_result,
+    on_item_delete=uploader_controller.remove_file
+)
+    """    
+    left_drawer = render_uploader_sidebar(
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch,
         on_item_click=uploader_controller.load_result,
         on_item_delete=uploader_controller.remove_file
-    )
+    )"""
 
-    # --- 5. TOOLBAR (Header) ---
+    # --- TOOLBAR (Header) ---
     render_header(left_drawer=left_drawer)
 
 if __name__ in {"__main__", "__mp_main__"}:
