@@ -24,14 +24,17 @@ class ViewState(BaseModel):
     raw_json: Optional[Dict] = None
     show_masks: bool = True
 
-    # Centralized UI color palette for section rendering (Stroke Hex, Fill RGBA)
+    # Centralized UI color palette for section rendering - Allen Brand color 
     section_colors: List[Tuple[str, str]] = Field(default_factory=lambda: [
-        ("#F27D26", "rgba(242, 125, 38, 0.2)"),   # Orange (Original)
-        ("#26A69A", "rgba(38, 166, 154, 0.2)"),   # Teal
-        ("#EF5350", "rgba(239, 83, 80, 0.2)"),    # Red
-        ("#42A5F5", "rgba(66, 165, 245, 0.2)"),   # Blue
-        ("#AB47BC", "rgba(171, 71, 188, 0.2)"),   # Purple
-        ("#9CCC65", "rgba(156, 204, 101, 0.2)"),  # Light Green
+        ("#FF6E00", "rgba(255, 110, 0, 0.1)"),   # Orange
+        ("#6464FF", "rgba(100, 100, 255, 0.1)"), # Blue
+        ("#FF00FF", "rgba(255, 0, 255, 0.1)"),   # Rose
+        ("#C0DB05", "rgba(192, 219, 5, 0.1)"),   # Green
+        ("#CD0F55", "rgba(205, 15, 85, 0.1)"),   # Maroon
+        ("#00A998", "rgba(0, 169, 152, 0.1)"),    # Teal
+        ("#8246E1", "rgba(130, 70, 225, 0.1)"),  # Violet
+        ("#FFE823", "rgba(255, 232, 35, 0.1)"),  # Yellow
+        ("#DC9E00", "rgba(220, 158, 0, 0.1)"),   # Ochre
     ])
 
 class AppState(BaseModel):
