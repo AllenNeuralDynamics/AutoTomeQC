@@ -1,4 +1,6 @@
 import json
+import io
+import zipfile
 from nicegui import ui
 from web.models.status import app_state
 
@@ -16,7 +18,7 @@ def render_header(left_drawer):
         with ui.row().classes('w-full justify-end mt-4'):
             ui.button('CLOSE', on_click=config_dialog.close).classes('bg-neutral-700 text-white')
 
-    def handle_config_click():
+    def _handle_config_click():
         try:
             if app_state.config is not None:
                 # If it's your Pydantic AppConfig model
@@ -35,14 +37,48 @@ def render_header(left_drawer):
         config_display.set_content(config_str)
         config_dialog.open()
 
+    def _handle_export_click():
+        # 1. Filter the queue for files that actually have results (JSON exists)
+        files_with_results = [
+            info for info in app_state.queued_files.values() 
+            if info.json_path is not None and info.json_path.exists()
+        ]
+
+        if not files_with_results:
+            ui.notify('No processed results available to export.', type='warning')
+            return
+
+        try:
+            # 2. Package the existing Images and JSON files into an in-memory ZIP
+            memory_file = io.BytesIO()
+            with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+                
+                for info in files_with_results:
+                    # Write the image file into the zip
+                    if info.path and info.path.exists():
+                        zf.write(info.path, arcname=info.path.name)
+                    
+                    # Write the previously dumped JSON file into the zip
+                    if info.json_path and info.json_path.exists():
+                        zf.write(info.json_path, arcname=info.json_path.name)
+
+            memory_file.seek(0)
+            
+            # 3. Trigger native browser download 
+            # The browser will ask the user where to save this bundle.
+            ui.download(memory_file.read(), 'autotome_results.zip')
+            ui.notify(f'Exporting {len(files_with_results)} results...', type='positive')
+            
+        except Exception as e:
+            ui.notify(f'Export failed: {e}', type='negative')
+
     # Render the top header layout
     with ui.header().classes('app-header').classes(remove='bg-primary'):
         with ui.row().classes('header-left'):
             ui.button(icon='chevron_left', color=None, on_click=lambda: left_drawer.toggle()).props('flat dense').classes('btn-icon')
 
         with ui.row().classes('header-right'):
-            btn_config = ui.button('CONFIG', icon='settings', color=None,
-                                   on_click=handle_config_click).classes('btn-config')
-            
-            btn_export = ui.button('EXPORT', icon='download', color=None,
-                                   on_click=lambda: ui.notify("Export button clicked")).classes('btn-export')
+            ui.button('CONFIG', icon='settings', color=None,
+                      on_click=_handle_config_click).classes('btn-config')
+            ui.button('EXPORT', icon='download', color=None,
+                      on_click=_handle_export_click).classes('btn-export')
