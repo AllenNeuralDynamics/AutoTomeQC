@@ -12,10 +12,11 @@ from web.models.backend_schemas import PipelineResult
 from web.models.status import QueuedFile
 
 class UploaderController:
-    # 1. Update Init parameters
-    def __init__(self, add_ui_callback, remove_ui_callback, refresh_workspace, refresh_inspector):
+    # Update Init parameters
+    def __init__(self, add_ui_callback, remove_ui_callback, set_active_ui_callback, refresh_workspace, refresh_inspector):
         self.add_ui = add_ui_callback
         self.remove_ui = remove_ui_callback
+        self.set_active_ui = set_active_ui_callback
         self.refresh_workspace = refresh_workspace
         self.refresh_inspector = refresh_inspector
         self._set_view_state('idle')
@@ -26,6 +27,8 @@ class UploaderController:
         app_state.view.error = error
         app_state.view.result = result
         app_state.view.raw_json = raw_json
+        if self.set_active_ui:
+            self.set_active_ui(app_state.active_file_id)
         
         self.refresh_workspace()
         self.refresh_inspector()
@@ -40,8 +43,10 @@ class UploaderController:
             if app_state.active_file_id == file_id or not app_state.queued_files:
                 app_state.active_file_id = None
                 self._set_view_state('idle')
-                
-        # 2. O(1) Removal
+            else:
+                # Force the workspace to refresh so the counter (e.g. 1 / 5 -> 1 / 4) updates
+                self.refresh_workspace()
+
         self.remove_ui(file_id)
 
     def load_result(self, file_id):
@@ -104,7 +109,6 @@ class UploaderController:
             status='PENDING', width=width, height=height
         )
         
-        # 3. O(1) Addition
         self.add_ui(file_id)
         e.sender.run_method('removeUploadedFiles')
 
@@ -155,10 +159,7 @@ class UploaderController:
                 self._set_view_state('error', error="Backend Error")
                     
             await asyncio.sleep(1.0)
-        
-        # 4. Remove self.refresh_ui() at the end! 
-        # Because of your excellent use of bindings in _render_file_row, NiceGUI 
-        # is already updating spinners and labels automatically. No manual refresh needed.
+
         if app_state.is_processing:
             app_state.is_processing = False
             ui.notify("Batch complete!", type='positive')
@@ -185,7 +186,6 @@ class UploaderController:
 
         # Use existing controller logic to update active flags, load json, and change view state
         self.load_result(target_id)
-        #self.refresh_ui()  # Updates sidebar/queue lists if necessary
 
     def load_prev(self):
         """Finds the active file and shifts state to the previous item in the queue."""

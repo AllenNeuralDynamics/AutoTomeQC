@@ -13,6 +13,9 @@ class MainWorkspace:
         else:
             self.yolo_w, self.yolo_h = 640, 640
 
+        # Register the global keyboard event listener
+        ui.keyboard(on_key=self._handle_key)
+
     @ui.refreshable
     def render(self):
         """Main entry point for rendering the workspace."""
@@ -71,7 +74,7 @@ class MainWorkspace:
         if not info:
             return
 
-        img_src = info.path
+        img_src = info.img_src
         native_width = info.width
         native_height = info.height
 
@@ -125,3 +128,15 @@ class MainWorkspace:
             
             ui.button(icon='chevron_right', on_click=self.on_next if self.on_next else lambda: None) \
                 .props('flat round dense size=lg').classes('text-gray-400 hover:text-white')
+            
+    def _handle_key(self, e):
+        """Handle keyboard events for navigation."""
+        # Only trigger on key down to prevent duplicate calls on key up
+        if not e.action.keydown:
+            return
+
+        # Trigger corresponding callbacks based on arrow keys
+        if e.key.arrow_right and self.on_next:
+            self.on_next()
+        elif e.key.arrow_left and self.on_prev:
+            self.on_prev()

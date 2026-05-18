@@ -10,7 +10,7 @@ from web.components.app_header import render_header
 from web.components.main_workspace import MainWorkspace
 from web.components.inspector_sidebar import render_inspector_sidebar, inspector_content
 from web.components.loading_overlay import render_loading_overlay
-from web.components.uploader_sidebar import queue_renderer, render_uploader_sidebar
+from web.components.uploader_sidebar import QueueRenderer, render_uploader_sidebar
 
 parser = argparse.ArgumentParser()
 static_dir = Path(__file__).resolve().parent / "static"
@@ -37,9 +37,11 @@ def index():
     )
 
     # --- CONTROLLERS ---
+    queue_renderer = QueueRenderer() # instantiage queue renderer
     uploader_controller = UploaderController(
         add_ui_callback=queue_renderer.add_item,
         remove_ui_callback=queue_renderer.remove_item,
+        set_active_ui_callback=queue_renderer.set_active,
         refresh_workspace=workspace.render.refresh,
         refresh_inspector=inspector_content.refresh
     )
@@ -53,6 +55,7 @@ def index():
 
     # --- LEFT SIDEBAR (Uploader) ---
     left_drawer = render_uploader_sidebar(
+        renderer = queue_renderer,
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch,
         on_item_click=uploader_controller.load_result,

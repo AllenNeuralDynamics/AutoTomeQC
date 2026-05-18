@@ -51,9 +51,9 @@ def inspector_content():
             result = getattr(app_state.view, 'result', None)
             raw_json = getattr(app_state.view, 'raw_json', {})
             if result:
-                display_qc_result(result, raw_json)
+                _display_qc_result(result, raw_json)
 
-def display_qc_result(result: PipelineResult, raw_json: dict):
+def _display_qc_result(result: PipelineResult, raw_json: dict):
     """Renders the QC results breakdown on the screen."""
     
     with ui.column().classes('inspector-list'):

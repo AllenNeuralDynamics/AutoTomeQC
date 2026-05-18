@@ -1,7 +1,7 @@
+# web/components/uploader_sidebar.py
 from nicegui import ui
 from web.models.status import app_state
 
-# 1. Create a QueueRenderer to handle O(1) appends and deletes
 class QueueRenderer:
     def __init__(self):
         self.container = None
@@ -37,7 +37,8 @@ class QueueRenderer:
         if self.container:
             info = app_state.queued_files[file_id]
             with self.container:
-                row = _render_file_row(file_id, info, self.on_click, self.on_delete)
+                # Call the internal method
+                row = self._render_file_row(file_id, info)
                 self.rendered_rows[file_id] = row
 
     def remove_item(self, file_id):
@@ -49,77 +50,69 @@ class QueueRenderer:
         if not app_state.queued_files and self.empty_state:
             self.empty_state.set_visibility(True)
 
-# Expose a global instance of our renderer
-queue_renderer = QueueRenderer()
+    def set_active(self, active_file_id):
+        """Globally updates which row has the 'active' class."""
+        for fid, row in self.rendered_rows.items():
+            if fid == active_file_id:
+                row.classes(add='active')
+            else:
+                row.classes(remove='active')
 
-def _render_file_row(file_id, info, on_click_callback, on_delete_callback):
-    """Renders a single file row using reactive bindings for high performance."""
-    is_initially_active = (app_state.active_file_id == file_id)
-    row_classes = 'queue-item shrink-0 active' if is_initially_active else 'queue-item shrink-0'
-    
-    row = ui.row().classes(row_classes).props(f'id="row-{file_id}"')
-    print("[debug] Rendering row for file_id:", file_id, "with status:", info.status)
-
-    def handle_click(e):
-        if app_state.is_processing:
-            ui.notify("Cannot select images while processing batch", type='warning')
-            return
-            
-        prev_active_id = app_state.active_file_id
+    def _render_file_row(self, file_id, info):
+        """Renders a single file row using reactive bindings for high performance."""
+        is_initially_active = (app_state.active_file_id == file_id)
+        row_classes = 'queue-item shrink-0 active' if is_initially_active else 'queue-item shrink-0'
         
-        # If there is a currently active row, remove its 'active' class
-        if prev_active_id and prev_active_id in queue_renderer.rendered_rows:
-            queue_renderer.rendered_rows[prev_active_id].classes(remove='active')
-            
-        # Add the 'active' class to the newly clicked row
-        row.classes(add='active')
+        row = ui.row().classes(row_classes).props(f'id="row-{file_id}"')
+        print("[debug] Rendering row for file_id:", file_id, "with status:", info.status)
 
-        # Trigger the Python logic in the background
-        on_click_callback(file_id)
-
-    # Bind the click event to the entire row, but prevent it from triggering when clicking the delete button
-    row.on('click', handle_click)
-
-    with row:
-        with ui.element('div').classes('queue-thumb'):
-            ui.image(info.img_src).classes('queue-img')
-
-        with ui.element('div').classes('queue-details'):
-            ui.label(info.name).classes('queue-filename')
-            
-            with ui.row().classes('queue-status-row'):
-                # 2. Bind the spinner visibility to the 'PROCESSING' status
-                spinner = ui.spinner('dots', size='1em', color='blue-400')
-                spinner.bind_visibility_from(info, 'status', backward=lambda s: s == 'PROCESSING')
+        def handle_click(e):
+            if app_state.is_processing:
+                ui.notify("Cannot select images while processing batch", type='warning')
+                return
                 
-                # 3. Create dedicated status labels and bind their visibility to their respective states.
-                # This is much faster and cleaner than trying to dynamically rewrite CSS variables on the fly.
-                lbl_proc = ui.label('PROCESSING').classes('queue-status-text').style('color: #60a5fa !important')
-                lbl_proc.bind_visibility_from(info, 'status', backward=lambda s: s == 'PROCESSING')
+            # Trigger the Python logic using the stored callback
+            if self.on_click:
+                self.on_click(file_id)
+
+        row.on('click', handle_click)
+
+        with row:
+            with ui.element('div').classes('queue-thumb'):
+                ui.image(info.img_src).classes('queue-img')
+
+            with ui.element('div').classes('queue-details'):
+                ui.label(info.name).classes('queue-filename')
                 
-                lbl_pass = ui.label('PASS').classes('queue-status-text').style('color: var(--pass-color) !important')
-                lbl_pass.bind_visibility_from(info, 'status', backward=lambda s: s == 'PASS')
+                with ui.row().classes('queue-status-row'):
+                    spinner = ui.spinner('dots', size='1em', color='blue-400')
+                    spinner.bind_visibility_from(info, 'status', backward=lambda s: s == 'PROCESSING')
+                    
+                    lbl_proc = ui.label('PROCESSING').classes('queue-status-text').style('color: #60a5fa !important')
+                    lbl_proc.bind_visibility_from(info, 'status', backward=lambda s: s == 'PROCESSING')
+                    
+                    lbl_pass = ui.label('PASS').classes('queue-status-text').style('color: var(--pass-color) !important')
+                    lbl_pass.bind_visibility_from(info, 'status', backward=lambda s: s == 'PASS')
+                    
+                    lbl_fail = ui.label('FAIL').classes('queue-status-text').style('color: var(--fail-color) !important')
+                    lbl_fail.bind_visibility_from(info, 'status', backward=lambda s: s == 'FAIL')
+
+                    lbl_err = ui.label('ERROR').classes('queue-status-text').style('color: var(--fail-color) !important')
+                    lbl_err.bind_visibility_from(info, 'status', backward=lambda s: s == 'ERROR')
+
+                    lbl_pend = ui.label('PENDING').classes('queue-status-text')
+                    lbl_pend.bind_visibility_from(info, 'status', backward=lambda s: s == 'PENDING')
+
+            del_btn = ui.button(icon='delete', color='red') \
+                .props('flat dense') \
+                .classes('btn-delete') \
+                .on('click.stop', lambda e, fid=file_id: self.on_delete(fid) if self.on_delete else None)
                 
-                lbl_fail = ui.label('FAIL').classes('queue-status-text').style('color: var(--fail-color) !important')
-                lbl_fail.bind_visibility_from(info, 'status', backward=lambda s: s == 'FAIL')
+            del_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda is_proc: not is_proc)
 
-                lbl_err = ui.label('ERROR').classes('queue-status-text').style('color: var(--fail-color) !important')
-                lbl_err.bind_visibility_from(info, 'status', backward=lambda s: s == 'ERROR')
+        return row
 
-                lbl_pend = ui.label('PENDING').classes('queue-status-text')
-                lbl_pend.bind_visibility_from(info, 'status', backward=lambda s: s == 'PENDING')
-
-        # 4. Bind the delete button visibility inversely to the global 'is_processing' state
-        del_btn = ui.button(icon='delete', color='red') \
-            .props('flat dense') \
-            .classes('btn-delete') \
-            .on('click.stop', lambda e, fid=file_id: on_delete_callback(fid))
-            
-        del_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda is_proc: not is_proc)
-
-    return row
-
-def render_uploader_sidebar(on_upload_callback, on_process_callback, on_item_click, on_item_delete):
+def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):
     """Renders the static sidebar wrapper."""
     with ui.left_drawer(fixed=True).classes('sidebar') as left_drawer:
         with ui.row().classes('sidebar-header'):
@@ -128,8 +121,8 @@ def render_uploader_sidebar(on_upload_callback, on_process_callback, on_item_cli
                 ui.label('AutoTome-QC').classes('sidebar-title-text')
             upload_btn = ui.button(icon='upload', color=None).classes('btn-upload')
         
-        # 2. Mount the high-performance structural renderer
-        queue_renderer.mount(on_item_click, on_item_delete)
+        # Mount using the passed-in renderer
+        renderer.mount(on_item_click, on_item_delete)
         
         if on_upload_callback:
             uploader = ui.upload(on_upload=on_upload_callback, multiple=True, auto_upload=True).props('accept="image/*"').classes('hidden-uploader')
