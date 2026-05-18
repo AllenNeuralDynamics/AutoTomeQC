@@ -112,15 +112,37 @@ class QueueRenderer:
 
         return row
 
-def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):
+async def _show_delete_all_dialog(on_delete_all_callback=None):
+    """Shows a confirmation dialog before deleting all items."""
+    with ui.dialog() as confirm_dialog, ui.card().classes('p-6'):
+        ui.label('Are you sure you want to delete all items in the queue?').classes('text-lg')
+        ui.label('This action cannot be undone.')
+        with ui.row().classes('w-full justify-end gap-4 pt-4'):
+            ui.button('Cancel', on_click=confirm_dialog.close).props('flat')
+            ui.button('Delete All', on_click=lambda: confirm_dialog.submit('yes'), color='negative')
+    result = await confirm_dialog
+    if result == 'yes' and on_delete_all_callback:
+        on_delete_all_callback()
+
+def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete, on_delete_all_callback=None):
     """Renders the static sidebar wrapper."""
     with ui.left_drawer(fixed=True).classes('sidebar') as left_drawer:
         with ui.row().classes('sidebar-header'):
             with ui.row().classes('sidebar-title'):
                 ui.icon('monitor_heart').classes('text-accent text-xl')
                 ui.label('AutoTome-QC').classes('sidebar-title-text')
-            upload_btn = ui.button(icon='upload', color=None).classes('btn-upload')
-        
+            with ui.row().classes('items-center'):
+                upload_btn = ui.button(icon='upload', color=None).classes('btn-upload') \
+                        .props('flat dense round') \
+                        .tooltip('Upload images') \
+                        .classes('text-gray-400 hover:text-white')
+                upload_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda p: not p)
+                delete_all_btn = ui.button(icon='delete_sweep', color=None, on_click=lambda: _show_delete_all_dialog(on_delete_all_callback)) \
+                    .props('flat dense round') \
+                    .tooltip('Delete all items') \
+                    .classes('btn-delete-all text-gray-400 hover:text-white')
+                delete_all_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda p: not p)
+
         # Mount using the passed-in renderer
         renderer.mount(on_item_click, on_item_delete)
         

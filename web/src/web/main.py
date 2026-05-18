@@ -59,7 +59,8 @@ def index():
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch,
         on_item_click=uploader_controller.load_result,
-        on_item_delete=uploader_controller.remove_file
+        on_item_delete=uploader_controller.remove_file,
+        on_delete_all_callback=uploader_controller.delete_all_files
     )
 
     # --- TOOLBAR (Header) ---

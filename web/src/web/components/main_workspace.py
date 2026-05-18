@@ -20,26 +20,37 @@ class MainWorkspace:
     def render(self):
         """Main entry point for rendering the workspace."""
         status = getattr(app_state.view, 'status', 'idle')
-        
+        """
         # Standard container for centering everything
         image_container = ui.element('div').classes(
             'w-full h-full max-w-[1200px] max-h-[1200px] aspect-square flex-none '
             'flex items-center justify-center '
             'bg-black overflow-hidden m-auto '
             'self-center rounded-lg border border-[#222222]'
-        )
+        )"""
 
-        with image_container:
-            if status == 'idle':
-                self._render_idle()
-            elif status == 'pending':
-                self._render_pending()
-            elif status == 'processing':
-                self._render_processing()
-            elif status == 'result':
-                self._render_result()
-            elif status == 'error':
-                self._render_error()
+        
+        with ui.column().classes('w-full h-full flex-nowrap items-center justify-between pb-4'):
+            # 2. flex-1 allows the container to grow/shrink. min-h-0 prevents it from overflowing the parent.
+            # Removed 'aspect-square' and 'h-full' to allow dynamic resizing.
+            image_container = ui.element('div').classes(
+                'w-full flex-1 min-h-0 max-w-[1200px] '
+                'flex items-center justify-center '
+                'bg-black overflow-hidden m-auto '
+                'rounded-lg border border-[#222222]'
+            )
+
+            with image_container:
+                if status == 'idle':
+                    self._render_idle()
+                elif status == 'pending':
+                    self._render_pending()
+                elif status == 'processing':
+                    self._render_processing()
+                elif status == 'result':
+                    self._render_result()
+                elif status == 'error':
+                    self._render_error()
 
         self._render_navigation()
 

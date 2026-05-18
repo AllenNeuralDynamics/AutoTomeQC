@@ -108,7 +108,13 @@ class UploaderController:
             name=file_name, path=file_path, img_src=img_src,
             status='PENDING', width=width, height=height
         )
+        # debug print queue size
+        print(f"File uploaded: {file_name} (ID: {file_id}). Queue size: {len(app_state.queued_files)}")
+        # debug check number of json file in temp dir
+        json_files = list(app_state.temp_upload_dir.glob("*.json"))
+        print(f"JSON files in temp dir: {len(json_files)}")
         
+
         self.add_ui(file_id)
         e.sender.run_method('removeUploadedFiles')
 
@@ -208,3 +214,15 @@ class UploaderController:
         # Use existing controller logic to update active flags, load json, and change view state
         self.load_result(target_id)
         
+    def delete_all_files(self):
+        """Deletes all files from the queue and the temporary directory."""
+        if not app_state.queued_files:
+            ui.notify("Queue is already empty.", type='info')
+            return
+
+        # Make a copy of keys to iterate, as we're modifying the dict
+        file_ids = list(app_state.queued_files.keys())
+        for file_id in file_ids:
+            self.remove_file(file_id)
+        
+        ui.notify("All items have been deleted.", type='positive')

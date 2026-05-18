@@ -61,7 +61,7 @@ class AppState(BaseModel):
     @computed_field
     @property
     def temp_upload_url_prefix(self) -> str:
-        return f"/temp_files/{self.temp_upload_dir.name}"
+        return f"/temp_files/{self.temp_upload_dir}"
 
     @computed_field
     @property
