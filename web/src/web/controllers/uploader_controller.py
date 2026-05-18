@@ -133,7 +133,6 @@ class UploaderController:
         
         app_state.active_file_id = None
     
-        
         for file_id, info in app_state.queued_files.items():
             if not app_state.is_processing:
                 print("[debug] Stop signal detected. Breaking loop.")
