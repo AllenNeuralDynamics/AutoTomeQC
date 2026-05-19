@@ -31,7 +31,7 @@ class MainWorkspace:
 
         # Standard container for centering everything
         image_container = ui.element('div').classes(
-            'w-full h-full max-w-[1200px] max-h-[1200px] aspect-square flex-none '
+            'w-full h-[calc(100vh-160px)] flex-none '
             'flex items-center justify-center '
             'bg-black overflow-hidden m-auto '
             'self-center rounded-lg border border-[#222222]'
@@ -65,7 +65,7 @@ class MainWorkspace:
         with ui.element('div').classes('w-full h-full relative flex items-center justify-center'):
             if active_file and active_file.img_src:
                 # Expand image to full container size
-                ui.image(active_file.img_src).classes('w-full h-full').style('object-fit: contain; opacity: 0.4;')
+                ui.image(active_file.img_src).classes('w-full h-full').props('fit="contain"').style('opacity: 0.4;')
                 
                 # The absolute inset-0 overlay will now cover the entire w-full h-full parent
                 with ui.column().classes('absolute inset-0 flex items-center justify-center'):
@@ -86,30 +86,32 @@ class MainWorkspace:
                 return
 
             img_src = active_file.img_src
-            # Use fallback dimensions just in case they aren't parsed yet
             native_width = getattr(active_file, 'width', 1000)
             native_height = getattr(active_file, 'height', 1000)
 
-            # Reset zoom state for new renders
             self.zoom_level = 1.0
             self.pan_x = 0.0
             self.pan_y = 0.0
 
-            # Wrapper element handling the mouse & scroll events for panning/zooming
-            with ui.element('div').classes('w-full h-full relative overflow-hidden group cursor-move') as wrapper:
-                self.image_view = ui.interactive_image(img_src).classes('w-full h-full')
-                self.image_view.style('object-fit: contain; transform-origin: center; transition: transform 0.05s ease-out;')
+            # 1. Added 'flex items-center justify-center' to keep the image centered
+            with ui.element('div').classes('w-full h-full relative flex items-center justify-center overflow-hidden group cursor-move') as wrapper:
+                
+                # 2. Changed w-full h-full to max-w-full max-h-full
+                self.image_view = ui.interactive_image(img_src).classes('max-w-full max-h-full')
+                
+                # 3. Enforce the exact original aspect ratio directly on the component
+                aspect_ratio = f"{native_width}/{native_height}"
+                self.image_view.style(f'aspect-ratio: {aspect_ratio}; transform-origin: center; transition: transform 0.05s ease-out;')
                 self.image_view.view_box = [0, 0, native_width, native_height]
                 
                 # Event Listeners for Zoom & Pan
-                # Notice we added 'button' to the mousedown arguments
                 wrapper.on('wheel.prevent', self._handle_wheel, ['deltaY'])
                 wrapper.on('mousedown.prevent', self._handle_mousedown, ['clientX', 'clientY', 'button'])
                 wrapper.on('mousemove.prevent', self._handle_mousemove, ['clientX', 'clientY'])
                 wrapper.on('mouseup', self._handle_mouseup)
                 wrapper.on('mouseleave', self._handle_mouseup)
 
-                # Floating Zoom Controls (appears on hover)
+                # Floating Zoom Controls
                 with ui.row().classes(
                     'absolute bottom-4 right-4 gap-2 opacity-0 group-hover:opacity-100 '
                     'transition-opacity duration-300 z-50 bg-black/70 p-2 rounded-lg'
@@ -118,7 +120,6 @@ class MainWorkspace:
                     ui.button(icon='fit_screen', on_click=self.reset_zoom).props('flat round color=white size=sm')
                     ui.button(icon='add', on_click=self.zoom_in).props('flat round color=white size=sm')
                 
-                # Bind SVG masks only if we are in the result state
                 if status == 'result':
                     result = getattr(app_state.view, 'result', None)
                     self.image_view.bind_content_from(
@@ -127,7 +128,6 @@ class MainWorkspace:
                         backward=lambda show: self._generate_svg_string(show, result, native_width, native_height)
                     )
 
-                # Apply Initial Transform State
                 self._apply_transform()
 
     # --- Zoom & Pan Event Handlers ---
