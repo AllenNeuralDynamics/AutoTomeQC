@@ -80,4 +80,12 @@ if __name__ in {"__main__", "__mp_main__"}:
     parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
     # uvicorn_reload_includes='*.py,*.css'
-    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=True, native=False)
+    ui.run(
+        port=args.port, 
+        title="AutoTomeQC", 
+        favicon=str(static_dir / "favicon.ico"), 
+        show=False, 
+        reload=False, 
+        native=False,
+        uvicorn_reload_includes='*.css'
+    )
