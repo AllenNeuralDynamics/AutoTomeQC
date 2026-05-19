@@ -109,10 +109,10 @@ class UploaderController:
             status='PENDING', width=width, height=height
         )
         # debug print queue size
-        print(f"File uploaded: {file_name} (ID: {file_id}). Queue size: {len(app_state.queued_files)}")
+        #print(f"File uploaded: {file_name} (ID: {file_id}). Queue size: {len(app_state.queued_files)}")
         # debug check number of json file in temp dir
-        json_files = list(app_state.temp_upload_dir.glob("*.json"))
-        print(f"JSON files in temp dir: {len(json_files)}")
+        #json_files = list(app_state.temp_upload_dir.glob("*.json"))
+        #print(f"JSON files in temp dir: {len(json_files)}")
         
 
         self.add_ui(file_id)

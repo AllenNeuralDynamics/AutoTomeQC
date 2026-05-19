@@ -70,4 +70,4 @@ if __name__ in {"__main__", "__mp_main__"}:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
-    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False)
+    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False, native=False)

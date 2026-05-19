@@ -1,4 +1,3 @@
-# web/components/main_workspace.py
 from nicegui import ui
 from web.models.status import app_state
 
@@ -12,6 +11,15 @@ class MainWorkspace:
             self.yolo_h = app_state.config.qc.yolo.img_dim[1]
         else:
             self.yolo_w, self.yolo_h = 640, 640
+
+        # Zoom & Pan State
+        self.zoom_level = 1.0
+        self.pan_x = 0.0
+        self.pan_y = 0.0
+        self.is_dragging = False
+        self.start_x = 0
+        self.start_y = 0
+        self.image_view = None
 
         # Register the global keyboard event listener
         ui.keyboard(on_key=self._handle_key)
@@ -48,15 +56,10 @@ class MainWorkspace:
 
     def _render_pending(self):
         active_file = app_state.queued_files.get(app_state.active_file_id)
-        # Use a full-size flex container to center contents
-        with ui.element('div').classes('w-full h-full relative flex items-center justify-center'):
-            if active_file and active_file.img_src:
-                # Expand image to full container size and contain aspect ratio
-                ui.image(active_file.img_src).classes('w-full h-full').style('object-fit: contain;')
-            else:
-                ui.spinner('dots', size='lg')
+        self._render_zoomable_viewport(active_file, status='pending')
 
     def _render_processing(self):
+        """Static render for processing state (no zoom/pan)."""
         active_file = app_state.queued_files.get(app_state.active_file_id)
 
         with ui.element('div').classes('w-full h-full relative flex items-center justify-center'):
@@ -72,26 +75,114 @@ class MainWorkspace:
                 ui.spinner('dots', size='lg', color='orange')
 
     def _render_result(self):
-        result = getattr(app_state.view, 'result', None)
-        info = app_state.queued_files.get(app_state.active_file_id)
-        
-        if not info:
-            return
+        active_file = app_state.queued_files.get(app_state.active_file_id)
+        self._render_zoomable_viewport(active_file, status='result')
 
-        img_src = info.img_src
-        native_width = info.width
-        native_height = info.height
+    def _render_zoomable_viewport(self, active_file, status):
+        """Reusable method to render the interactive image with zoom/pan for pending and result states."""
+        with ui.element('div').classes('w-full h-full relative flex items-center justify-center'):
+            if not active_file or not active_file.img_src:
+                ui.spinner('dots', size='lg')
+                return
 
-        with ui.element('div').classes('w-full h-full relative'):
-            image_view = ui.interactive_image(img_src).classes('w-full h-full').style('object-fit: contain;')
-            image_view.view_box = [0, 0, native_width, native_height]
-            
-            # Bind using a lambda to pass the necessary context to our class method
-            image_view.bind_content_from(
-                app_state.view, 
-                'show_masks', 
-                backward=lambda show: self._generate_svg_string(show, result, native_width, native_height)
+            img_src = active_file.img_src
+            # Use fallback dimensions just in case they aren't parsed yet
+            native_width = getattr(active_file, 'width', 1000)
+            native_height = getattr(active_file, 'height', 1000)
+
+            # Reset zoom state for new renders
+            self.zoom_level = 1.0
+            self.pan_x = 0.0
+            self.pan_y = 0.0
+
+            # Wrapper element handling the mouse & scroll events for panning/zooming
+            with ui.element('div').classes('w-full h-full relative overflow-hidden group cursor-move') as wrapper:
+                self.image_view = ui.interactive_image(img_src).classes('w-full h-full')
+                self.image_view.style('object-fit: contain; transform-origin: center; transition: transform 0.05s ease-out;')
+                self.image_view.view_box = [0, 0, native_width, native_height]
+                
+                # Event Listeners for Zoom & Pan
+                # Notice we added 'button' to the mousedown arguments
+                wrapper.on('wheel.prevent', self._handle_wheel, ['deltaY'])
+                wrapper.on('mousedown.prevent', self._handle_mousedown, ['clientX', 'clientY', 'button'])
+                wrapper.on('mousemove.prevent', self._handle_mousemove, ['clientX', 'clientY'])
+                wrapper.on('mouseup', self._handle_mouseup)
+                wrapper.on('mouseleave', self._handle_mouseup)
+
+                # Floating Zoom Controls (appears on hover)
+                with ui.row().classes(
+                    'absolute bottom-4 right-4 gap-2 opacity-0 group-hover:opacity-100 '
+                    'transition-opacity duration-300 z-50 bg-black/70 p-2 rounded-lg'
+                ):
+                    ui.button(icon='remove', on_click=self.zoom_out).props('flat round color=white size=sm')
+                    ui.button(icon='fit_screen', on_click=self.reset_zoom).props('flat round color=white size=sm')
+                    ui.button(icon='add', on_click=self.zoom_in).props('flat round color=white size=sm')
+                
+                # Bind SVG masks only if we are in the result state
+                if status == 'result':
+                    result = getattr(app_state.view, 'result', None)
+                    self.image_view.bind_content_from(
+                        app_state.view, 
+                        'show_masks', 
+                        backward=lambda show: self._generate_svg_string(show, result, native_width, native_height)
+                    )
+
+                # Apply Initial Transform State
+                self._apply_transform()
+
+    # --- Zoom & Pan Event Handlers ---
+
+    def _apply_transform(self):
+        """Updates the CSS transform for zooming and panning."""
+        if hasattr(self, 'image_view') and self.image_view:
+            self.image_view.style(
+                f'transform: translate({self.pan_x}px, {self.pan_y}px) scale({self.zoom_level});'
             )
+
+    def zoom_in(self):
+        self.zoom_level = min(self.zoom_level * 1.25, 10.0) # Max 10x Zoom
+        self._apply_transform()
+
+    def zoom_out(self):
+        self.zoom_level = max(self.zoom_level / 1.25, 0.2) # Min 0.2x Zoom
+        self._apply_transform()
+
+    def reset_zoom(self):
+        self.zoom_level = 1.0
+        self.pan_x = 0.0
+        self.pan_y = 0.0
+        self._apply_transform()
+
+    def _handle_wheel(self, e):
+        delta = e.args.get('deltaY', 0)
+        if delta > 0:
+            self.zoom_out()
+        elif delta < 0:
+            self.zoom_in()
+
+    def _handle_mousedown(self, e):
+        button = e.args.get('button', 0)
+        
+        # If middle mouse button (1) is clicked, reset zoom and return
+        if button == 1:
+            self.reset_zoom()
+            return
+            
+        # Otherwise, initiate dragging (usually left click -> 0)
+        self.is_dragging = True
+        self.start_x = e.args.get('clientX', 0) - self.pan_x
+        self.start_y = e.args.get('clientY', 0) - self.pan_y
+
+    def _handle_mousemove(self, e):
+        if self.is_dragging:
+            self.pan_x = e.args.get('clientX', 0) - self.start_x
+            self.pan_y = e.args.get('clientY', 0) - self.start_y
+            self._apply_transform()
+
+    def _handle_mouseup(self, e):
+        self.is_dragging = False
+
+    # --- SVG Masks & Utilities ---
 
     def _generate_svg_string(self, show_masks, result, native_width, native_height):
         """Helper method to generate SVG masks. Now safely isolated."""
@@ -136,11 +227,9 @@ class MainWorkspace:
             
     def _handle_key(self, e):
         """Handle keyboard events for navigation."""
-        # Only trigger on key down to prevent duplicate calls on key up
         if not e.action.keydown:
             return
 
-        # Trigger corresponding callbacks based on arrow keys
         if e.key.arrow_right and self.on_next:
             self.on_next()
         elif e.key.arrow_left and self.on_prev:

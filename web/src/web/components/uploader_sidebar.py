@@ -147,7 +147,12 @@ def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_proc
         renderer.mount(on_item_click, on_item_delete)
         
         if on_upload_callback:
-            uploader = ui.upload(on_upload=on_upload_callback, multiple=True, auto_upload=True).props('accept="image/*"').classes('hidden-uploader')
+            uploader = ui.upload(on_upload=on_upload_callback,
+                                 multiple=True,
+                                 max_file_size=1_000_000_000,
+                                 max_total_size=10_000_000_000,
+                                 auto_upload=True) \
+            .props('accept="image/*" max-connections="5"').classes('hidden-uploader')
         upload_btn.on('click', lambda: uploader.run_method('pickFiles'))
         
         with ui.row().classes('sidebar-footer'):
