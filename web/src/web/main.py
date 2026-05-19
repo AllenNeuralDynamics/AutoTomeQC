@@ -13,14 +13,15 @@ from web.components.inspector_sidebar import render_inspector_sidebar, inspector
 from web.components.loading_overlay import render_loading_overlay
 from web.components.uploader_sidebar import QueueRenderer, render_uploader_sidebar
 
-parser = argparse.ArgumentParser()
+static_dir = Path(__file__).resolve().parent / "static"
+app.add_static_files("/static", str(static_dir))
 app.add_static_files('/temp_uploads', app_state.temp_upload_dir)
 
 @ui.page('/')
 def index():
+    ui.add_css((static_dir / 'theme.css').read_text())
     ui.dark_mode().enable()
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
-    ui.add_head_html('<link href="/static/theme.css" rel="stylesheet">')
 
     # --- LOADING OVERLAY ---
     render_loading_overlay(
@@ -78,4 +79,5 @@ if __name__ in {"__main__", "__mp_main__"}:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
-    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=False, native=False)
+    # uvicorn_reload_includes='*.py,*.css'
+    ui.run(port=args.port, title="AutoTomeQC", favicon="🔬", show=False, reload=True, native=False)
