@@ -18,4 +18,3 @@ async def on_fetch_config():
 
 def on_toggle_masks():
     app_state.view.show_masks = not app_state.view.show_masks
-    print("Toggled show_masks to:", app_state.view.show_masks)
