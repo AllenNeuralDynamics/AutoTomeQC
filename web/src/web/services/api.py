@@ -4,7 +4,6 @@
 import httpx
 from typing import Tuple
 from web.models.backend_schemas import PipelineResult, AppConfig
-from web.models.status import app_state
 
 
 async def analyze_image(process_url: str, file_path: str) -> Tuple[PipelineResult, dict]:

@@ -1,6 +1,5 @@
 # web/controllers/uploader_controller.py
 import asyncio
-import base64
 import json
 import uuid
 import imagesize
@@ -137,7 +136,6 @@ class UploaderController:
     
         for file_id, info in app_state.queued_files.items():
             if not app_state.is_processing:
-                print("[debug] Stop signal detected. Breaking loop.")
                 break
 
             if info.status in ['PASS', 'FAIL']: 
@@ -160,7 +158,7 @@ class UploaderController:
                 
                 self._set_view_state('result', result=result, raw_json=raw_json)
                     
-            except Exception as exc:
+            except Exception:
                 info.status = 'ERROR'
                 self._set_view_state('error', error="Backend Error")
                     

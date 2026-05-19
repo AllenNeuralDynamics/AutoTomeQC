@@ -1,5 +1,4 @@
 import os
-import sys
 import socket
 import argparse
 import logging
@@ -37,11 +36,11 @@ def set_environment_variables(backend_port: int) -> None:
 def main():
     """
     Entry point for the 'autotome-ui' command defined in pyproject.toml.
-    This launches both the FastAPI Backend and the Streamlit Web UI.
+    This launches both the FastAPI Backend and the NiceGUI Web UI.
     """
     parser = argparse.ArgumentParser(prog="autotome-ui", description="AutoTomeQC - Web UI & Backend Launcher")
-    parser.add_argument("--backend-port", type=int, default=8000, help="Port for the FastAPI backend (default: 8000)")
-    parser.add_argument("--ui-port", type=int, default=8501, help="Port for the Streamlit UI (default: 8501)")
+    parser.add_argument("--backend-port", type=int, default=8000, help="Port for the FastAPI backend. (default: 8000)")
+    parser.add_argument("--ui-port", type=int, default=8080, help="Port for the NiceGUI web UI. (default: 8080)")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args, unknown = parser.parse_known_args()
 
@@ -64,7 +63,7 @@ def main():
 
     # Frontend) Launch the Web UI in the foreground
     local_ip = get_local_ip()
-    log.info(f"Launching Web UI...")
+    log.info("Launching Web UI...")
     log.info(f"Web UI: http://localhost:{args.ui_port}")
     if local_ip != "127.0.0.1":
         log.info(f"        or http://{local_ip}:{args.ui_port}")

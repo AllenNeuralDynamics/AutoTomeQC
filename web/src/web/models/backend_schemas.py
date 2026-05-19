@@ -1,9 +1,7 @@
 # Schema for json ouput after processing an image through the pipeline. 
 # This is what the backend sends to the frontend.
-from autotomeqc.config.schemas import resolve_path
 from pydantic import BaseModel, ConfigDict
-from typing import List, Dict, Optional, Any
-from pathlib import Path
+from typing import List, Dict, Optional
 
 from pydantic_settings import BaseSettings
 
