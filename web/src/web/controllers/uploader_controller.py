@@ -95,6 +95,7 @@ class UploaderController:
 
         file_id = uuid.uuid4().hex
         file_path = app_state.temp_upload_dir / file_name
+        print("Saving uploaded file to:", file_path)
         with open(file_path, "wb") as f:
             f.write(file_bytes)
             

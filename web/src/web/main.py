@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 from nicegui import ui, app
+import shutil
 
 from web.models.status import app_state
 from web.controllers.state_controller import wait_backend_ready, on_fetch_config, on_toggle_masks
@@ -65,6 +66,15 @@ def index():
 
     # --- TOOLBAR (Header) ---
     render_header(left_drawer=left_drawer)
+
+# --- CLEANUP ON SHUTDOWN ---
+@app.on_shutdown
+def cleanup_temp_directory():
+    """Removes the temporary directory and all its contents when the app closes."""
+    temp_dir = app_state.temp_upload_dir
+    if temp_dir and temp_dir.exists():
+        # shutil.rmtree deletes the folder and all files inside it
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 if __name__ in {"__main__", "__mp_main__"}:
     parser = argparse.ArgumentParser()
