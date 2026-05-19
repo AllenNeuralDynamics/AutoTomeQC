@@ -55,7 +55,6 @@ class UploaderController:
             
         try:
             app_state.active_file_id = file_id
-            print("Active file id set to:", file_id)
 
             json_path = info.json_path
             if json_path and json_path.exists():
@@ -67,7 +66,7 @@ class UploaderController:
                 self._set_view_state('pending')
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
-        
+    
     async def handle_upload(self, e):
         if hasattr(e, 'content'): file_obj = e.content
         elif hasattr(e, 'file'): file_obj = e.file
@@ -95,26 +94,18 @@ class UploaderController:
 
         file_id = uuid.uuid4().hex
         file_path = app_state.temp_upload_dir / file_name
-        print("Saving uploaded file to:", file_path)
+        
+        # Write to disk
         with open(file_path, "wb") as f:
             f.write(file_bytes)
             
-        ext = file_name.lower().split('.')[-1]
-        mime_type = f"image/{'jpeg' if ext in ['jpg', 'jpeg'] else ext}"
-        base64_img = base64.b64encode(file_bytes).decode('utf-8')
-        img_src = f"data:{mime_type};base64,{base64_img}"
+        img_src = f"/temp_uploads/{file_name}"
         width, height = imagesize.get(str(file_path))
 
         app_state.queued_files[file_id] = QueuedFile(
             name=file_name, path=file_path, img_src=img_src,
             status='PENDING', width=width, height=height
         )
-        # debug print queue size
-        #print(f"File uploaded: {file_name} (ID: {file_id}). Queue size: {len(app_state.queued_files)}")
-        # debug check number of json file in temp dir
-        #json_files = list(app_state.temp_upload_dir.glob("*.json"))
-        #print(f"JSON files in temp dir: {len(json_files)}")
-        
 
         self.add_ui(file_id)
         e.sender.run_method('removeUploadedFiles')
@@ -144,7 +135,6 @@ class UploaderController:
                 
             info.status = 'PROCESSING'
             app_state.active_file_id = file_id
-            print("Active file id set to:", file_id)
             
             # Update view to processing and refresh the sidebar UI
             self._set_view_state('processing')

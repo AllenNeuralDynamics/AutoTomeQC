@@ -64,7 +64,6 @@ class QueueRenderer:
         row_classes = 'queue-item shrink-0 active' if is_initially_active else 'queue-item shrink-0'
         
         row = ui.row().classes(row_classes).props(f'id="row-{file_id}"')
-        print("[debug] Rendering row for file_id:", file_id, "with status:", info.status)
 
         def handle_click(e):
             if app_state.is_processing:

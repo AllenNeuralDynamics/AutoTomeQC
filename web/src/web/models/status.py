@@ -56,8 +56,7 @@ class AppState(BaseModel):
 
     # Storage paths
     temp_upload_dir: Path = Field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="autotome_")))
-    print("temp upload dir:", temp_upload_dir)
-
+    
     @computed_field
     @property
     def temp_upload_url_prefix(self) -> str:

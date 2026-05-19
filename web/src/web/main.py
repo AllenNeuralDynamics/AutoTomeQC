@@ -14,9 +14,10 @@ from web.components.loading_overlay import render_loading_overlay
 from web.components.uploader_sidebar import QueueRenderer, render_uploader_sidebar
 
 parser = argparse.ArgumentParser()
-static_dir = Path(__file__).resolve().parent / "static"
-app.add_static_files("/static", str(static_dir))
-app.add_static_files(app_state.temp_upload_url_prefix, str(app_state.temp_upload_dir))
+#static_dir = Path(__file__).resolve().parent / "static"
+#app.add_static_files("/static", str(static_dir))
+#app.add_static_files(app_state.temp_upload_url_prefix, str(app_state.temp_upload_dir))
+app.add_static_files('/temp_uploads', app_state.temp_upload_dir)
 
 @ui.page('/')
 def index():
