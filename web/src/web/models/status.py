@@ -1,9 +1,35 @@
 import os
+import shutil
 import tempfile
 from pathlib import Path
+import time
 from typing import Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, ConfigDict, computed_field
 from web.models.backend_schemas import PipelineResult, AppConfig
+
+def get_app_temp_dir() -> Path:
+    """
+    Creates a unique temp folder under the system's temp/AutotomeQC directory.
+    Safely cleans up old orphaned folders from crashed instances.
+    """
+    # Get the system's base temp directory (e.g., /tmp or C:\Temp)
+    base_temp = Path(tempfile.gettempdir()) / "AutotomeQC"
+    base_temp.mkdir(parents=True, exist_ok=True)
+    
+    # Cleanup: Delete orphaned 'autotome_' folders older than 24 hours.
+    # This prevents the "mess" from crashed apps without breaking active instances.
+    current_time = time.time()
+    for path in base_temp.glob("autotome_*"):
+        if path.is_dir():
+            # Check if the folder is older than 86400 seconds (24 hours)
+            if (current_time - path.stat().st_mtime) > 86400:
+                shutil.rmtree(path, ignore_errors=True)
+                
+    # Create a unique subfolder for THIS specific app instance
+    # Result: <system_temp>/AutotomeQC/autotome_xxxxxx/
+    instance_temp_dir = Path(tempfile.mkdtemp(prefix="autotome_", dir=base_temp))
+    
+    return instance_temp_dir
 
 class QueuedFile(BaseModel):
     """Represents a file in the upload queue."""
@@ -55,7 +81,7 @@ class AppState(BaseModel):
     view: ViewState = Field(default_factory=ViewState)
 
     # Storage paths
-    temp_upload_dir: Path = Field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="autotome_")))
+    temp_upload_dir: Path = Field(default_factory=get_app_temp_dir)
 
     @computed_field
     @property
