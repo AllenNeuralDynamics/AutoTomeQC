@@ -34,17 +34,27 @@ class UploaderController:
         self.refresh_inspector()
         
     def remove_file(self, file_id):
+        # 1. Check if we are deleting the currently active file
+        is_active = (app_state.active_file_id == file_id)
+        
+        # 2. If it's active and there are other files, shift to the next file FIRST
+        if is_active and len(app_state.queued_files) > 1:
+            self.load_next()
+
+        # 3. Perform the deletion
         info = app_state.queued_files.pop(file_id, None)
         if info:
             info.path.unlink(missing_ok=True)
             if info.json_path:
                 info.json_path.unlink(missing_ok=True)
                 
-            if app_state.active_file_id == file_id or not app_state.queued_files:
+            # 4. Handle the view state after deletion
+            if not app_state.queued_files:
+                # If that was the very last file, go idle
                 app_state.active_file_id = None
                 self._set_view_state('idle')
             else:
-                # Force the workspace to refresh so the counter (e.g. 1 / 5 -> 1 / 4) updates
+                # If we shifted the active file (or deleted an inactive one), just update UI counters
                 self.refresh_workspace()
 
         self.remove_ui(file_id)
