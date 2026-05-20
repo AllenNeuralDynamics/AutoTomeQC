@@ -7,7 +7,6 @@ from autotomeqc.core.autotome_service import AutoTomeService
 from autotomeqc.config.config_loader import load_app_config
 import argparse
 
-import yaml
 
 
 logger = logging.getLogger(__name__)

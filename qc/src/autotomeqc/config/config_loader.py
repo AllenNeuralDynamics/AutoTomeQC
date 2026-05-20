@@ -1,7 +1,6 @@
 # Temp file for testing
 # src/autotomeqc/config/config_loader.py
 
-from typing import Optional
 
 import yaml
 from pathlib import Path
