@@ -109,12 +109,13 @@ class UploaderController:
         file_path = app_state.temp_upload_dir / file_name
         
         # Write to disk
-        with open(file_path, "wb") as f:
-            f.write(file_bytes)
-            
+        def save_and_measure():
+            with open(file_path, "wb") as f:
+                f.write(file_bytes)
+            return imagesize.get(str(file_path))
+        width, height = await asyncio.to_thread(save_and_measure)
+        
         img_src = f"/temp_uploads/{file_name}"
-        width, height = imagesize.get(str(file_path))
-
         app_state.queued_files[file_id] = QueuedFile(
             name=file_name, path=file_path, img_src=img_src,
             status='PENDING', width=width, height=height
