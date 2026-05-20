@@ -1,6 +1,5 @@
 import pytest
 from nicegui.testing import User
-from pathlib import Path
 
 @pytest.mark.asyncio
 async def test_initial_workspace_state(user: User):

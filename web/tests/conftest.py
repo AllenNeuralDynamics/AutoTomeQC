@@ -1,5 +1,5 @@
 import pytest
-from nicegui import ui, app
+from nicegui import app
 from unittest.mock import MagicMock, patch, AsyncMock
 
 from web.controllers.uploader_controller import UploaderController

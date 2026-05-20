@@ -1,9 +1,5 @@
 import pytest
-from nicegui import ui
-from unittest.mock import patch, AsyncMock
 from nicegui.testing import User
-from pathlib import Path
-from web.models.backend_schemas import PipelineResult, SectionResult, QCCriteria
 
 @pytest.mark.asyncio
 async def test_initial_inspector_state(user: User):
