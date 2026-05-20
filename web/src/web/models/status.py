@@ -94,6 +94,14 @@ class AppState(BaseModel):
     @computed_field
     def config_url(self) -> str:
         return f"{self.backend_url}/api/v1/config"
+    
+    @property
+    def grid_row_data(self) -> list[dict]:
+        """Dynamically generates the JSON-safe list of rows for AG Grid."""
+        return [
+            {"id": fid, **info.model_dump(mode='json')} 
+            for fid, info in self.queued_files.items()
+        ]
 
 # Create a global instance to be imported and used across frontend components
 app_state = AppState()

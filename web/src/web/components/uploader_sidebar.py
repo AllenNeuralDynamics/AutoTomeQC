@@ -9,6 +9,7 @@ class QueueRenderer:
         self.rendered_rows = {}
         self.on_click = None
         self.on_delete = None
+        self.current_active_id = None
 
     def mount(self, on_click, on_delete):
         """Mounts the persistent container once when the sidebar is created."""
@@ -50,13 +51,48 @@ class QueueRenderer:
         if not app_state.queued_files and self.empty_state:
             self.empty_state.set_visibility(True)
 
-    def set_active(self, active_file_id):
+    def set_active_deprecate(self, active_file_id):
         """Globally updates which row has the 'active' class."""
+        # TODO get prev active files and only update those two rows instead of iterating through all rows
         for fid, row in self.rendered_rows.items():
             if fid == active_file_id:
                 row.classes(add='active')
             else:
                 row.classes(remove='active')
+        
+    def set_active(self, active_file_id):
+        """Globally updates which row has the 'active' class."""
+        # 1. SOLVE TODO: Remove 'active' from the PREVIOUS row only (O(1) time)
+        if self.current_active_id and self.current_active_id in self.rendered_rows:
+            self.rendered_rows[self.current_active_id].classes(remove='active')
+            
+        # Update our tracker
+        self.current_active_id = active_file_id
+
+        # 2. Add 'active' to the NEW row and update its status
+        if active_file_id in self.rendered_rows:
+            active_row = self.rendered_rows[active_file_id]
+            active_row.classes(add='active')
+            
+            # Fetch the latest info
+            info = app_state.queued_files.get(active_file_id)
+            if not info:
+                return
+
+            # 3. UPDATE THE STATUS LABEL DIRECTLY
+            active_row.status_label.set_text(info.status)
+            
+            # Update the color based on the status
+            if info.status == 'PROCESSING':
+                active_row.status_label.style('color: #60a5fa !important')
+            elif info.status == 'PASS':
+                active_row.status_label.style('color: var(--pass-color) !important')
+            elif info.status in ['FAIL', 'ERROR']:
+                active_row.status_label.style('color: var(--fail-color) !important')
+            else:
+                # Reset to default for PENDING
+                active_row.status_label.classes('queue-status-text')
+            
 
     def _render_file_row(self, file_id, info):
         """Renders a single file row using reactive bindings for high performance."""
@@ -84,6 +120,8 @@ class QueueRenderer:
                 ui.label(info.name).classes('queue-filename')
                 
                 with ui.row().classes('queue-status-row'):
+                    status_label = ui.label('PENDING').classes('queue-status-text')
+                    """
                     spinner = ui.spinner('dots', size='1em', color='blue-400')
                     spinner.bind_visibility_from(info, 'status', backward=lambda s: s == 'PROCESSING')
                     
@@ -101,13 +139,17 @@ class QueueRenderer:
 
                     lbl_pend = ui.label('PENDING').classes('queue-status-text')
                     lbl_pend.bind_visibility_from(info, 'status', backward=lambda s: s == 'PENDING')
+                    """
+                    row.status_label = status_label
 
+            """
             del_btn = ui.button(icon='delete', color='red') \
                 .props('flat dense') \
                 .classes('btn-delete') \
                 .on('click.stop', lambda e, fid=file_id: self.on_delete(fid) if self.on_delete else None)
                 
             del_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda is_proc: not is_proc)
+            """
 
         return row
 

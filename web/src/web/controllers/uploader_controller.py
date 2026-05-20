@@ -108,12 +108,9 @@ class UploaderController:
         file_id = uuid.uuid4().hex
         file_path = app_state.temp_upload_dir / file_name
         
-        # Write to disk
-        def save_and_measure():
-            with open(file_path, "wb") as f:
-                f.write(file_bytes)
-            return imagesize.get(str(file_path))
-        width, height = await asyncio.to_thread(save_and_measure)
+        with open(file_path, "wb") as f:
+            f.write(file_bytes)
+        width, height = imagesize.get(str(file_path))
         
         img_src = f"/temp_uploads/{file_name}"
         app_state.queued_files[file_id] = QueuedFile(
@@ -121,6 +118,7 @@ class UploaderController:
             status='PENDING', width=width, height=height
         )
 
+        print("Len of queue after upload:", len(app_state.queued_files))
         self.add_ui(file_id)
         e.sender.run_method('removeUploadedFiles')
 
