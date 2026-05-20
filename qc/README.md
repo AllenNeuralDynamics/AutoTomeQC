@@ -167,7 +167,7 @@ uv run ruff check
 
 - Type Check
 
-```basht
+```bash
 uv run mypy src
 ```
 
