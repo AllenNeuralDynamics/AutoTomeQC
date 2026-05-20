@@ -120,7 +120,7 @@ class UploaderController:
 
         print("Len of queue after upload:", len(app_state.queued_files))
         self.add_ui(file_id)
-        e.sender.run_method('removeUploadedFiles')
+        #e.sender.run_method('removeUploadedFiles')
 
     async def process_batch(self, e):
         # If already running, this click means "Stop/Pause"
@@ -137,10 +137,14 @@ class UploaderController:
         
         app_state.active_file_id = None
     
-        for file_id, info in app_state.queued_files.items():
+        for file_id in list(app_state.queued_files.keys()):
             if not app_state.is_processing:
                 break
 
+            info = app_state.queued_files.get(file_id)
+            if not info:
+                continue
+                
             if info.status in ['PASS', 'FAIL']: 
                 continue
                 

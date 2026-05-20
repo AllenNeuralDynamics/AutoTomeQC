@@ -50,15 +50,6 @@ class QueueRenderer:
             
         if not app_state.queued_files and self.empty_state:
             self.empty_state.set_visibility(True)
-
-    def set_active_deprecate(self, active_file_id):
-        """Globally updates which row has the 'active' class."""
-        # TODO get prev active files and only update those two rows instead of iterating through all rows
-        for fid, row in self.rendered_rows.items():
-            if fid == active_file_id:
-                row.classes(add='active')
-            else:
-                row.classes(remove='active')
         
     def set_active(self, active_file_id):
         """Globally updates which row has the 'active' class."""
@@ -115,42 +106,14 @@ class QueueRenderer:
         with row:
             with ui.element('div').classes('queue-thumb'):
                 ui.image(info.img_src).classes('queue-img')
-
             with ui.element('div').classes('queue-details'):
                 ui.label(info.name).classes('queue-filename')
-                
                 with ui.row().classes('queue-status-row'):
-                    status_label = ui.label('PENDING').classes('queue-status-text')
-                    """
-                    spinner = ui.spinner('dots', size='1em', color='blue-400')
-                    spinner.bind_visibility_from(info, 'status', backward=lambda s: s == 'PROCESSING')
-                    
-                    lbl_proc = ui.label('PROCESSING').classes('queue-status-text').style('color: #60a5fa !important')
-                    lbl_proc.bind_visibility_from(info, 'status', backward=lambda s: s == 'PROCESSING')
-                    
-                    lbl_pass = ui.label('PASS').classes('queue-status-text').style('color: var(--pass-color) !important')
-                    lbl_pass.bind_visibility_from(info, 'status', backward=lambda s: s == 'PASS')
-                    
-                    lbl_fail = ui.label('FAIL').classes('queue-status-text').style('color: var(--fail-color) !important')
-                    lbl_fail.bind_visibility_from(info, 'status', backward=lambda s: s == 'FAIL')
-
-                    lbl_err = ui.label('ERROR').classes('queue-status-text').style('color: var(--fail-color) !important')
-                    lbl_err.bind_visibility_from(info, 'status', backward=lambda s: s == 'ERROR')
-
-                    lbl_pend = ui.label('PENDING').classes('queue-status-text')
-                    lbl_pend.bind_visibility_from(info, 'status', backward=lambda s: s == 'PENDING')
-                    """
-                    row.status_label = status_label
-
-            """
+                    row.status_label = ui.label('PENDING').classes('queue-status-text')
             del_btn = ui.button(icon='delete', color='red') \
                 .props('flat dense') \
                 .classes('btn-delete') \
                 .on('click.stop', lambda e, fid=file_id: self.on_delete(fid) if self.on_delete else None)
-                
-            del_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda is_proc: not is_proc)
-            """
-
         return row
 
 async def _show_delete_all_dialog(on_delete_all_callback=None):
@@ -190,8 +153,6 @@ def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_proc
         if on_upload_callback:
             uploader = ui.upload(on_upload=on_upload_callback,
                                  multiple=True,
-                                 max_file_size=1_000_000_000,
-                                 max_total_size=10_000_000_000,
                                  auto_upload=True) \
             .props('accept="image/*" max-connections="5"').classes('hidden-uploader')
         upload_btn.on('click', lambda: uploader.run_method('pickFiles'))
