@@ -84,17 +84,14 @@ class AppState(BaseModel):
     temp_upload_dir: Path = Field(default_factory=get_app_temp_dir)
 
     @computed_field
-    @property
     def process_url(self) -> str:
         return f"{self.backend_url}/api/v1/process"
 
     @computed_field
-    @property
     def is_ready_url(self) -> str:
         return f"{self.backend_url}/api/v1/is_ready"
 
     @computed_field
-    @property
     def config_url(self) -> str:
         return f"{self.backend_url}/api/v1/config"
 

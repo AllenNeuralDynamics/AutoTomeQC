@@ -1,5 +1,6 @@
 import pytest
-from unittest.mock import MagicMock
+from nicegui import ui, app
+from unittest.mock import MagicMock, patch, AsyncMock
 
 from web.controllers.uploader_controller import UploaderController
 
@@ -19,3 +20,20 @@ def mock_callbacks():
 def uploader_controller(mock_callbacks):
     """Provides an UploaderController instance with mocked dependencies."""
     return UploaderController(**mock_callbacks)
+
+@pytest.fixture(autouse=True)
+def mock_backend_api_calls():
+    """
+    Automatically mock functions that try to reach the backend API,
+    so that UI tests can run in isolation without a live backend.
+    """
+    # These mocks prevent the app from hanging on startup while waiting for the backend.
+    with patch('web.controllers.state_controller.wait_backend_ready', new_callable=AsyncMock), \
+         patch('web.controllers.state_controller.on_fetch_config', new_callable=AsyncMock):
+        yield
+
+@pytest.fixture(autouse=True)
+def reset_nicegui():
+    """Reset NiceGUI state after each test to prevent teardown errors."""
+    yield
+    app.storage.clear()

@@ -60,7 +60,8 @@ class UploaderController:
 
     def load_result(self, file_id):
         info = app_state.queued_files.get(file_id)
-        if not info: return
+        if not info:
+            return
             
         try:
             app_state.active_file_id = file_id
@@ -77,9 +78,12 @@ class UploaderController:
             ui.notify(f"Error loading result: {e}", type='negative')
     
     async def handle_upload(self, e):
-        if hasattr(e, 'content'): file_obj = e.content
-        elif hasattr(e, 'file'): file_obj = e.file
-        elif hasattr(e, 'stream'): file_obj = e.stream
+        if hasattr(e, 'content'):
+            file_obj = e.content
+        elif hasattr(e, 'file'):
+            file_obj = e.file
+        elif hasattr(e, 'stream'):
+            file_obj = e.stream
         else:
             ui.notify(f"Unknown upload format. Attributes available: {dir(e)}", type='negative')
             return

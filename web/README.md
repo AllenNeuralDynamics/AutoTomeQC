@@ -43,7 +43,7 @@ This project uses `uv` for dependency management and a suite of tools for ensuri
 The web application has a comprehensive test suite covering backend controllers and UI components using `pytest` and `NiceGUI Testing`. To run all tests for the web module:
 
 ```bash
-uv run pytest web/
+uv run pytest tests
 ```
 
 ### Code Quality
@@ -52,10 +52,10 @@ We use `ruff` for linting and `mypy` for static type checking, consistent with t
 
 *   **Linting:**
     ```bash
-    uv run ruff check web/
+    uv run ruff check src
     ```
 
 *   **Type Checking:**
     ```bash
-    uv run mypy web/src/
+    uv run mypy src
     ```

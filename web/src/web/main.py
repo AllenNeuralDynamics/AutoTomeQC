@@ -15,7 +15,10 @@ from web.components.uploader_sidebar import QueueRenderer, render_uploader_sideb
 
 static_dir = Path(__file__).resolve().parent / "static"
 app.add_static_files("/static", str(static_dir))
-app.add_static_files('/temp_uploads', app_state.temp_upload_dir)
+temp_dir = Path(app_state.temp_upload_dir)
+if not temp_dir.exists():
+    temp_dir.mkdir(parents=True, exist_ok=True)
+app.add_static_files('/temp_uploads', str(temp_dir))
 
 @ui.page('/')
 def index():
@@ -78,7 +81,7 @@ def cleanup_temp_directory():
 if __name__ in {"__main__", "__mp_main__"}:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8080)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     # uvicorn_reload_includes='*.py,*.css'
     ui.run(
         port=args.port, 
