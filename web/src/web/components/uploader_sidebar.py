@@ -155,6 +155,11 @@ def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_proc
                                  multiple=True,
                                  auto_upload=True) \
             .props('accept="image/*" max-connections="5"').classes('hidden-uploader')
+
+            def handle_batch_finish():
+                uploader.run_method('removeUploadedFiles') # Clean up the UI
+                ui.notify(f"Finished uploading batch", type='positive')
+
         upload_btn.on('click', lambda: uploader.run_method('pickFiles'))
         
         with ui.row().classes('sidebar-footer'):
