@@ -2,8 +2,11 @@
 # It shouldn't know about anything related to UI.
 
 import httpx
+import logging
 from typing import Tuple
 from web.models.backend_schemas import PipelineResult, AppConfig
+
+log = logging.getLogger(__name__)
 
 
 async def analyze_image(process_url: str, file_path: str) -> Tuple[PipelineResult, dict]:
@@ -20,7 +23,7 @@ async def analyze_image(process_url: str, file_path: str) -> Tuple[PipelineResul
         response.raise_for_status()
         
         raw_json = response.json()
-        #print("Raw JSON response from backend:", raw_json)  # Debugging statement
+        log.debug("Raw JSON response from backend: %s", raw_json)
         return PipelineResult.model_validate(raw_json), raw_json
 
 async def fetch_config_async(config_url: str) -> AppConfig:

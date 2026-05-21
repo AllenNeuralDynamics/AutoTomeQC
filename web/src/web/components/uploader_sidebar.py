@@ -1,7 +1,10 @@
 # web/components/uploader_sidebar.py
 from nicegui import ui
 import asyncio
+import logging
 from web.models.status import app_state
+
+log = logging.getLogger(__name__)
 
 class QueueRenderer:
     def __init__(self):
@@ -62,7 +65,7 @@ class QueueRenderer:
         if not self.table:
             return
 
-        print("(components) len of file_ids to add:", len(file_ids))
+        log.debug("Len of file_ids to add: %d", len(file_ids))
 
         new_rows = []
         for file_id in file_ids:
@@ -73,23 +76,19 @@ class QueueRenderer:
                 
         if new_rows:
             self.table.add_rows(new_rows)
-            print("(components) Length of table rows after add:", len(self.table.rows))
-            print("(components) Length of state rows after add:", len(app_state.grid_row_data))
-                  #if self._update_task is None or self._update_task.done():
-            #    self._update_task = asyncio.create_task(self._delayed_update())
-
+    
     def add_item_(self, file_id):
         """Appends the data to Python state and requests a batched UI update to prevent crashes."""
         info = app_state.queued_files.get(file_id)
         if info and self.table:
             row_data = {"id": file_id, **info.model_dump(mode='json')}
             self.table.rows.append(row_data)
-            print("Length of table rows after add:", len(self.table.rows))
+            log.debug("Length of table rows after add: %d", len(self.table.rows))
             if self._update_task is None or self._update_task.done():
                 self._update_task = asyncio.create_task(self._delayed_update())
 
     async def _delayed_update(self):
-        print("Batching UI update...")
+        log.debug("Batching UI update...")
         """Batches rows together and syncs the UI once every 1 second during heavy uploads."""
         await asyncio.sleep(0.5)
         if self.table:

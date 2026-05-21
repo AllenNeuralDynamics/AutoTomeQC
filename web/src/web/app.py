@@ -5,8 +5,6 @@ import logging
 import subprocess
 from pathlib import Path
 
-logger = logging.getLogger("autotome-ui")
-
 def get_local_ip() -> str:
     """Helper to get the local IP address of the machine."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -19,8 +17,14 @@ def get_local_ip() -> str:
         s.close()
     return ip
 
-def configure_logging(level: int, fmt: str = "%(message)s", datefmt: str = "[%X]") -> None:
-    logging.basicConfig(level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+def configure_logging(level: str) -> None:
+    """Configures the root logger based on a string level."""
+    log_level = getattr(logging, level.upper(), logging.INFO)
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 def set_environment_variables(backend_port: int) -> None:
     """Sets necessary environment variables for the backend and frontend processes."""
@@ -41,11 +45,16 @@ def main():
     parser = argparse.ArgumentParser(prog="autotome-ui", description="AutoTomeQC - Web UI & Backend Launcher")
     parser.add_argument("--backend-port", type=int, default=8000, help="Port for the FastAPI backend. (default: 8000)")
     parser.add_argument("--ui-port", type=int, default=8080, help="Port for the NiceGUI web UI. (default: 8080)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level for both UI and backend. (default: INFO)"
+    )
     args, unknown = parser.parse_known_args()
 
-    log_level = logging.DEBUG if args.debug else logging.INFO
-    configure_logging(level=log_level)
+    configure_logging(level=args.log_level)
     log = logging.getLogger("autotome-ui")
 
     # Setup environment
@@ -56,8 +65,7 @@ def main():
         "uv", "run", "uvicorn", "autotomeqc.interface.server:app", "--host", "0.0.0.0",
         "--port", str(args.backend_port)
     ]
-    if args.debug:
-        backend_cmd.extend(["--log-level", "debug"])
+    backend_cmd.extend(["--log-level", args.log_level.lower()])
     log.info(f"Launching Backend API on port {args.backend_port}...")
     backend_process = subprocess.Popen(backend_cmd)
 
