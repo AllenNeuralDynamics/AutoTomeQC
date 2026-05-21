@@ -32,32 +32,31 @@ class UploaderController:
         self.refresh_workspace()
         self.refresh_inspector()
         
-    def remove_file(self, file_id):
-        print("Remove file called for file_id:", file_id)
-        # 1. Check if we are deleting the currently active file
-        is_active = (app_state.active_file_id == file_id)
+    def remove_file(self, file_ids: list[str]):
+        # 1. Perform the deletion FIRST
+        for file_id in file_ids:
+            info = app_state.queued_files.pop(file_id, None)
+            if info:
+                info.path.unlink(missing_ok=True)
+                if info.json_path:
+                    info.json_path.unlink(missing_ok=True)
         
-        # 2. If it's active and there are other files, shift to the next file FIRST
-        if is_active and len(app_state.queued_files) > 1:
-            self.load_next()
-
-        # 3. Perform the deletion
-        info = app_state.queued_files.pop(file_id, None)
-        if info:
-            info.path.unlink(missing_ok=True)
-            if info.json_path:
-                info.json_path.unlink(missing_ok=True)
-                
-            # 4. Handle the view state after deletion
-            if not app_state.queued_files:
-                # If that was the very last file, go idle
+        # 2. NOW check if the active file was one of the ones just deleted
+        if app_state.active_file_id not in app_state.queued_files:
+            # The active file is now missing!
+            if app_state.queued_files:
+                # There are still files left, pick one
+                self.load_next() 
+            else:
+                # Queue is completely empty
                 app_state.active_file_id = None
                 self._set_view_state('idle')
-            else:
-                # If we shifted the active file (or deleted an inactive one), just update UI counters
-                self.refresh_workspace()
+        else:
+            # The active file still exists, just refresh the UI counters
+            self.refresh_workspace()
 
-        self.remove_ui(file_id)
+        # 3. Finally, update the UI component
+        self.remove_ui(file_ids)
 
     def load_result(self, file_id):
         info = app_state.queued_files.get(file_id)
@@ -204,7 +203,7 @@ class UploaderController:
         # Find the ID of the currently active file
         current_id = app_state.active_file_id
         
-        if current_id is None:
+        if current_id is None or current_id not in files_list:
             # Fallback: if nothing is active, select the first file
             target_id = files_list[0]
         else:
@@ -225,7 +224,7 @@ class UploaderController:
         # Find the ID of the currently active file
         current_id = app_state.active_file_id
         
-        if current_id is None:
+        if current_id is None or current_id not in files_list:
             # Fallback: if nothing is active, select the last file
             target_id = files_list[-1]
         else:
@@ -236,16 +235,4 @@ class UploaderController:
 
         # Use existing controller logic to update active flags, load json, and change view state
         self.load_result(target_id)
-        
-    def delete_all_files(self):
-        """Deletes all files from the queue and the temporary directory."""
-        if not app_state.queued_files:
-            ui.notify("Queue is already empty.", type='info')
-            return
-
-        # Make a copy of keys to iterate, as we're modifying the dict
-        file_ids = list(app_state.queued_files.keys())
-        for file_id in file_ids:
-            self.remove_file(file_id)
-        
-        ui.notify("All items have been deleted.", type='positive')
+    

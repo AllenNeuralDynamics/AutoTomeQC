@@ -43,7 +43,7 @@ def index():
     queue_renderer = QueueRenderer() # instantiage queue renderer
     uploader_controller = UploaderController(
         add_ui_callback=queue_renderer.add_item,
-        remove_ui_callback=queue_renderer.remove_item,
+        remove_ui_callback=queue_renderer.remove_items,
         set_active_ui_callback=queue_renderer.set_active,
         refresh_workspace=workspace.render.refresh,
         refresh_inspector=inspector_content.refresh
@@ -62,8 +62,7 @@ def index():
         on_upload_callback=uploader_controller.handle_upload,
         on_process_callback=uploader_controller.process_batch,
         on_item_click=uploader_controller.load_result,
-        on_item_delete=uploader_controller.remove_file,
-        on_delete_all_callback=uploader_controller.delete_all_files
+        on_item_delete=uploader_controller.remove_file
     )
 
     # --- TOOLBAR (Header) ---

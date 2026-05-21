@@ -73,13 +73,24 @@ class QueueRenderer:
         if self.table:
             self.table.update()
 
-    def remove_item(self, file_id):
-        print("Removing item with file_id:", file_id)
-        if self.table:
-            self.table.rows = [row for row in self.table.rows if row.get('id') != file_id]
-            # Ensure it is also removed from the selection list if it was checked
-            self.table.selected = [sel for sel in self.table.selected if sel.get('id') != file_id]
-            self.table.update()
+    def remove_items(self, file_ids: list[str]):
+        """Removes multiple items using NiceGUI's optimized remove_rows."""
+        if not self.table:
+            return
+        
+        # Identify which rows need to be removed based on IDs
+        ids_to_remove = set(file_ids)
+        rows_to_remove = [row for row in self.table.rows if row.get('id') in ids_to_remove]
+        
+        if not rows_to_remove:
+            return
+
+        # Use NiceGUI's native optimized method
+        self.table.remove_rows(rows_to_remove)
+        
+        # Clean up the selection list (this is still required as NiceGUI 
+        self.table.selected = [sel for sel in self.table.selected if sel.get('id') not in ids_to_remove]
+        self.table.update()
 
     def set_active(self, active_file_id):
         self.current_active_id = active_file_id
@@ -101,7 +112,7 @@ class QueueRenderer:
                 pass
 
 
-def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete, on_delete_all_callback=None):
+def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):
     
     # NEW: Function to handle deleting specifically selected rows
     async def handle_delete_selected():
@@ -119,10 +130,9 @@ def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_proc
                 
         result = await confirm_dialog
         if result == 'yes':
-            # Loop through all selected rows and trigger the individual delete callback
-            for row in selected_rows:
-                if on_item_delete:
-                    on_item_delete(row['id'])
+            if on_item_delete:
+                removed_ids = [row['id'] for row in selected_rows]
+                on_item_delete(removed_ids)
             # Clear selection after deletion
             renderer.table.selected = []
             renderer.table.update()
