@@ -78,7 +78,7 @@ class UploaderController:
             ui.notify(f"Error loading result: {e}", type='negative')
     
     async def handle_upload(self, e):
-        # 1. THE BREATHER: Yield control to the event loop immediately 
+        # THE BREATHER: Yield control to the event loop immediately 
         await asyncio.sleep(0.01)
 
         # Extract file object
@@ -136,8 +136,8 @@ class UploaderController:
         )
         print("Length of queue after upload:", len(app_state.queued_files))
 
-        # 6. UPDATE UI
-        #self.add_ui(file_id)
+        # UPDATE UI
+        self.add_ui(file_id)
 
     async def process_batch(self, e):
         # If already running, this click means "Stop/Pause"

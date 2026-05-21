@@ -2,114 +2,69 @@ from nicegui import ui
 import asyncio
 from web.models.status import app_state
 
-from nicegui import ui
-import asyncio
-from web.models.status import app_state
-
 class QueueRenderer:
     def __init__(self):
-        self.table = None
+        self.grid = None
         self.on_click = None
         self.on_delete = None
         self.current_active_id = None
-        self._update_task = None
 
     def mount(self, on_click, on_delete):
-        """Mounts the Native Table container once when the sidebar is created."""
         self.on_click = on_click
         self.on_delete = on_delete
+        # 1. Absolute simplest AG grid config
+        cell_renderer_js = "(params) => params.value ? '<img src=\"' + params.value + '\" style=\"height: 30px; width: 30px; object-fit: cover; border-radius: 4px; margin-top: 5px;\">' : ''"
+        cell_style_js = "(params) => { if (params.value === 'PROCESSING') return {color: '#60a5fa', fontWeight: 'bold'}; if (params.value === 'PASS') return {color: '#4ade80', fontWeight: 'bold'}; if (params.value === 'FAIL' || params.value === 'ERROR') return {color: '#f87171', fontWeight: 'bold'}; return {color: '#9ca3af'}; }"
 
-        columns = [
-            {'name': 'img_src', 'label': 'Img', 'field': 'img_src', 'align': 'center', 'style': 'width: 60px'},
-            {'name': 'name', 'label': 'File Name', 'field': 'name', 'align': 'left'},
-            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left', 'style': 'width: 100px'}
-        ]
+        options = {
+            'columnDefs': [
+                {'field': 'img_src', 'width': 65, 'headerName': 'Img', 'cellRenderer': cell_renderer_js},
+                {'field': 'name', 'headerName': 'File Name'},
+                {'field': 'status', 'headerName': 'Status', 'cellStyle': cell_style_js}
+            ],
+            'rowData': app_state.grid_row_data,
+            'rowSelection': {'mode': 'multiRow'},
+        }
 
-        # Initialize the native NiceGUI table
-        self.table = ui.table(
-            columns=columns,
-            rows=app_state.grid_row_data,
-            row_key='id',
-            selection='single',
-            pagination=0, # '0' disables pagination so virtual scrolling can take over
-        ).classes('w-full h-full min-h-[400px] custom-scrollbar')
-
-        # CRITICAL for performance: Enable Virtual Scrolling for 1000s of rows
-        self.table.props('virtual-scroll :virtual-scroll-item-size="48" :rows-per-page-options="[0]"')
-
-        # 1. Native Vue Slot for Images (Bulletproof HTML rendering)
-        self.table.add_slot('body-cell-img_src', '''
-            <q-td :props="props">
-                <img v-if="props.row.img_src" :src="props.row.img_src" style="height: 36px; width: 36px; object-fit: cover; border-radius: 4px; display: block; margin: 0 auto;">
-            </q-td>
-        ''')
-
-        # 2. Native Vue Slot for Status Colors
-        self.table.add_slot('body-cell-status', '''
-            <q-td :props="props">
-                <span :style="{
-                    color: props.row.status === 'PROCESSING' ? '#60a5fa' : 
-                           props.row.status === 'PASS' ? '#4ade80' : 
-                           (props.row.status === 'FAIL' || props.row.status === 'ERROR') ? '#f87171' : '#9ca3af',
-                    fontWeight: 'bold'
-                }">
-                    {{ props.row.status }}
-                </span>
-            </q-td>
-        ''')
-
-        # Handle row selection clicks
-        def handle_selection(e):
-            if e.args['added']: # Make sure we only trigger when a row is selected, not deselected
-                selected_row = e.args['rows'][0]
-                if self.on_click:
-                    self.on_click(selected_row['id'])
-
-        self.table.on('selection', handle_selection)
+        # Pass theme directly as an argument inside the parentheses
+        # Initialize the grid
+        self.grid = ui.aggrid(
+            options, 
+            html_columns=[0], # Tell NiceGUI it is safe to inject the <img> tag
+            theme="balham"
+        ).classes('w-full h-full min-h-[300px]')
 
     def add_item(self, file_id):
-        """Reliably syncs the Python state to the frontend table."""
+        """O(1) appending of a single item using grid transactions."""
         info = app_state.queued_files.get(file_id)
-        if info and self.table:
+        if info and self.grid:
+            print("self.grid:", self.grid, file_id)
             row_data = {"id": file_id, **info.model_dump(mode='json')}
-            self.table.rows.append(row_data)
-            #self.table.update()
-
-            # Request a debounced update instead of updating instantly
-            if self._update_task is None or self._update_task.done():
-                self._update_task = asyncio.create_task(self._delayed_update())
-
-    async def _delayed_update(self):
-        """Waits 0.2 seconds to catch other rapid uploads, then syncs the UI once."""
-        await asyncio.sleep(1.0)
-        if self.table:
-            self.table.update()
+            print("Adding row to grid:", row_data)
+            # applyTransaction adds row client-side without sending the whole array over websocket
+            self.grid.run_grid_method('applyTransaction', {'add': [row_data]})
 
     def remove_item(self, file_id):
-        """Removes the item by filtering the python state and updating."""
-        if self.table:
-            # Filter out the deleted row
-            self.table.rows = [row for row in self.table.rows if row.get('id') != file_id]
-            self.table.update()
+        """O(1) deletion of a single item."""
+        if self.grid:
+            self.grid.run_grid_method('applyTransaction', {'remove': [{'id': file_id}]})
 
     def set_active(self, active_file_id):
-        """Updates data and strictly controls the selected row highlight."""
+        """Updates status and selects the active row visually."""
         self.current_active_id = active_file_id
+        info = app_state.queued_files.get(active_file_id)
         
-        if self.table:
-            # 1. Pull fresh data to catch status text/color changes
-            self.table.rows = app_state.grid_row_data
+        if info and self.grid:
+            row_data = {"id": active_file_id, **info.model_dump(mode='json')}
+            # Update cell values dynamically
+            self.grid.run_grid_method('applyTransaction', {'update': [row_data]})
             
-            # 2. Visually check the box for the active row
-            self.table.selected = [row for row in self.table.rows if row.get('id') == active_file_id]
-            self.table.update()
-            
-            # 3. Tell Quasar to scroll the table to the selected row index
-            try:
-                row_index = next(i for i, row in enumerate(self.table.rows) if row.get('id') == active_file_id)
-                self.table.run_method('scrollTo', row_index, 'center')
-            except StopIteration:
-                pass
+            # Visually select the row in the grid
+            self.grid.run_grid_method('forEachNode', f'''(node) => {{
+                if (node.data.id === "{active_file_id}") {{
+                    node.setSelected(true);
+                }}
+            }}''')
 
 async def _show_delete_all_dialog(on_delete_all_callback=None):
     """Shows a confirmation dialog before deleting all items."""
@@ -164,7 +119,7 @@ def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_proc
             uploader = ui.upload(on_upload=on_upload_callback,
                                  multiple=True,
                                  auto_upload=True) \
-            .props('accept="image/*" max-connections="2"').classes('hidden-uploader')
+            .props('accept="image/*" max-connections="5"').classes('hidden-uploader')
 
             def handle_batch_finish():
                 uploader.run_method('removeUploadedFiles') # Clean up the UI
