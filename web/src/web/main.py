@@ -89,5 +89,6 @@ if __name__ in {"__main__", "__mp_main__"}:
         show=False, 
         reload=False, 
         native=False,
+        reconnect_timeout=30.0,
         uvicorn_reload_includes='*.css'
     )

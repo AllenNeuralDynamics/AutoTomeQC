@@ -63,13 +63,14 @@ class QueueRenderer:
         if info and self.table:
             row_data = {"id": file_id, **info.model_dump(mode='json')}
             self.table.rows.append(row_data)
-            
+            print("Length of table rows after add:", len(self.table.rows))
             if self._update_task is None or self._update_task.done():
                 self._update_task = asyncio.create_task(self._delayed_update())
 
     async def _delayed_update(self):
+        print("Batching UI update...")
         """Batches rows together and syncs the UI once every 1 second during heavy uploads."""
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(0.5)
         if self.table:
             self.table.update()
 
@@ -81,7 +82,6 @@ class QueueRenderer:
         # Identify which rows need to be removed based on IDs
         ids_to_remove = set(file_ids)
         rows_to_remove = [row for row in self.table.rows if row.get('id') in ids_to_remove]
-        
         if not rows_to_remove:
             return
 
@@ -89,12 +89,10 @@ class QueueRenderer:
         self.table.remove_rows(rows_to_remove)
         
         # Clean up the selection list (this is still required as NiceGUI 
-        self.table.selected = [sel for sel in self.table.selected if sel.get('id') not in ids_to_remove]
         self.table.update()
 
     def set_active(self, active_file_id):
         self.current_active_id = active_file_id
-        
         if self.table:
             for row in self.table.rows:
                 info = app_state.queued_files.get(row['id'])
@@ -110,7 +108,6 @@ class QueueRenderer:
                 self.table.run_method('scrollTo', row_index, 'center')
             except StopIteration:
                 pass
-
 
 def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):
     
