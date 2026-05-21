@@ -80,58 +80,70 @@ class UploaderController:
 
     async def handle_upload(self, e):
         """Processes files one-by-one to maintain simplicity and UI stability."""
+        print("\n\nlen of files received:", len(e.files) if hasattr(e, 'files') else 'unknown'  )
         files = e.files
         if not files:
             return
 
-        added_ids = []
+        # 1. Start all tasks simultaneously
+        # We process files in parallel, allowing the OS to handle concurrent writes
+        tasks = [self.process_single_file(f) for f in files]
+        
+        # 2. Await all results
+        # asyncio.gather returns a list of the returned file_ids
+        results = await asyncio.gather(*tasks)
+        print("Gathered results:")
 
-        # 1. Process sequentially
-        for f in files:
-            file_id = await self.process_single_file(f)
-            if file_id:
-                added_ids.append(file_id)
+        # 3. Filter out None results (duplicates or errors)
+        added_ids = [file_id for file_id in results if file_id is not None]
+        print("Added file IDs:", len(added_ids))
 
         # 2. Batch Update UI: Only call this once for the whole batch
         if added_ids:
             # Update the Renderer state and trigger the one-time UI sync
             self.add_ui(added_ids)
-            ui.notify(f"Added {len(added_ids)} files to queue", type='positive')
+            ui.notify(f"Successfully processed {len(added_ids)} files", type='positive')
             
-        
+        e.sender.run_method('removeUploadedFiles')
+
     async def process_single_file(self, f):
         file_name = f.name
         
-        # 1. READ BYTES: Use .read() directly if available
-        # SmallFileUpload objects are file-like, so .read() is the standard approach
+        # 1. DUPLICATE CHECK
+        existing_names = {info.name for info in app_state.queued_files.values()}
+        if file_name in existing_names:
+            print(f"Duplicate found, skipping: {file_name}")
+            return None
+        
+        # 2. READ BYTES: Use a more robust await pattern
         try:
-            # Check if it has a read method
-            if hasattr(f, 'read'):
-                file_bytes = await f.read() if asyncio.iscoroutinefunction(f.read) else f.read()
-            else:
-                # Fallback: some versions store it in a .bytes attribute
-                file_bytes = getattr(f, 'bytes', b'')
+            # Most SmallFileUpload objects have an async read method
+            # We must explicitly await it.
+            file_bytes = await f.read() 
         except Exception as e:
-            print(f"Error reading file {file_name}: {e}")
+            print(f"Error reading {file_name}: {e}")
             return None
 
-        # 2. Proceed with saving
         file_id = uuid.uuid4().hex
         file_path = app_state.temp_upload_dir / file_name
-        
+
+        # 3. DISK I/O: Keep this in a thread to keep the event loop free
         def save_and_measure():
-            with open(file_path, "wb") as file_handle:
-                file_handle.write(file_bytes)
+            with open(file_path, "wb") as f_handle:
+                f_handle.write(file_bytes)
             w, h = imagesize.get(str(file_path))
             return w, h
 
         try:
             width, height = await asyncio.to_thread(save_and_measure)
         except Exception as ex:
-            print(f"Error processing {file_name}: {ex}")
+            # FIX: Use ui.notify here. It IS thread-safe, 
+            # but ensure it's not being called inside a deep non-GUI thread if possible.
+            # Usually, ui.notify works fine from background tasks.
+            print(f"Failed to save {file_name}: {ex}")
             return None
 
-        # Update state
+        # 4. UPDATE STATE (Keep this simple)
         app_state.queued_files[file_id] = QueuedFile(
             name=file_name, path=file_path, img_src=f"/temp_uploads/{file_name}",
             status='PENDING', width=width, height=height

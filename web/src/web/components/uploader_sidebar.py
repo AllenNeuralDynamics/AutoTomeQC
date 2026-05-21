@@ -62,6 +62,8 @@ class QueueRenderer:
         if not self.table:
             return
 
+        print("(components) len of file_ids to add:", len(file_ids))
+
         new_rows = []
         for file_id in file_ids:
             info = app_state.queued_files.get(file_id)
@@ -70,9 +72,10 @@ class QueueRenderer:
                 new_rows.append(row_data)
                 
         if new_rows:
-            print("Length of table rows after add:", len(self.table.rows))
             self.table.add_rows(new_rows)
-            #if self._update_task is None or self._update_task.done():
+            print("(components) Length of table rows after add:", len(self.table.rows))
+            print("(components) Length of state rows after add:", len(app_state.grid_row_data))
+                  #if self._update_task is None or self._update_task.done():
             #    self._update_task = asyncio.create_task(self._delayed_update())
 
     def add_item_(self, file_id):
@@ -127,79 +130,79 @@ class QueueRenderer:
             except StopIteration:
                 pass
 
-def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):
+
+
+def render_uploader_sidebar(renderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):
     
-    # NEW: Function to handle deleting specifically selected rows
     async def handle_delete_selected():
         selected_rows = renderer.table.selected
         if not selected_rows:
-            ui.notify('No items selected to delete', type='warning')
+            ui.notify('No items selected', type='warning')
             return
             
         with ui.dialog() as confirm_dialog, ui.card().classes('p-6'):
-            ui.label(f'Delete {len(selected_rows)} selected item(s)?').classes('text-lg')
-            ui.label('This action cannot be undone.')
+            ui.label(f'Delete {len(selected_rows)} items?').classes('text-lg')
             with ui.row().classes('w-full justify-end gap-4 pt-4'):
                 ui.button('Cancel', on_click=confirm_dialog.close).props('flat')
                 ui.button('Delete', on_click=lambda: confirm_dialog.submit('yes'), color='negative')
                 
-        result = await confirm_dialog
-        if result == 'yes':
+        if await confirm_dialog == 'yes':
+            removed_ids = [row['id'] for row in selected_rows]
             if on_item_delete:
-                removed_ids = [row['id'] for row in selected_rows]
                 on_item_delete(removed_ids)
-            # Clear selection after deletion
-            renderer.table.selected = []
-            renderer.table.update()
+            # Explicit context for UI updates
+            with renderer.table:
+                renderer.table.selected = []
+                renderer.table.update()
 
     with ui.left_drawer(fixed=True).classes('sidebar flex flex-col no-wrap') as left_drawer:
         
-        # 1. Initialize Uploader completely hidden and OUTSIDE the flex row
-        with ui.element('div').classes('hidden'):
-            if on_upload_callback:
-                uploader = ui.upload(on_multi_upload=on_upload_callback, multiple=True, auto_upload=True) \
-                    .props('accept="image/*" max-connections="2"')
-                    
-                def handle_batch_finish():
-                    uploader.run_method('removeUploadedFiles') 
-                    ui.notify("Finished uploading batch", type='positive')
-                
-                uploader.on('finish', handle_batch_finish)
-            else:
-                uploader = None
+        # 1. Initialize Uploader (Hidden via CSS)
+        uploader = None
+        def _handle_rejection():
+            ui.notify("Limit reached: Only 1000 files allowed per upload.", type='warning')
+            # Reset the uploader so it can be used again
+            uploader.run_method('removeUploadedFiles')
+            uploader.update()
+
+        if on_upload_callback:
+            with ui.element('div').style('position: absolute; left: -9999px;'):
+                uploader = ui.upload(
+                    on_multi_upload=on_upload_callback,
+                    on_rejected=_handle_rejection,
+                    multiple=True,
+                    max_files=1000,
+                    auto_upload=True
+                ).props('accept="image/*" max-connections="1" batch="true" batch-size="50"')
 
         # 2. Header Row
         with ui.row().classes('sidebar-header w-full items-center justify-between shrink-0 no-wrap'):
-            
-            # FIXED: Added 'shrink-0' so the title doesn't get crushed
             with ui.row().classes('sidebar-title items-center shrink-0'):
                 ui.icon('monitor_heart').classes('text-accent text-xl')
                 ui.label('AutoTome-QC').classes('sidebar-title-text')
 
-                
-            # FIXED: Added 'shrink-0 no-wrap' here. This absolutely forbids Flexbox from squishing your buttons together!
             with ui.row().classes('items-center justify-end gap-1 shrink-0 no-wrap'):
-                
                 if uploader:
-                    upload_btn = ui.button(icon='upload', on_click=lambda: uploader.run_method('pickFiles')) \
+                    ui.button(icon='upload', on_click=lambda: uploader.run_method('pickFiles')) \
                         .props('flat dense round') \
-                        .tooltip('Upload images')
-                    upload_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda p: not p)
+                        .tooltip('Upload images') \
+                        .bind_visibility_from(app_state, 'is_processing', backward=lambda p: not p)
                 
                 if on_item_delete:
-                    delete_btn = ui.button(icon='delete', on_click=handle_delete_selected) \
+                    ui.button(icon='delete', on_click=handle_delete_selected) \
                         .props('flat dense round') \
-                        .tooltip('Delete selected items')
-                delete_btn.bind_visibility_from(app_state, 'is_processing', backward=lambda p: not p)
+                        .tooltip('Delete selected items') \
+                        .bind_visibility_from(app_state, 'is_processing', backward=lambda p: not p)
 
+        # 3. Main Content Area
         with ui.element('div').classes('flex-grow w-full overflow-hidden min-h-0'):
             renderer.mount(on_item_click, on_item_delete)
         
         # 4. Footer Row
-        with ui.row().classes('sidebar-footer w-full p-2 shrink-0'):
-            if on_process_callback:
+        if on_process_callback:
+            with ui.row().classes('sidebar-footer w-full p-2 shrink-0'):
                 btn = ui.button('', on_click=on_process_callback).classes('btn-process w-full')
-                btn.bind_icon_from(app_state, 'is_processing', backward=lambda proc: 'pause' if proc else 'play_arrow')
-                btn.bind_text_from(app_state, 'is_processing', backward=lambda proc: 'PAUSE BATCH' if proc else 'PROCESS BATCH')
+                btn.bind_icon_from(app_state, 'is_processing', backward=lambda p: 'pause' if p else 'play_arrow')
+                btn.bind_text_from(app_state, 'is_processing', backward=lambda p: 'PAUSE BATCH' if p else 'PROCESS BATCH')
         
     return left_drawer
