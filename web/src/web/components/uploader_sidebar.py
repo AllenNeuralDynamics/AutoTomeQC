@@ -42,7 +42,7 @@ class QueueRenderer:
         # 1. Native Vue Slot for Images
         self.table.add_slot('body-cell-img_src', '''
             <q-td :props="props" style="padding: 1px 1px 1px 0;">
-                <q-img v-if="props.row.img_src" :src="props.row.img_src" style="height: 32px; width: 32px; border-radius: 2px; display: block;" fit="cover" />
+                <img v-if="props.row.img_src" :src="props.row.img_src" style="height: 32px; width: 32px; border-radius: 2px; display: block;" fit="cover" />
             </q-td>
         ''')
 
@@ -73,6 +73,7 @@ class QueueRenderer:
 
     def add_item(self, file_id):
         """Appends the data to Python state and requests a batched UI update to prevent crashes."""
+        print("Add item called for file_id:", file_id, len(self.table.rows) if self.table else 'No table')
         info = app_state.queued_files.get(file_id)
         if info and self.table:
             row_data = {"id": file_id, **info.model_dump(mode='json')}
@@ -88,16 +89,22 @@ class QueueRenderer:
             self.table.update()
 
     def remove_item(self, file_id):
+        print("Remove item called for file_id:", file_id)
         if self.table:
             self.table.rows = [row for row in self.table.rows if row.get('id') != file_id]
             self.table.update()
 
     def set_active(self, active_file_id):
+        print("Active file ID set to:", active_file_id)
         self.current_active_id = active_file_id
         
         if self.table:
-            self.table.rows = app_state.grid_row_data
-            self.table.selected = [row for row in self.table.rows if row.get('id') == active_file_id]
+            for row in self.table.rows:
+                info = app_state.queued_files.get(row['id'])
+                if info and row['status'] != info.status:
+                    row['status'] = info.status
+
+            self.table.selected = [{'id': active_file_id}]
             self.table.update()
             
             try:
