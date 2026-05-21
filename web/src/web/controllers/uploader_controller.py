@@ -33,6 +33,7 @@ class UploaderController:
         self.refresh_inspector()
         
     def remove_file(self, file_id):
+        print("Remove file called for file_id:", file_id)
         # 1. Check if we are deleting the currently active file
         is_active = (app_state.active_file_id == file_id)
         

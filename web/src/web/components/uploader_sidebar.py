@@ -18,8 +18,8 @@ class QueueRenderer:
 
         columns = [
             {'name': 'img_src', 'label': 'Img', 'field': 'img_src', 'align': 'left', 'style': 'width: 15px; padding: 0 2px 0 0;'},
-            {'name': 'name', 'label': 'File Name', 'field': 'name', 'align': 'left', 'classes': 'ellipsis', 'style': 'font-size: 0.75rem; padding: 0 2px;'},
-            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left', 'style': 'width: 95px; min-width: 80px; max-width: 95px; padding: 0 2px; font-size: 0.75rem;'},
+            {'name': 'name', 'label': 'File Name', 'field': 'name', 'align': 'left', 'sortable': True, 'classes': 'ellipsis', 'style': 'font-size: 0.75rem; padding: 0 2px;'},
+            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left', 'sortable': True, 'style': 'width: 95px; min-width: 80px; max-width: 95px; padding: 0 2px; font-size: 0.75rem;'},
             {'name': 'actions', 'label': '', 'field': 'id', 'align': 'right', 'style': 'width: 30px; padding: 0;'}
         ]
 
@@ -35,7 +35,6 @@ class QueueRenderer:
         # Enable Virtual Scrolling for massive queues
         self.table.props('virtual-scroll :virtual-scroll-item-size="36" flat dense')
 
-        # Clear the selection slots so the checkboxes disappear
         self.table.add_slot('header-selection', '')
         self.table.add_slot('body-selection', '')
 
@@ -46,7 +45,7 @@ class QueueRenderer:
             </q-td>
         ''')
 
-        # 2. Native Vue Slot for Status Colors
+        # Status Colors
         self.table.add_slot('body-cell-status', '''
             <q-td :props="props" style="padding: 1px 2px;">
                 <span :style="{
@@ -59,9 +58,10 @@ class QueueRenderer:
             </q-td>
         ''')
 
+        # Delete button slot
         self.table.add_slot('body-cell-actions', '''
             <q-td :props="props" style="padding: 2px 2px;">
-                <q-btn flat round dense color="red" icon="delete" size="sm" @click.stop="$parent.$emit('delete_row', props.row.id)" />
+                <q-btn flat round dense color="red" icon="delete" size="sm" @click.stop="$parent.$emit('remove', props.row)" />
             </q-td>
         ''')
 
