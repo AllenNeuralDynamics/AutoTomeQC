@@ -17,10 +17,10 @@ class QueueRenderer:
         self.on_delete = on_delete
 
         columns = [
-            {'name': 'img_src', 'label': 'Img', 'field': 'img_src', 'align': 'center', 'style': 'width: 60px'},
-            {'name': 'name', 'label': 'File Name', 'field': 'name', 'align': 'left'},
-            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left', 'style': 'width: 100px'},
-            {'name': 'actions', 'label': '', 'field': 'id', 'align': 'right', 'style': 'width: 40px'}
+            {'name': 'img_src', 'label': 'Img', 'field': 'img_src', 'align': 'left', 'style': 'width: 15px; padding: 0 2px 0 0;'},
+            {'name': 'name', 'label': 'File Name', 'field': 'name', 'align': 'left', 'classes': 'ellipsis', 'style': 'font-size: 0.75rem; padding: 0 2px;'},
+            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left', 'style': 'width: 95px; min-width: 80px; max-width: 95px; padding: 0 2px; font-size: 0.75rem;'},
+            {'name': 'actions', 'label': '', 'field': 'id', 'align': 'right', 'style': 'width: 30px; padding: 0;'}
         ]
 
         # Initialize the native NiceGUI table
@@ -29,11 +29,11 @@ class QueueRenderer:
             rows=app_state.grid_row_data,
             row_key='id',
             selection='single',
-            pagination=None,  # FIXED: 'None' absolutely forces a single page and removes the footer UI
+            pagination=None,
         ).classes('w-full h-full custom-scrollbar')
 
         # Enable Virtual Scrolling for massive queues
-        self.table.props('virtual-scroll :virtual-scroll-item-size="48" flat')
+        self.table.props('virtual-scroll :virtual-scroll-item-size="36" flat dense')
 
         # Clear the selection slots so the checkboxes disappear
         self.table.add_slot('header-selection', '')
@@ -41,29 +41,27 @@ class QueueRenderer:
 
         # 1. Native Vue Slot for Images
         self.table.add_slot('body-cell-img_src', '''
-            <q-td :props="props">
-                <q-img v-if="props.row.img_src" :src="props.row.img_src" style="height: 36px; width: 36px; border-radius: 4px; display: block; margin: 0 auto;" fit="cover" />
+            <q-td :props="props" style="padding: 1px 1px 1px 0;">
+                <q-img v-if="props.row.img_src" :src="props.row.img_src" style="height: 32px; width: 32px; border-radius: 2px; display: block;" fit="cover" />
             </q-td>
         ''')
 
         # 2. Native Vue Slot for Status Colors
         self.table.add_slot('body-cell-status', '''
-            <q-td :props="props">
+            <q-td :props="props" style="padding: 1px 2px;">
                 <span :style="{
                     color: props.row.status === 'PROCESSING' ? '#60a5fa' : 
                            props.row.status === 'PASS' ? '#4ade80' : 
-                           (props.row.status === 'FAIL' || props.row.status === 'ERROR') ? '#f87171' : '#9ca3af',
-                    fontWeight: 'bold'
+                           (props.row.status === 'FAIL' || props.row.status === 'ERROR') ? '#f87171' : '#9ca3af'
                 }">
                     {{ props.row.status }}
                 </span>
             </q-td>
         ''')
 
-        # 3. Native Vue Slot for Individual Delete Icons
         self.table.add_slot('body-cell-actions', '''
-            <q-td :props="props">
-                <q-btn flat round dense color="red" icon="delete" @click.stop="$parent.$emit('delete_row', props.row.id)" />
+            <q-td :props="props" style="padding: 2px 2px;">
+                <q-btn flat round dense color="red" icon="delete" size="sm" @click.stop="$parent.$emit('delete_row', props.row.id)" />
             </q-td>
         ''')
 
