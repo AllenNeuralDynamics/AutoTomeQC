@@ -29,9 +29,10 @@ This web application is designed to be run as part of the `AutoTomeQC` project.
     ```
     You can then access the UI in your browser at the address provided in the terminal (e.g., `http://localhost:8080`).
 
-    To specify different ports for the backend and frontend, you can use the `--backend-port` and `--ui-port` arguments:
+    To specify different ports or change the logging verbosity, you can use the following arguments:
     ```bash
-    uv run autotome-ui --backend-port 8001 --ui-port 8081
+    # Example: Run on different ports with debug logging
+    uv run autotome-ui --backend-port 8001 --ui-port 8081 --log-level DEBUG
     ```
 
 ## Development
