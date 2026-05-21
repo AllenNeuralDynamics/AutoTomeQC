@@ -57,7 +57,25 @@ class QueueRenderer:
         # Handle row clicks (Clicking the row text/image loads the file, clicking the checkbox selects it)
         self.table.on('rowClick', lambda e: self.on_click(e.args[1]['id']) if self.on_click else None)
 
-    def add_item(self, file_id):
+    def add_item(self, file_ids: list[str]):
+        """Appends the data to Python state and requests a batched UI update to prevent crashes."""
+        if not self.table:
+            return
+
+        new_rows = []
+        for file_id in file_ids:
+            info = app_state.queued_files.get(file_id)
+            if info:
+                row_data = {"id": file_id, **info.model_dump(mode='json')}
+                new_rows.append(row_data)
+                
+        if new_rows:
+            print("Length of table rows after add:", len(self.table.rows))
+            self.table.add_rows(new_rows)
+            #if self._update_task is None or self._update_task.done():
+            #    self._update_task = asyncio.create_task(self._delayed_update())
+
+    def add_item_(self, file_id):
         """Appends the data to Python state and requests a batched UI update to prevent crashes."""
         info = app_state.queued_files.get(file_id)
         if info and self.table:
@@ -139,7 +157,7 @@ def render_uploader_sidebar(renderer: QueueRenderer, on_upload_callback, on_proc
         # 1. Initialize Uploader completely hidden and OUTSIDE the flex row
         with ui.element('div').classes('hidden'):
             if on_upload_callback:
-                uploader = ui.upload(on_upload=on_upload_callback, multiple=True, auto_upload=True) \
+                uploader = ui.upload(on_multi_upload=on_upload_callback, multiple=True, auto_upload=True) \
                     .props('accept="image/*" max-connections="2"')
                     
                 def handle_batch_finish():

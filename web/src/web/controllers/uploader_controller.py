@@ -77,7 +77,68 @@ class UploaderController:
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
     
+
     async def handle_upload(self, e):
+        """Processes files one-by-one to maintain simplicity and UI stability."""
+        files = e.files
+        if not files:
+            return
+
+        added_ids = []
+
+        # 1. Process sequentially
+        for f in files:
+            file_id = await self.process_single_file(f)
+            if file_id:
+                added_ids.append(file_id)
+
+        # 2. Batch Update UI: Only call this once for the whole batch
+        if added_ids:
+            # Update the Renderer state and trigger the one-time UI sync
+            self.add_ui(added_ids)
+            ui.notify(f"Added {len(added_ids)} files to queue", type='positive')
+            
+        
+    async def process_single_file(self, f):
+        file_name = f.name
+        
+        # 1. READ BYTES: Use .read() directly if available
+        # SmallFileUpload objects are file-like, so .read() is the standard approach
+        try:
+            # Check if it has a read method
+            if hasattr(f, 'read'):
+                file_bytes = await f.read() if asyncio.iscoroutinefunction(f.read) else f.read()
+            else:
+                # Fallback: some versions store it in a .bytes attribute
+                file_bytes = getattr(f, 'bytes', b'')
+        except Exception as e:
+            print(f"Error reading file {file_name}: {e}")
+            return None
+
+        # 2. Proceed with saving
+        file_id = uuid.uuid4().hex
+        file_path = app_state.temp_upload_dir / file_name
+        
+        def save_and_measure():
+            with open(file_path, "wb") as file_handle:
+                file_handle.write(file_bytes)
+            w, h = imagesize.get(str(file_path))
+            return w, h
+
+        try:
+            width, height = await asyncio.to_thread(save_and_measure)
+        except Exception as ex:
+            print(f"Error processing {file_name}: {ex}")
+            return None
+
+        # Update state
+        app_state.queued_files[file_id] = QueuedFile(
+            name=file_name, path=file_path, img_src=f"/temp_uploads/{file_name}",
+            status='PENDING', width=width, height=height
+        )
+        return file_id
+
+    async def handle_upload_(self, e):
         # THE BREATHER: Yield control to the event loop immediately 
         await asyncio.sleep(0.01)
 
