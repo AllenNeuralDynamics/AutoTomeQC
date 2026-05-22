@@ -40,25 +40,30 @@ def mock_config():
 @pytest.fixture
 def mock_external_deps():
     with patch("autotomeqc.core.pipeline.cv2") as mock_cv2, \
+         patch("autotomeqc.core.pipeline.YoloPostProcessor") as MockPostProcessor, \
          patch("autotomeqc.core.pipeline.save_json_results") as mock_save_json, \
-         patch("autotomeqc.core.pipeline.save_debug_image") as mock_save_img, \
-         patch("autotomeqc.core.pipeline.cropped_segmented") as mock_crop:
+         patch("autotomeqc.core.pipeline.save_debug_image") as mock_save_img:
         
         # Ensure cv2.imread returns something so the pipeline doesn't bail
         mock_cv2.imread.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
         
-        # Mock cropped_segmented to return the detections passed to it
-        mock_crop.side_effect = lambda frame, dets: dets
+        # Mock the post-processor instance that the pipeline will create.
+        # This instance is used to call .validate_detections() and .cropped_segmented()
+        mock_post_processor_instance = MockPostProcessor.return_value
+        mock_post_processor_instance.validate_detections.side_effect = lambda dets: (True, "N/A", dets)
+        mock_post_processor_instance.cropped_segmented.side_effect = lambda frame, dets: dets
         
         yield {
             "cv2": mock_cv2,
             "save_json": mock_save_json,
             "save_img": mock_save_img,
-            "crop": mock_crop,
+            "post_processor": mock_post_processor_instance,
         }
 
 @pytest.fixture
 def pipeline(mock_config):
+    # We only patch YoloSegmentation and the individual QC modules here.
+    # The post-processor and other IO functions are patched in mock_external_deps.
     with patch("autotomeqc.core.pipeline.YoloSegmentation") as MockYolo, \
          patch("autotomeqc.core.pipeline.SectionCoverageQC"), \
          patch("autotomeqc.core.pipeline.KnifeMarksQC"), \
@@ -73,10 +78,9 @@ def pipeline(mock_config):
         MockYolo.return_value.model = "MockModel"
 
         test_config_obj = AppConfig(**mock_config)
-        with patch("autotomeqc.core.pipeline.CONFIG", test_config_obj):
-            pipe = AutoTomePipeline()
-            yield pipe
-            pipe.stop()
+        pipe = AutoTomePipeline(config=test_config_obj)
+        yield pipe
+        pipe.stop()
 
 # --- TESTS ---
 

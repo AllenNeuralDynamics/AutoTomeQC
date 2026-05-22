@@ -1,8 +1,29 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from autotomeqc.core.autotome_service import AutoTomeService
+from autotomeqc.config.schemas import AppConfig
 
 # --- FIXTURES ---
+
+@pytest.fixture
+def mock_config():
+    """Provides a minimal mock config that can be parsed by AppConfig."""
+    return {
+        "qc": {
+            "output_dir": "test_output",
+            "save_qc_json": False,
+            "save_segmented_images": False,
+            "save_input_images": False,
+            "return_mask_data": False,
+            "yolo": {"weights_path": "d", "img_dim": [1,1], "img_size": 1, "conf_thresh": 0.5, "max_det": 1},
+            "yolo_post_processing": {"out_dim": [1,1], "loop_bbox_margin": 0, "allow_no_loop": True, "overlap_threshold": 0.5},
+            "section_coverage": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
+            "knife_mark": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
+            "thickness_consistency": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
+            "thickness": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
+            "shape": {"save_debug_img": False}
+        }
+    }
 
 @pytest.fixture
 def mock_pipeline_class():
@@ -10,12 +31,15 @@ def mock_pipeline_class():
     Patches the AutoTomePipeline class so we don't start the real YOLO engine.
     """
     with patch("autotomeqc.core.autotome_service.AutoTomePipeline") as MockClass:
+        mock_instance = MockClass.return_value
+        mock_instance.start.return_value = True
         yield MockClass
 
 @pytest.fixture
-def service(mock_pipeline_class):
+def service(mock_pipeline_class, mock_config):
     """Returns a fresh instance of AutoTomeService for each test."""
-    return AutoTomeService()
+    config = AppConfig(**mock_config)
+    return AutoTomeService(config=config)
 
 # --- TESTS ---
 
@@ -23,13 +47,14 @@ def test_initial_state(service):
     """Ensure service starts in a clean, stopped state."""
     assert service.running is False
     assert service.pipeline is None
+    assert service.config is not None
 
 def test_start_service(service, mock_pipeline_class):
     """Test that start() initializes the pipeline and sets running to True."""
     service.start()
     assert service.running is True
-    # Verify AutoTomePipeline() was instantiated
-    mock_pipeline_class.assert_called_once()
+    # Verify AutoTomePipeline() was instantiated with config
+    mock_pipeline_class.assert_called_once_with(config=service.config)
     # Verify pipeline.start() was called on the instance
     service.pipeline.start.assert_called_once()
 
