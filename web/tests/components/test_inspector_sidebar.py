@@ -1,8 +1,4 @@
-import pytest
-from unittest.mock import patch, AsyncMock
 from nicegui.testing import User
-from pathlib import Path
-from web.models.backend_schemas import PipelineResult, SectionResult, QCCriteria
 
 async def test_initial_inspector_state(user: User):
     """Test that the inspector sidebar initially shows an info message."""

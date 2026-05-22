@@ -76,13 +76,6 @@ class QueueRenderer:
         if new_rows:
             self.table.add_rows(new_rows)
 
-    async def _delayed_update(self):
-        self.log.debug("Batching UI update...")
-        """Batches rows together and syncs the UI once every 1 second during heavy uploads."""
-        await asyncio.sleep(0.5)
-        if self.table:
-            self.table.update()
-
     def remove_items(self, file_ids: list[str]):
         """Removes multiple items using NiceGUI's optimized remove_rows."""
         if not self.table:

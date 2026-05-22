@@ -223,14 +223,16 @@ class UploaderController:
             if is_path:
                 # Native: copy if not exists
                 def copy_and_measure():
-                    if not dest_path.exists(): shutil.copy2(item, dest_path)
+                    if not dest_path.exists():
+                        shutil.copy2(item, dest_path)
                     return imagesize.get(str(dest_path))
                 width, height = await asyncio.to_thread(copy_and_measure)
             else:
                 # Web: read bytes and save
                 file_bytes = await item.read()
                 def save_and_measure():
-                    with open(dest_path, "wb") as f: f.write(file_bytes)
+                    with open(dest_path, "wb") as f:
+                        f.write(file_bytes)
                     return imagesize.get(str(dest_path))
                 width, height = await asyncio.to_thread(save_and_measure)
         except Exception as ex:

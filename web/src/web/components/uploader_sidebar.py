@@ -1,9 +1,7 @@
 # web/components/uploader_sidebar.py
 from nicegui import ui
-import asyncio
-import logging
 from web.models.status import app_state
-from nicegui import ui, app
+from nicegui import app
 
 def render_uploader_sidebar(renderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):
     

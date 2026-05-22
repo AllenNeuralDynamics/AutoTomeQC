@@ -1,6 +1,5 @@
 # src/autotomeqc/interface/server.py
 import os
-import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 

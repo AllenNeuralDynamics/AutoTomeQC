@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from autotomeqc.core.autotome_service import AutoTomeService
 from autotomeqc.config.schemas import AppConfig
 

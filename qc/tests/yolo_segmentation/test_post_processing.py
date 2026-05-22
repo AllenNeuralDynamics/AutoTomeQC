@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-from unittest.mock import patch, MagicMock
 from autotomeqc.yolo_segmentation.post_processing import YoloPostProcessor 
 from autotomeqc.core.models import Detection
 from autotomeqc.config.schemas import AppConfig
