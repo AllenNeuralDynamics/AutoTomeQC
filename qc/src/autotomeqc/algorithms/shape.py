@@ -17,7 +17,7 @@ class ShapeQC:
         self.save_debug_img = getattr(config, "save_debug_img", True)
         
         self.log = logging.getLogger(self.__class__.__name__)
-        self.log.info("ShapeQC initialized.")
+        self.log.debug("ShapeQC initialized.")
 
     def check(self, image, filename: Optional[str] = None):
         """

@@ -21,7 +21,7 @@ class YOLOClassifier:
             self.model = YOLO(model_path)
             # Warmup inference
             self.model(np.zeros((self.img_size, self.img_size, 3), dtype=np.uint8), verbose=False)
-            self.log.info(f"Model {self.model_name} loaded successfully.")
+            self.log.debug(f"Model {self.model_name} loaded successfully.")
         except Exception as e:
             self.log.warning(f"Could not load {model_path}. Error: {e}")
 
@@ -66,8 +66,9 @@ class YOLOClassifier:
             result["pass_status"] = False
             if not is_valid_label:
                 result["reason"] = f"Defect Detected: {result.get('label')}"
-                self.log.info(result["reason"])
+                self.log.debug(result["reason"])
             elif not is_confident:
                 result["reason"] = f"Low Confidence ({result.get('conf')} < {self.min_confidence})"
+                self.log.debug(result["reason"])
 
         return result

@@ -125,7 +125,7 @@ class AutoTomePipeline:
                 try:
                     # insert() raises IndexError if the deque is full
                     self.input_queue.insert(len(self.input_queue), task)
-                    self.log.info(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
+                    self.log.debug(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
                 except IndexError:
                     # Catch the error, make room by dropping the oldest task
                     dropped_task = self.input_queue.popleft()
@@ -140,7 +140,7 @@ class AutoTomePipeline:
                     )
                     # NOW add the new task since there is room
                     self.input_queue.append(task)
-                    self.log.info(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
+                    self.log.debug(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
 
             return future_ticket  # Return the ticket so the user can await result
 
