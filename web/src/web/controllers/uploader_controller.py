@@ -11,11 +11,12 @@ from web.services.api import analyze_image
 from web.models.backend_schemas import PipelineResult
 from web.models.status import QueuedFile
 
-log = logging.getLogger(__name__)
+
 
 class UploaderController:
     # Update Init parameters
     def __init__(self, add_ui_callback, remove_ui_callback, set_active_ui_callback, refresh_workspace, refresh_inspector):
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.add_ui = add_ui_callback
         self.remove_ui = remove_ui_callback
         self.set_active_ui = set_active_ui_callback
@@ -83,7 +84,7 @@ class UploaderController:
 
     async def handle_upload(self, e):
         """Processes files one-by-one to maintain simplicity and UI stability."""
-        log.debug("Received %d files to upload.", len(e.files) if hasattr(e, 'files') else 0)
+        self.logger.debug("Received %d files to upload.", len(e.files) if hasattr(e, 'files') else 0)
         files = e.files
         if not files:
             return
@@ -95,11 +96,11 @@ class UploaderController:
         # 2. Await all results
         # asyncio.gather returns a list of the returned file_ids
         results = await asyncio.gather(*tasks)
-        log.debug("Gathered all file processing results.")
+        self.logger.debug("Gathered all file processing results.")
 
         # 3. Filter out None results (duplicates or errors)
         added_ids = [file_id for file_id in results if file_id is not None]
-        log.info("Added %d new files to the queue.", len(added_ids))
+        self.logger.info("Added %d new files to the queue.", len(added_ids))
 
         # 2. Batch Update UI: Only call this once for the whole batch
         if added_ids:
@@ -115,7 +116,7 @@ class UploaderController:
         # 1. DUPLICATE CHECK
         existing_names = {info.name for info in app_state.queued_files.values()}
         if file_name in existing_names:
-            log.warning("Duplicate file found, skipping: %s", file_name)
+            self.logger.warning("Duplicate file found, skipping: %s", file_name)
             return None
         
         # 2. READ BYTES: Use a more robust await pattern
@@ -124,7 +125,7 @@ class UploaderController:
             # We must explicitly await it.
             file_bytes = await f.read() 
         except Exception as e:
-            log.error("Error reading file %s: %s", file_name, e)
+            self.logger.error("Error reading file %s: %s", file_name, e)
             return None
 
         file_id = uuid.uuid4().hex
@@ -143,7 +144,7 @@ class UploaderController:
             # FIX: Use ui.notify here. It IS thread-safe, 
             # but ensure it's not being called inside a deep non-GUI thread if possible.
             # Usually, ui.notify works fine from background tasks.
-            log.error("Failed to save file %s: %s", file_name, ex)
+            self.logger.error("Failed to save file %s: %s", file_name, ex)
             return None
 
         # 4. UPDATE STATE (Keep this simple)
@@ -210,7 +211,7 @@ class UploaderController:
             name=file_name, path=file_path, img_src=img_src,
             status='PENDING', width=width, height=height
         )
-        log.debug("Queue size after upload: %d", len(app_state.queued_files))
+        self.logger.debug("Queue size after upload: %d", len(app_state.queued_files))
 
         # UPDATE UI
         self.add_ui(file_id)

@@ -26,7 +26,7 @@ def configure_logging(level: str) -> None:
         datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-def set_environment_variables(backend_port: int) -> None:
+def set_environment_variables(backend_port: int, log_level: str) -> None:
     """Sets necessary environment variables for the backend and frontend processes."""
     # Provide the Base Backend URL dynamically to the Web UI
     os.environ["AUTOTOME_BACKEND_URL"] = f"http://localhost:{backend_port}"
@@ -36,6 +36,7 @@ def set_environment_variables(backend_port: int) -> None:
     os.environ["AUTOTOME_SAVE_SEGMENTED"] = "False"
     os.environ["AUTOTOME_SAVE_INPUT"] = "False"
     os.environ["AUTOTOME_RETURN_MASK"] = "True"
+    os.environ["LOG_LEVEL"] = log_level.upper()
 
 def main():
     """
@@ -58,14 +59,14 @@ def main():
     log = logging.getLogger("autotome-ui")
 
     # Setup environment
-    set_environment_variables(args.backend_port)
+    set_environment_variables(args.backend_port, args.log_level)
 
     # Backend) Start the Backend API in the background using the same python environment
     backend_cmd = [
         "uv", "run", "uvicorn", "autotomeqc.interface.server:app", "--host", "0.0.0.0",
-        "--port", str(args.backend_port)
+        "--port", str(args.backend_port),
+        "--log-level", args.log_level.lower(),
     ]
-    backend_cmd.extend(["--log-level", args.log_level.lower()])
     log.info(f"Launching Backend API on port {args.backend_port}...")
     backend_process = subprocess.Popen(backend_cmd)
 

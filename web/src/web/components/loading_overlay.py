@@ -1,5 +1,8 @@
 # web/components/loading_overlay.py
 from nicegui import ui
+import logging
+
+logger = logging.getLogger(__name__)
 
 def render_loading_overlay(wait_backend_ready_callback=None, fetch_config_callback=None):
     """Renders a full-screen loading dialog that waits for the backend to become ready."""

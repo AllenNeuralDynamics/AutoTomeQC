@@ -5,6 +5,7 @@ import json
 import autotomeqc
 from autotomeqc.core.autotome_service import AutoTomeService
 from autotomeqc.config.config_loader import load_app_config
+from autotomeqc.utils.logging_utils import setup_logging
 import argparse
 
 
@@ -26,8 +27,19 @@ def print_arg_info(args):
 def run_interactive_cli():
     parser = argparse.ArgumentParser(description="AutoTomeQC CLI")
     parser.add_argument("--config", type=str, help="Path to custom config.yaml (optional)")
+    # Add the log-level argument
+    parser.add_argument(
+        "--log-level", 
+        type=str, 
+        default="INFO", 
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level. (default: INFO)"
+    )
     args = parser.parse_args()
     
+    # Setup logging
+    setup_logging(default_level=args.log_level)
+
     custom_config = None
     if args.config:
         logger.info(f"Loading custom config from: {args.config}")

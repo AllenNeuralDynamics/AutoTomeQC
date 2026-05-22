@@ -4,10 +4,10 @@ import asyncio
 import logging
 from web.models.status import app_state
 
-log = logging.getLogger(__name__)
 
 class QueueRenderer:
     def __init__(self):
+        self.log = logging.getLogger(self.__class__.__name__)
         self.table = None
         self.on_click = None
         self.on_delete = None
@@ -65,7 +65,7 @@ class QueueRenderer:
         if not self.table:
             return
 
-        log.debug("Len of file_ids to add: %d", len(file_ids))
+        self.log.debug("Len of file_ids to add: %d", len(file_ids))
 
         new_rows = []
         for file_id in file_ids:
@@ -83,12 +83,12 @@ class QueueRenderer:
         if info and self.table:
             row_data = {"id": file_id, **info.model_dump(mode='json')}
             self.table.rows.append(row_data)
-            log.debug("Length of table rows after add: %d", len(self.table.rows))
+            self.log.debug("Length of table rows after add: %d", len(self.table.rows))
             if self._update_task is None or self._update_task.done():
                 self._update_task = asyncio.create_task(self._delayed_update())
 
     async def _delayed_update(self):
-        log.debug("Batching UI update...")
+        self.log.debug("Batching UI update...")
         """Batches rows together and syncs the UI once every 1 second during heavy uploads."""
         await asyncio.sleep(0.5)
         if self.table:
@@ -107,7 +107,7 @@ class QueueRenderer:
 
         # Use NiceGUI's native optimized method
         self.table.remove_rows(rows_to_remove)
-        
+        self.log.debug("Removed %d rows", len(rows_to_remove))
         # Clean up the selection list (this is still required as NiceGUI 
         self.table.update()
 

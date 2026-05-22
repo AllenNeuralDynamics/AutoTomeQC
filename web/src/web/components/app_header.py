@@ -1,8 +1,12 @@
 import json
 import io
+import logging
 import zipfile
 from nicegui import ui
 from web.models.status import app_state
+
+logger = logging.getLogger(__name__)
+
 
 def render_header(left_drawer):
     """Renders the top application header."""

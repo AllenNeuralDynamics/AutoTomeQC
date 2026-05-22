@@ -57,7 +57,6 @@ class AutoTomePipeline:
             self.log.warning("Pipeline.start() called, but pipeline is already running.")
             return True
 
-        self.log.info("Starting Pipeline...")
         try:
             is_ready = self.segmenter.ready.wait(timeout=60.0)  # Wait
             if not is_ready or self.segmenter.model is None:
@@ -151,7 +150,6 @@ class AutoTomePipeline:
     
     def _worker_loop(self):
         """The 'Heavy Lifter': Consumes tasks and runs AI + QC logic."""
-        self.log.info("Worker thread active.")
         while self.is_running:
             task = None
             try:

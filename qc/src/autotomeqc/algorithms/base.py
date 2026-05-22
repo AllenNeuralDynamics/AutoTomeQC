@@ -18,7 +18,6 @@ class YOLOClassifier:
         self.log = logging.getLogger(self.__class__.__name__)
 
         try:
-            self.log.info(f"Loading model: {self.model_name}...")
             self.model = YOLO(model_path)
             # Warmup inference
             self.model(np.zeros((self.img_size, self.img_size, 3), dtype=np.uint8), verbose=False)

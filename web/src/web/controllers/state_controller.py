@@ -1,8 +1,10 @@
 # web/controllers/state_controller.py
 import asyncio
-
+import logging
 from web.services.api import fetch_config_async, is_running_async
 from web.models.status import app_state
+
+logger = logging.getLogger(__name__)
 
 async def wait_backend_ready():
     while True:

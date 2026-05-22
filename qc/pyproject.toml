@@ -31,7 +31,7 @@ api = [
 autotomeqc = { workspace = true }
 
 [project.scripts]
-autotomeqc = "autotomeqc.__main__:main"
+autotomeqc = "autotomeqc.interface.cli:run_interactive_cli"
 autotomeqc-server = "autotomeqc.interface.server:main"
 
 [dependency-groups]

@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 
-# --- Configuration ---
+# --- Configuration to simulate user input and environment ---
 current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parent
 config_path = project_root / "qc" / "src" / "autotomeqc" / "config" / "yolo-config.yaml"

@@ -1,26 +1,27 @@
 # src/autotomeqc/interface/server.py
 import os
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 
 from autotomeqc.core.autotome_service import AutoTomeService
 from autotomeqc.config.config_loader import load_app_config
+from autotomeqc.utils.logging_utils import setup_logging
 
-# 1. Load the Base Config (from YAML)
+# logging setup: Read log level from env var, default to INFO
+log_level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+setup_logging(default_level=log_level_name)
+
+# Setup Config
 base_config = load_app_config()
-
-# 2. Override settings using Environment Variables
-# The Web UI launcher sets these, otherwise they default to standard behavior
 base_config.qc.save_qc_json = os.getenv("AUTOTOME_SAVE_QC_JSON", "False").lower() == "true"
 base_config.qc.save_segmented_images = os.getenv("AUTOTOME_SAVE_SEGMENTED", "False").lower() == "true"
 base_config.qc.save_input_images = os.getenv("AUTOTOME_SAVE_INPUT", "False").lower() == "true"
 base_config.qc.return_mask_data = os.getenv("AUTOTOME_RETURN_MASK", "True").lower() == "true"
 
-# 3. Instantiate the service ONCE with the finalized config
-# This is "locked in" for the life of the server process.
+# Initialize the service
 service = AutoTomeService(config=base_config)
 
-# Manage the service lifecycle (Start up & Shut down)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not service.start():
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
     yield
     service.stop()
 
+# Create FastAPI app with lifespan
 app = FastAPI(title="AutoTomeQC API", lifespan=lifespan)
 
 

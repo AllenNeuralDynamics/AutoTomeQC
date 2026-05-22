@@ -1,8 +1,11 @@
 # web/components/inspector_sidebar.py
 from nicegui import ui
 import json
+import logging
 from web.models.backend_schemas import PipelineResult
 from web.models.status import app_state
+
+logger = logging.getLogger(__name__)
 
 def render_inspector_sidebar(toggle_masks_callback=None):
     """Renders the right sidebar structure."""

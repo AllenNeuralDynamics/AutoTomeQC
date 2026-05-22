@@ -1,8 +1,11 @@
 from nicegui import ui
 from web.models.status import app_state
+import logging
+
 
 class MainWorkspace:
     def __init__(self, on_next_callback=None, on_prev_callback=None):
+        self.log = logging.getLogger(self.__class__.__name__)
         self.on_next = on_next_callback
         self.on_prev = on_prev_callback
 
