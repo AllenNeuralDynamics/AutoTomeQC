@@ -1,16 +1,17 @@
 # web/controllers/uploader_controller.py
 import asyncio
 import json
+import shutil
 import uuid
 import logging
 import imagesize
 from nicegui import ui
+from pathlib import Path
 
 from web.models.status import app_state
 from web.services.api import analyze_image
 from web.models.backend_schemas import PipelineResult
 from web.models.status import QueuedFile
-
 
 
 class UploaderController:
@@ -80,79 +81,6 @@ class UploaderController:
                 self._set_view_state('pending')
         except Exception as e:
             ui.notify(f"Error loading result: {e}", type='negative')
-    
-
-    async def handle_upload(self, e):
-        """Processes files one-by-one to maintain simplicity and UI stability."""
-        self.logger.debug("Received %d files to upload.", len(e.files) if hasattr(e, 'files') else 0)
-        files = e.files
-        if not files:
-            return
-
-        # 1. Start all tasks simultaneously
-        # We process files in parallel, allowing the OS to handle concurrent writes
-        tasks = [self.process_single_file(f) for f in files]
-
-        # 2. Await all results
-        # asyncio.gather returns a list of the returned file_ids
-        results = await asyncio.gather(*tasks)
-        self.logger.debug("Gathered all file processing results.")
-
-        # 3. Filter out None results (duplicates or errors)
-        added_ids = [file_id for file_id in results if file_id is not None]
-        self.logger.info("Added %d new files to the queue.", len(added_ids))
-
-        # 2. Batch Update UI: Only call this once for the whole batch
-        if added_ids:
-            # Update the Renderer state and trigger the one-time UI sync
-            self.add_ui(added_ids)
-            ui.notify(f"Successfully processed {len(added_ids)} files", type='positive')
-            
-        e.sender.run_method('removeUploadedFiles')
-
-    async def process_single_file(self, f):
-        file_name = f.name
-        
-        # 1. DUPLICATE CHECK
-        existing_names = {info.name for info in app_state.queued_files.values()}
-        if file_name in existing_names:
-            self.logger.warning("Duplicate file found, skipping: %s", file_name)
-            return None
-        
-        # 2. READ BYTES: Use a more robust await pattern
-        try:
-            # Most SmallFileUpload objects have an async read method
-            # We must explicitly await it.
-            file_bytes = await f.read() 
-        except Exception as e:
-            self.logger.error("Error reading file %s: %s", file_name, e)
-            return None
-
-        file_id = uuid.uuid4().hex
-        file_path = app_state.temp_upload_dir / file_name
-
-        # 3. DISK I/O: Keep this in a thread to keep the event loop free
-        def save_and_measure():
-            with open(file_path, "wb") as f_handle:
-                f_handle.write(file_bytes)
-            w, h = imagesize.get(str(file_path))
-            return w, h
-
-        try:
-            width, height = await asyncio.to_thread(save_and_measure)
-        except Exception as ex:
-            # FIX: Use ui.notify here. It IS thread-safe, 
-            # but ensure it's not being called inside a deep non-GUI thread if possible.
-            # Usually, ui.notify works fine from background tasks.
-            self.logger.error("Failed to save file %s: %s", file_name, ex)
-            return None
-
-        # 4. UPDATE STATE (Keep this simple)
-        app_state.queued_files[file_id] = QueuedFile(
-            name=file_name, path=file_path, img_src=f"/temp_uploads/{file_name}",
-            status='PENDING', width=width, height=height
-        )
-        return file_id
 
     async def process_batch(self, e):
         # If already running, this click means "Stop/Pause"
@@ -250,4 +178,69 @@ class UploaderController:
 
         # Use existing controller logic to update active flags, load json, and change view state
         self.load_result(target_id)
-    
+
+    async def handle_upload(self, data):
+        """Unified entry point for both Native (list of paths) and Web (NiceGUI event)."""
+        # 1. Determine if we are handling a list of strings (native) or an event (web)
+        if app_state.is_native:
+            file_items = data  # list of paths
+            # For native, we don't need to clear any component
+            sender = None 
+        else:
+            file_items = data.files
+            sender = data.sender
+
+        if not file_items:
+            return
+
+        # 2. Process tasks (using the appropriate loader per item)
+        tasks = [self._process_item(item) for item in file_items]
+        results = await asyncio.gather(*tasks)
+
+        # 3. Batch Update
+        added_ids = [res for res in results if res is not None]
+        if added_ids:
+            self.add_ui(added_ids)
+            ui.notify(f"Successfully added {len(added_ids)} files", type='positive')
+
+        if sender:
+            sender.run_method('removeUploadedFiles')
+
+    async def _process_item(self, item):
+        """Generic logic that works for both local paths and upload objects."""
+        is_path = isinstance(item, str)
+        file_name = Path(item).name if is_path else item.name
+        
+        # Duplicate Check
+        if file_name in {info.name for info in app_state.queued_files.values()}:
+            self.logger.warning("Duplicate: %s", file_name)
+            return None
+
+        dest_path = app_state.temp_upload_dir / file_name
+
+        # Load and Measure (the part that differs between native and web)
+        try:
+            if is_path:
+                # Native: copy if not exists
+                def copy_and_measure():
+                    if not dest_path.exists(): shutil.copy2(item, dest_path)
+                    return imagesize.get(str(dest_path))
+                width, height = await asyncio.to_thread(copy_and_measure)
+            else:
+                # Web: read bytes and save
+                file_bytes = await item.read()
+                def save_and_measure():
+                    with open(dest_path, "wb") as f: f.write(file_bytes)
+                    return imagesize.get(str(dest_path))
+                width, height = await asyncio.to_thread(save_and_measure)
+        except Exception as ex:
+            self.logger.error("Failed to process %s: %s", file_name, ex)
+            return None
+
+        # Update State
+        file_id = uuid.uuid4().hex
+        app_state.queued_files[file_id] = QueuedFile(
+            name=file_name, path=dest_path, img_src=f"/temp_uploads/{file_name}",
+            status='PENDING', width=width, height=height
+        )
+        return file_id  

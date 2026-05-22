@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import shutil
 from nicegui import ui, app
+import logging
 
 # Controller/Component Imports...
 from web.models.status import app_state
@@ -11,7 +12,12 @@ from web.components.app_header import render_header
 from web.components.main_workspace import MainWorkspace
 from web.components.inspector_sidebar import render_inspector_sidebar, inspector_content
 from web.components.loading_overlay import render_loading_overlay
-from web.components.uploader_sidebar import QueueRenderer, render_uploader_sidebar
+from web.components.uploader_sidebar import render_uploader_sidebar
+from web.components.queue_renderer import QueueRenderer
+from web.utils.launcher_utils import configure_logging
+
+
+logger = logging.getLogger(__name__)
 
 # --- Configuration & Paths ---
 BASE_DIR = Path(__file__).resolve().parent
@@ -31,6 +37,7 @@ setup_app_resources()
 
 @ui.page('/')
 def index():
+    logger.debug(f"Starting AutoTomeQC in {'Web' if args.web else 'Native'} mode.")
     ui.add_css((STATIC_DIR / 'theme.css').read_text())
     ui.dark_mode().enable()
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
@@ -73,13 +80,20 @@ def cleanup_temp_directory():
 if __name__ in {"__main__", "__mp_main__"}:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--web", action="store_true")
+    parser.add_argument("--log-level", default="INFO")
     args = parser.parse_known_args()[0]
-    
+
+    configure_logging(level=args.log_level)
+    app_state.is_native = not args.web
+
     ui.run(
         port=args.port, 
         title="AutoTomeQC", 
         favicon=str(STATIC_DIR / "favicon.ico"), 
         show=False, 
         reload=False, 
-        reconnect_timeout=10.0
+        reconnect_timeout=60.0,
+        native=app_state.is_native,
+        window_size=(1600, 1200) if app_state.is_native else None
     )

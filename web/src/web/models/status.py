@@ -66,6 +66,7 @@ class ViewState(BaseModel):
 class AppState(BaseModel):
     """Holds the global state of the frontend using Pydantic for validation."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    is_native: bool = True
 
     # Backend state
     is_backend_ready: bool = False

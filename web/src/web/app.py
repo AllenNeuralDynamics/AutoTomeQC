@@ -5,8 +5,7 @@ import logging
 import subprocess
 from pathlib import Path
 from web.utils.launcher_utils import (
-    get_local_ip, 
-    configure_logging, 
+    get_local_ip,
     set_launcher_environment
 )
 
@@ -25,10 +24,8 @@ def main():
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level for both UI and backend. (default: INFO)"
     )
-    args, unknown = parser.parse_known_args()
-
-    configure_logging(level=args.log_level)
-    log = logging.getLogger("autotome-ui")
+    parser.add_argument("--web", action="store_true", help="Run in web browser instead of native window")
+    args = parser.parse_known_args()[0]
 
     # Setup environment
     set_launcher_environment(args.backend_port, args.log_level)
@@ -39,7 +36,6 @@ def main():
         "--port", str(args.backend_port),
         "--log-level", args.log_level.lower(),
     ]
-    log.info(f"Launching Backend API on port {args.backend_port}...")
     backend_process = subprocess.Popen(backend_cmd)
     
     # Frontend) Start the NiceGUI frontend in the background
@@ -47,24 +43,27 @@ def main():
     frontend_cmd = [
         "uv", "run", "python",
         str(script_path), 
-        "--port", str(args.ui_port)
+        "--port", str(args.ui_port),
+        "--log-level", args.log_level
     ]
+    if args.web:
+        frontend_cmd.append("--web")
     frontend_process = subprocess.Popen(frontend_cmd)
 
     # Print logging
     local_ip = get_local_ip()
-    print("\n" + "="*50)
+    print("="*50)
     print("AutoTomeUI is now running!")
     print(f"Local:   http://localhost:{args.ui_port}")
     if local_ip != "127.0.0.1":
         print(f"Network: http://{local_ip}:{args.ui_port}")
-    print("="*50 + "\n")
+    print("="*50)
 
     try:
         backend_process.wait()
         frontend_process.wait()
     except KeyboardInterrupt:
-        log.info("\nInterrupted by user. Shutting down services...")
+        print("\nInterrupted by user. Shutting down services...")
         backend_process.terminate()
         frontend_process.terminate()
 
