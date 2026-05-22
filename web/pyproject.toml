@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "pywebview",
     "imagesize",
+    "autotomeqc[api]",
 ]
 
 [tool.uv.sources]
