@@ -102,16 +102,6 @@ def _display_qc_result(result: PipelineResult, raw_json: dict):
                                         ui.label('CONF').classes('conf-label')
                                         ui.label(f"{int(crit_data.conf * 100)}%").classes('conf-value')
 
-                    # System Notes
-                    with ui.column().classes('system-notes'):
-                        ui.label('System Notes').classes('notes-title')
-                        if shape_crit := sec.criteria.get('shape'):
-                            if shape_crit.message:
-                                ui.label(f'"{shape_crit.message}"').classes('notes-text')
-                        if knife_crit := sec.criteria.get('knife_mark'):
-                            if knife_crit.reason:
-                                ui.label(f"! {knife_crit.reason}").classes('notes-error')
-
         with ui.expansion("Raw JSON Report", icon="data_object").classes('json-expansion'):
             # Remove the heavy mask data from the display JSON to keep it readable
             display_json = dict(raw_json)
