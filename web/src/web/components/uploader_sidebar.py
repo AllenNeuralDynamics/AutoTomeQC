@@ -76,16 +76,6 @@ class QueueRenderer:
                 
         if new_rows:
             self.table.add_rows(new_rows)
-    
-    def add_item_(self, file_id):
-        """Appends the data to Python state and requests a batched UI update to prevent crashes."""
-        info = app_state.queued_files.get(file_id)
-        if info and self.table:
-            row_data = {"id": file_id, **info.model_dump(mode='json')}
-            self.table.rows.append(row_data)
-            self.log.debug("Length of table rows after add: %d", len(self.table.rows))
-            if self._update_task is None or self._update_task.done():
-                self._update_task = asyncio.create_task(self._delayed_update())
 
     async def _delayed_update(self):
         self.log.debug("Batching UI update...")
@@ -128,7 +118,6 @@ class QueueRenderer:
                 self.table.run_method('scrollTo', row_index, 'center')
             except StopIteration:
                 pass
-
 
 
 def render_uploader_sidebar(renderer, on_upload_callback, on_process_callback, on_item_click, on_item_delete):

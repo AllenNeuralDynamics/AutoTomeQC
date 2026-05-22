@@ -154,68 +154,6 @@ class UploaderController:
         )
         return file_id
 
-    async def handle_upload_(self, e):
-        # THE BREATHER: Yield control to the event loop immediately 
-        await asyncio.sleep(0.01)
-
-        # Extract file object
-        if hasattr(e, 'content'):
-            file_obj = e.content
-        elif hasattr(e, 'file'):
-            file_obj = e.file
-        elif hasattr(e, 'stream'):
-            file_obj = e.stream
-        else:
-            return
-
-        # Extract filename
-        raw_name = getattr(e, 'name', None) or getattr(e, 'filename', None) or \
-                   getattr(file_obj, 'name', None) or getattr(file_obj, 'filename', None)
-        file_name = str(raw_name) if raw_name else f"image_{uuid.uuid4().hex[:6]}.jpg"
-
-        # DUPLICATE CHECK
-        # Check against existing names before we spend any time reading bytes or saving to disk.
-        existing_names = {info.name for info in app_state.queued_files.values()}
-        if file_name in existing_names:
-            # Skip this file entirely
-            return
-
-        # READ BYTES
-        if hasattr(file_obj, 'read'):
-            read_result = file_obj.read()
-            file_bytes = await read_result if asyncio.iscoroutine(read_result) else read_result
-        else:
-            file_bytes = file_obj
-
-        file_id = uuid.uuid4().hex
-        file_path = app_state.temp_upload_dir / file_name
-        img_src = f"/temp_uploads/{file_name}"
-
-        # DISK I/O THREAD
-        def process_heavy_data():
-            # Save to disk
-            with open(file_path, "wb") as f:
-                f.write(file_bytes)
-            # Measure image dimensions
-            w, h = imagesize.get(str(file_path))
-            return w, h
-        try:
-            # Run the heavy disk work in the background so the server doesn't freeze
-            width, height = await asyncio.to_thread(process_heavy_data)
-        except Exception as ex:
-            ui.notify(f"Failed to save {file_name}: {ex}", type='negative')
-            return
-
-        # UPDATE STATE
-        app_state.queued_files[file_id] = QueuedFile(
-            name=file_name, path=file_path, img_src=img_src,
-            status='PENDING', width=width, height=height
-        )
-        self.logger.debug("Queue size after upload: %d", len(app_state.queued_files))
-
-        # UPDATE UI
-        self.add_ui(file_id)
-
     async def process_batch(self, e):
         # If already running, this click means "Stop/Pause"
         if app_state.is_processing:
