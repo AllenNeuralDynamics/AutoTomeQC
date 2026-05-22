@@ -79,14 +79,14 @@ def test_remove_active_file_and_shift(uploader_controller):
         with patch.object(uploader_controller, 'load_next') as mock_load_next:
             # 2. Action: Remove the active file
             mock_app_state.active_file_id = "file1"
-            uploader_controller.remove_file("file1")
+            uploader_controller.remove_file(["file1"])
 
             # 3. Assertions
             # It should try to load the next file before deleting
             mock_load_next.assert_called_once()
             assert "file1" not in mock_app_state.queued_files
             mock_file1.path.unlink.assert_called_once_with(missing_ok=True)
-            uploader_controller.remove_ui.assert_called_once_with("file1")
+            uploader_controller.remove_ui.assert_called_once_with(["file1"])
 
 def test_remove_last_file_goes_idle(uploader_controller):
     """Test removing the last file from the queue sets the view to idle."""
@@ -99,7 +99,7 @@ def test_remove_last_file_goes_idle(uploader_controller):
         with patch.object(uploader_controller, '_set_view_state') as mock_set_view_state:
             # 2. Action: Remove the last file
             mock_app_state.active_file_id = "file1"
-            uploader_controller.remove_file("file1")
+            uploader_controller.remove_file(["file1"])
 
             # 3. Assertions
             assert not mock_app_state.queued_files

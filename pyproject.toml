@@ -31,3 +31,6 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]
+asyncio_mode = "auto"
+addopts = "-p nicegui.testing.plugin"
+main_file = "web/src/web/main.py"
