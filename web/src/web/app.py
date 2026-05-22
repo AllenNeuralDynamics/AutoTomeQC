@@ -4,39 +4,11 @@ import argparse
 import logging
 import subprocess
 from pathlib import Path
-
-def get_local_ip() -> str:
-    """Helper to get the local IP address of the machine."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(('10.255.255.255', 1))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-    return ip
-
-def configure_logging(level: str) -> None:
-    """Configures the root logger based on a string level."""
-    log_level = getattr(logging, level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-
-def set_environment_variables(backend_port: int, log_level: str) -> None:
-    """Sets necessary environment variables for the backend and frontend processes."""
-    # Provide the Base Backend URL dynamically to the Web UI
-    os.environ["AUTOTOME_BACKEND_URL"] = f"http://localhost:{backend_port}"
-
-    # Tell the Backend to disable disk writes and return mask data for the UI
-    os.environ["AUTOTOME_SAVE_QC_JSON"] = "False"
-    os.environ["AUTOTOME_SAVE_SEGMENTED"] = "False"
-    os.environ["AUTOTOME_SAVE_INPUT"] = "False"
-    os.environ["AUTOTOME_RETURN_MASK"] = "True"
-    os.environ["LOG_LEVEL"] = log_level.upper()
+from web.utils.launcher_utils import (
+    get_local_ip, 
+    configure_logging, 
+    set_launcher_environment
+)
 
 def main():
     """
@@ -59,7 +31,7 @@ def main():
     log = logging.getLogger("autotome-ui")
 
     # Setup environment
-    set_environment_variables(args.backend_port, args.log_level)
+    set_launcher_environment(args.backend_port, args.log_level)
 
     # Backend) Start the Backend API in the background using the same python environment
     backend_cmd = [
@@ -69,14 +41,8 @@ def main():
     ]
     log.info(f"Launching Backend API on port {args.backend_port}...")
     backend_process = subprocess.Popen(backend_cmd)
-
-    # Frontend) Launch the Web UI in the foreground
-    local_ip = get_local_ip()
-    log.info("Launching Web UI...")
-    log.info(f"Web UI: http://localhost:{args.ui_port}")
-    if local_ip != "127.0.0.1":
-        log.info(f"        or http://{local_ip}:{args.ui_port}")
     
+    # Frontend) Start the NiceGUI frontend in the background
     script_path = Path(__file__).resolve().parent / "main.py"
     frontend_cmd = [
         "uv", "run", "python",
@@ -84,6 +50,15 @@ def main():
         "--port", str(args.ui_port)
     ]
     frontend_process = subprocess.Popen(frontend_cmd)
+
+    # Print logging
+    local_ip = get_local_ip()
+    print("\n" + "="*50)
+    print("AutoTomeUI is now running!")
+    print(f"Local:   http://localhost:{args.ui_port}")
+    if local_ip != "127.0.0.1":
+        print(f"Network: http://{local_ip}:{args.ui_port}")
+    print("="*50 + "\n")
 
     try:
         backend_process.wait()
