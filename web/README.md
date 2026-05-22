@@ -1,6 +1,8 @@
-# AutoTomeQC - Web UI
+# <img src="src/web/static/favicon.ico" width="30" height="30" alt="AutoTomeQC Icon"> AutoTomeQC - Web UI AutoTomeQC - Web UI
 
-This is the web interface for the AutoTomeQC pipeline, providing a rich, interactive experience for section quality control. It is built using the [NiceGUI](https://nicegui.io/) framework.
+This is the web interface for the AutoTomeQC pipeline. It is built using the [NiceGUI](https://nicegui.io/) framework.
+<img src="src/web/static/image.png" alt="AutoTomeQC Web UI" style="width: 800px; height: auto;">
+
 
 ## Features
 

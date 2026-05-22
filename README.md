@@ -1,4 +1,4 @@
-# AutoTomeQC Instrument Workspace
+# <img src="web/src/web/static/favicon.ico" width="30" height="30" alt="AutoTomeQC Icon"> AutoTomeQC Instrument Workspace
 
 This repository is a monorepo workspace managed by [uv](https://github.com/astral-sh/uv). It contains the core quality control engine for tissue sectioning and its associated web-based orchestration interface.
 
