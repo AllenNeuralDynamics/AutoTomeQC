@@ -36,7 +36,7 @@ uv run autotome-ui
 *   `--ui-port <port>`: Sets the port for the web interface (default: 8080).
 *   `--backend-port <port>`: Sets the port for the backend API (default: 8000).
 *   `--log-level <level>`: Sets the logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`).
-*   `--web`: Forces the app to open in a web browser instead of a native window.
+*   `--web`: Forces the app to open in a web browser. In this mode, file uploads are limited to 1000 files at a time due to browser and websocket constraints.
 
 **Example:**
 ```bash
@@ -61,28 +61,22 @@ uv run autotomeqc --log-level DEBUG --config /path/to/my_config.yaml
 ```
 
 ## Development
-
-### Dependency Management
-To add a dependency to a specific package, use the `--package` flag:
-```bash
-uv add <package-name> --package <workspace-member>
-
-
 Testing
 Run tests across the entire workspace or for individual members:
 
 # Run all workspace tests
+```bash
 uv run pytest
-
-# Run tests for a specific member
-uv run --package autotomeqc pytest
-uv run --package autotome-ui pytest
-
+```
 
 Type Checking & Linting
 
 # Linting
+```bash
 uv run ruff check .
+```
 
 # Static Type Checking
+```bash
 uv run mypy .
+```
