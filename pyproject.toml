@@ -3,8 +3,9 @@ package = false
 
 [project]
 name = "autotomeqc-instrument"
-version = "0.1.0"
+version = "0.10.1-dev.2"
 description = "AutoTome monorepo workspace"
+
 requires-python = ">=3.11"
 dependencies = [
     "autotomeqc[api]",
