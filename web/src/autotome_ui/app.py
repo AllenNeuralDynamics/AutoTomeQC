@@ -1,7 +1,7 @@
 import argparse
 import subprocess
 from pathlib import Path
-from web.utils.launcher_utils import (
+from autotome_ui.utils.launcher_utils import (
     get_local_ip,
     set_launcher_environment
 )

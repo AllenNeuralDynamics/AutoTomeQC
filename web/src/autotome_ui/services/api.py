@@ -4,7 +4,7 @@
 import httpx
 import logging
 from typing import Tuple
-from web.models.backend_schemas import PipelineResult, AppConfig
+from autotome_ui.models.backend_schemas import PipelineResult, AppConfig
 
 logger = logging.getLogger(__name__)
 

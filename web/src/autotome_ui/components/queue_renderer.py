@@ -1,7 +1,7 @@
 
 from nicegui import ui
 import logging
-from web.models.status import app_state
+from autotome_ui.models.status import app_state
 
 
 class QueueRenderer:

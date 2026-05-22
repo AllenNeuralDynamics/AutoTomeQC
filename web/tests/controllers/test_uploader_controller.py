@@ -19,7 +19,7 @@ def test_load_next_with_items_in_queue(uploader_controller):
         "file3": MockQueuedFile("file3.jpg"),
     }
     
-    with patch('web.controllers.uploader_controller.app_state', mock_app_state):
+    with patch('autotome_ui.controllers.uploader_controller.app_state', mock_app_state):
         with patch.object(uploader_controller, 'load_result') as mock_load_result:
             # 2. Action & Assertion: From no active file, should go to the first
             mock_app_state.active_file_id = None
@@ -48,7 +48,7 @@ def test_load_prev_with_items_in_queue(uploader_controller):
         "file3": MockQueuedFile("file3.jpg"),
     }
     
-    with patch('web.controllers.uploader_controller.app_state', mock_app_state):
+    with patch('autotome_ui.controllers.uploader_controller.app_state', mock_app_state):
         with patch.object(uploader_controller, 'load_result') as mock_load_result:
             # 2. Action & Assertion: From no active file, should go to the last
             mock_app_state.active_file_id = None
@@ -75,7 +75,7 @@ def test_remove_active_file_and_shift(uploader_controller):
     mock_file2 = MockQueuedFile("file2.jpg")
     mock_app_state.queued_files = { "file1": mock_file1, "file2": mock_file2 }
     
-    with patch('web.controllers.uploader_controller.app_state', mock_app_state):
+    with patch('autotome_ui.controllers.uploader_controller.app_state', mock_app_state):
         with patch.object(uploader_controller, 'load_next') as mock_load_next:
             # 2. Action: Remove the active file
             mock_app_state.active_file_id = "file1"
@@ -95,7 +95,7 @@ def test_remove_last_file_goes_idle(uploader_controller):
     mock_file1 = MockQueuedFile("file1.jpg")
     mock_app_state.queued_files = {"file1": mock_file1}
     
-    with patch('web.controllers.uploader_controller.app_state', mock_app_state):
+    with patch('autotome_ui.controllers.uploader_controller.app_state', mock_app_state):
         with patch.object(uploader_controller, '_set_view_state') as mock_set_view_state:
             # 2. Action: Remove the last file
             mock_app_state.active_file_id = "file1"

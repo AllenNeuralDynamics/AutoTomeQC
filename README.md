@@ -1,8 +1,13 @@
-# <img src="web/src/web/static/favicon.ico" width="30" height="30" alt="AutoTomeQC Icon"> AutoTomeQC Instrument Workspace
 
-This repository is a monorepo workspace managed by [uv](https://github.com/astral-sh/uv). It contains the core quality control engine for tissue sectioning and its associated web-based orchestration interface.
+# <img src="web/src/autotome_ui/static/favicon.ico" width="30" height="30" alt="AutoTomeQC Icon">  AutoTomeQC
+AutoTomeQC is an automated pipeline designed for Sectioning Quality Control. It integrates YOLO segmentation models and algorithmic checks to validate the quality of sections.
+[![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://allenneuraldynamics.github.io/AutoTomeQC/)
+
 
 ## Workspace Overview
+
+This repository is a monorepo workspace managed by [uv](https://github.com/astral-sh/uv). It contains the core quality control engine for tissue sectioning and its associated web-based orchestration interface.
 
 The workspace is structured into the following packages:
 

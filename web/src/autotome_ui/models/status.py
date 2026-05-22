@@ -5,7 +5,7 @@ from pathlib import Path
 import time
 from typing import Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, ConfigDict, computed_field
-from web.models.backend_schemas import PipelineResult, AppConfig
+from autotome_ui.models.backend_schemas import PipelineResult, AppConfig
 
 def get_app_temp_dir() -> Path:
     """

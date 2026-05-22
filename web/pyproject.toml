@@ -16,10 +16,10 @@ dependencies = [
 autotome-ui = { workspace = true }
 
 [project.scripts]
-autotome-ui = "web.app:main"
+autotome-ui = "autotome_ui.app:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/web"]
+packages = ["src/autotome_ui"]
 
 [build-system]
 requires = ["hatchling"]
@@ -34,9 +34,7 @@ dev = [
     "types-PyYAML>=6.0",
     "selenium",
 ]
-[tool.mypy]
-mypy_path = "src"
-explicit_package_bases = true
+
 [[tool.mypy.overrides]]
 module = "imagesize"
 ignore_missing_imports = true

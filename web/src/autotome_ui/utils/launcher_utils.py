@@ -2,6 +2,7 @@ import os
 import socket
 import logging
 import sys
+from typing import Optional
 
 def get_local_ip() -> str:
     """Helper to get the local IP address of the machine."""
@@ -16,7 +17,7 @@ def get_local_ip() -> str:
         s.close()
     return ip
 
-def configure_logging(level: str = "INFO", name: str = None) -> None:
+def configure_logging(level: str = "INFO", name: Optional[str] = None) -> None:
     """Configures the root logger based on a string level."""
     log_level = getattr(logging, level.upper(), logging.INFO)
     logging.basicConfig(

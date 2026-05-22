@@ -5,16 +5,16 @@ from nicegui import ui, app
 import logging
 
 # Controller/Component Imports...
-from web.models.status import app_state
-from web.controllers.state_controller import wait_backend_ready, on_fetch_config, on_toggle_masks
-from web.controllers.uploader_controller import UploaderController
-from web.components.app_header import render_header
-from web.components.main_workspace import MainWorkspace
-from web.components.inspector_sidebar import render_inspector_sidebar, inspector_content
-from web.components.loading_overlay import render_loading_overlay
-from web.components.uploader_sidebar import render_uploader_sidebar
-from web.components.queue_renderer import QueueRenderer
-from web.utils.launcher_utils import configure_logging
+from autotome_ui.models.status import app_state
+from autotome_ui.controllers.state_controller import wait_backend_ready, on_fetch_config, on_toggle_masks
+from autotome_ui.controllers.uploader_controller import UploaderController
+from autotome_ui.components.app_header import render_header
+from autotome_ui.components.main_workspace import MainWorkspace
+from autotome_ui.components.inspector_sidebar import render_inspector_sidebar, inspector_content
+from autotome_ui.components.loading_overlay import render_loading_overlay
+from autotome_ui.components.uploader_sidebar import render_uploader_sidebar
+from autotome_ui.components.queue_renderer import QueueRenderer
+from autotome_ui.utils.launcher_utils import configure_logging
 
 
 logger = logging.getLogger(__name__)

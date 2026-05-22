@@ -8,10 +8,10 @@ import imagesize
 from nicegui import ui
 from pathlib import Path
 
-from web.models.status import app_state
-from web.services.api import analyze_image
-from web.models.backend_schemas import PipelineResult
-from web.models.status import QueuedFile
+from autotome_ui.models.status import app_state
+from autotome_ui.services.api import analyze_image
+from autotome_ui.models.backend_schemas import PipelineResult
+from autotome_ui.models.status import QueuedFile
 
 
 class UploaderController:

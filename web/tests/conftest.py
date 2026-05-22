@@ -2,7 +2,7 @@ import pytest
 from nicegui import app
 from unittest.mock import MagicMock, patch, AsyncMock
 
-from web.controllers.uploader_controller import UploaderController
+from autotome_ui.controllers.uploader_controller import UploaderController
 
 
 @pytest.fixture
@@ -28,8 +28,8 @@ def mock_backend_api_calls():
     so that UI tests can run in isolation without a live backend.
     """
     # These mocks prevent the app from hanging on startup while waiting for the backend.
-    with patch('web.controllers.state_controller.wait_backend_ready', new_callable=AsyncMock), \
-         patch('web.controllers.state_controller.on_fetch_config', new_callable=AsyncMock):
+    with patch('autotome_ui.controllers.state_controller.wait_backend_ready', new_callable=AsyncMock), \
+         patch('autotome_ui.controllers.state_controller.on_fetch_config', new_callable=AsyncMock):
         yield
 
 @pytest.fixture(autouse=True)

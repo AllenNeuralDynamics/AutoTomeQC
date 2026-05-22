@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from web.controllers.state_controller import wait_backend_ready, on_fetch_config, on_toggle_masks
-from web.models.backend_schemas import AppConfig
+from autotome_ui.controllers.state_controller import wait_backend_ready, on_fetch_config, on_toggle_masks
+from autotome_ui.models.backend_schemas import AppConfig
 
 @pytest.mark.asyncio
 async def test_wait_backend_ready():
@@ -14,9 +14,9 @@ async def test_wait_backend_ready():
     mock_is_running = AsyncMock(side_effect=[False, False, True])
 
     # 2. Patch the dependencies
-    with patch('web.controllers.state_controller.is_running_async', mock_is_running), \
-         patch('web.controllers.state_controller.asyncio.sleep', new_callable=AsyncMock) as mock_sleep, \
-         patch('web.controllers.state_controller.app_state') as mock_app_state:
+    with patch('autotome_ui.controllers.state_controller.is_running_async', mock_is_running), \
+         patch('autotome_ui.controllers.state_controller.asyncio.sleep', new_callable=AsyncMock) as mock_sleep, \
+         patch('autotome_ui.controllers.state_controller.app_state') as mock_app_state:
         
         # 3. Action: Run the function
         await wait_backend_ready()
@@ -38,8 +38,8 @@ async def test_on_fetch_config():
     mock_config_obj = MagicMock(spec=AppConfig)
 
     # 2. Patch dependencies
-    with patch('web.controllers.state_controller.fetch_config_async', AsyncMock(return_value=mock_config_obj)) as mock_fetch, \
-         patch('web.controllers.state_controller.app_state') as mock_app_state:
+    with patch('autotome_ui.controllers.state_controller.fetch_config_async', AsyncMock(return_value=mock_config_obj)) as mock_fetch, \
+         patch('autotome_ui.controllers.state_controller.app_state') as mock_app_state:
         
         # 3. Action
         await on_fetch_config()
@@ -51,7 +51,7 @@ async def test_on_fetch_config():
 
 def test_on_toggle_masks():
     """Test that on_toggle_masks correctly flips the boolean state."""
-    with patch('web.controllers.state_controller.app_state') as mock_app_state:
+    with patch('autotome_ui.controllers.state_controller.app_state') as mock_app_state:
         mock_app_state.view.show_masks = True
         on_toggle_masks()
         assert mock_app_state.view.show_masks is False

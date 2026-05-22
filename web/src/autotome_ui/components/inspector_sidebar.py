@@ -2,8 +2,8 @@
 from nicegui import ui
 import json
 import logging
-from web.models.backend_schemas import PipelineResult
-from web.models.status import app_state
+from autotome_ui.models.backend_schemas import PipelineResult
+from autotome_ui.models.status import app_state
 
 logger = logging.getLogger(__name__)
 

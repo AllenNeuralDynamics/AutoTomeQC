@@ -1,5 +1,5 @@
 from nicegui import ui
-from web.models.status import app_state
+from autotome_ui.models.status import app_state
 import logging
 
 
