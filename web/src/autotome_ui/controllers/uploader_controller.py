@@ -4,7 +4,7 @@ import json
 import shutil
 import uuid
 import logging
-import imagesize
+import imagesize  # type: ignore[import-untyped]
 from nicegui import ui
 from pathlib import Path
 
@@ -97,11 +97,15 @@ class UploaderController:
         
         app_state.active_file_id = None
     
-        for file_id in list(app_state.queued_files.keys()):
+        # Sort files consistently (e.g., by filename)
+        sorted_files = sorted(
+            app_state.queued_files.items(), 
+            key=lambda item: item[1].name
+        )
+        for file_id, info in sorted_files:
             if not app_state.is_processing:
                 break
 
-            info = app_state.queued_files.get(file_id)
             if not info:
                 continue
                 

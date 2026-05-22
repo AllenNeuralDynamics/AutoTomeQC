@@ -1,13 +1,11 @@
-# Temp file for testing
 # src/autotomeqc/config/config_loader.py
-
-
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pathlib import Path
+from typing import Optional
 from autotomeqc.config.schemas import AppConfig
 
 
-def load_app_config(config_path: str = None) -> AppConfig:
+def load_app_config(config_path: Optional[str] = None) -> AppConfig:
     """
     Accepts a string path or None. 
     Loads the YAML and validates it via Pydantic.

@@ -39,3 +39,7 @@ main_file = "web/src/autotome_ui/main.py"
 mypy_path = ["qc/src", "web/src"]
 namespace_packages = true
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "imagesize"
+ignore_missing_imports = true

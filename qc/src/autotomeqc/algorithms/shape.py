@@ -6,11 +6,11 @@ from pathlib import Path
 from autotomeqc.utils.io import save_debug_image
 
 class ShapeQC:
-    def __init__(self, config, output_dir: Path):
+    def __init__(self, config, output_dir: Optional[Path] = None):
         """
         Args:
             config: An instance of AlgorithmSettings (CONFIG.qc.shape).
-            output_dir (Path): The global output directory Path object.
+            output_dir (Path, optional): The global output directory Path object.
         """
         self.shape_config = config
         self.output_dir = output_dir
@@ -91,7 +91,7 @@ class ShapeQC:
                             0.8, (0, 255, 255), 2)
 
                 # Save the image if filename is provided
-                if filename:
+                if filename and self.output_dir is not None:
                     save_path = self.output_dir / f"{filename}_shape.jpg"
                     save_debug_image(vis_img, save_path)
                     self.log.debug(f"Saved shape debug image to {save_path}")

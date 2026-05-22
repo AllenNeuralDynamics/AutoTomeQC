@@ -13,10 +13,10 @@ class AutoTomeService:
     The High-Level Controller. 
     It explicitly handles the 3 main events: Start, Stop, Process.
     """
-    def __init__(self, config:AppConfig=None):
+    def __init__(self, config: Optional[AppConfig] = None):
         # If the user doesn't provide a config, load the default
         self.config = config or load_app_config()
-        self.pipeline = None
+        self.pipeline: Optional[AutoTomePipeline] = None
         self.running = False
         self.log = logging.getLogger(self.__class__.__name__)
 
@@ -65,7 +65,7 @@ class AutoTomeService:
             return False
 
     def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
-        if not self.running:
+        if not self.running or self.pipeline is None:
             raise RuntimeError("Service is stopped")
 
         # The Service just hands it off to the Pipeline

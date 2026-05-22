@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import threading
 from collections import deque
-from typing import Dict, Optional, Any
+from typing import Deque, Dict, Optional, Any
 from concurrent.futures import Future
 from autotomeqc.utils.io import save_json_results, save_debug_image
 from autotomeqc.config.schemas import AppConfig
@@ -28,28 +28,29 @@ class AutoTomePipeline:
     def __init__(self, config:AppConfig):
         self.config = config
         self.log = logging.getLogger(self.__class__.__name__)
-        self.output_path = Path(self.config.qc.output_dir) if self.config else None
+        self.output_path = Path(self.config.qc.output_dir) if self.config.qc.output_dir else None
         self.save_qc_json = self.config.qc.save_qc_json if self.config else True
         self.save_segmented_img = self.config.qc.save_segmented_images if self.config else False
         self.save_input_img = self.config.qc.save_input_images if self.config else False
         self.return_mask = self.config.qc.return_mask_data if self.config else False
 
-        self.input_queue = deque(maxlen=self.DEFAULT_MAX_QUEUE_SIZE)
+        self.input_queue: Deque[PipelineTask] = deque(maxlen=self.DEFAULT_MAX_QUEUE_SIZE)
         self.queue_lock = threading.Lock()
         self.worker_thread = None
         self.is_running = False
 
         # Preprocessing - Segmentation via YOLO
-        self.segmenter = YoloSegmentation(config=self.config.qc.yolo if self.config else None)
+        yolo_config = self.config.qc.yolo
+        self.segmenter = YoloSegmentation(config=yolo_config)
         self.post_processor = YoloPostProcessor(config=self.config.qc.yolo_post_processing)
 
         self.log.info("Initializing QC Models...")
-        self.qc_modules = {
+        self.qc_modules: Dict[str, Any] = {
             "coverage": SectionCoverageQC(self.config.qc.section_coverage if self.config else None),
             "knife_mark": KnifeMarksQC(self.config.qc.knife_mark if self.config else None),
             "thickness_consistency": ThicknessConsistencyQC(self.config.qc.thickness_consistency if self.config else None),
             "thickness": ThicknessQC(self.config.qc.thickness if self.config else None),
-            "shape": ShapeQC(self.config.qc.shape if self.config else None, output_dir=self.output_path),
+            "shape": ShapeQC(self.config.qc.shape if self.config.qc.shape else None, output_dir=self.output_path),
         }
 
     def start(self):
@@ -113,6 +114,8 @@ class AutoTomePipeline:
                 filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
 
             # 3. Package and Enqueue Task
+            if frame is None:
+                raise ValueError("Frame provided to process is None")
             frame = self.segmenter.resize_frame(frame)
             task = PipelineTask(
                 frame=frame,
@@ -212,9 +215,9 @@ class AutoTomePipeline:
             sections=[]
         )
         output = result.model_dump(exclude_none=True)
-        if self.save_qc_json:
+        if self.save_qc_json and self.output_path is not None:
             save_json_results(output, self.output_path / f"{filename}_qc.json")
-        if self.save_input_img and frame is not None:
+        if self.save_input_img and self.output_path is not None and frame is not None:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
         if future_ticket and not future_ticket.done():
             future_ticket.set_result(output)
@@ -284,11 +287,11 @@ class AutoTomePipeline:
         output = result_obj.model_dump(exclude_none=True)
 
         # IO Operations
-        if self.save_qc_json:
+        if self.save_qc_json and self.output_path:
             save_json_results(output, self.output_path / f"{filename}_qc.json")
-        if self.save_input_img:
+        if self.save_input_img and self.output_path is not None:
             save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
-        if self.save_segmented_img:
+        if self.save_segmented_img and self.output_path is not None:
             for i, section_obj in enumerate(sections):
                 img_to_save = section_obj.section_image
                 save_debug_image(img_to_save, self.output_path / f"{filename}_section_{i}.jpg")

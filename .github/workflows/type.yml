@@ -20,6 +20,6 @@ jobs:
       uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }} 
-    - name: Type check with mypy 
+    - name: Type check with mypy
       run: |
-        uv run mypy src
+        uv run mypy .
