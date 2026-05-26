@@ -50,6 +50,8 @@ class MainWorkspace:
                 self._render_result()
             elif status == 'error':
                 self._render_error()
+            elif status == 'uploading':               # <--- ADDED
+                self._render_uploading()
         self._render_navigation()
 
     def _render_idle(self):
@@ -80,6 +82,13 @@ class MainWorkspace:
     def _render_result(self):
         active_file = app_state.queued_files.get(app_state.active_file_id)
         self._render_zoomable_viewport(active_file, status='result')
+
+    def _render_uploading(self):
+        """Rendered when files are actively being uploaded."""
+        with ui.column().classes('items-center justify-center w-full h-full'):
+            # Using the 'ios' spinner gives a nice clean loading ring
+            ui.spinner('ios', size='xl', color='orange')
+            ui.label('UPLOADING FILES...').classes('text-orange font-bold mt-2 tracking-widest')
 
     def _render_zoomable_viewport(self, active_file, status):
         """Reusable method to render the interactive image with zoom/pan for pending and result states."""

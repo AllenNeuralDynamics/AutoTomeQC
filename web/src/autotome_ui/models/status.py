@@ -52,7 +52,7 @@ class QueuedFile(BaseModel):
 
 class ViewState(BaseModel):
     """Encapsulates UI rendering and volatile screen states."""
-    status: str = 'idle'  # 'idle', 'pending', 'result', 'error', 'processing'
+    status: str = 'idle'  # 'idle', 'pending', 'result', 'error', 'processing', 'uploading'
     error: Optional[str] = None
     result: Optional[PipelineResult] = None
     raw_json: Optional[Dict] = None

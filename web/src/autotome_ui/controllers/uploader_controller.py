@@ -191,6 +191,9 @@ class UploaderController:
 
         if not file_items:
             return
+        
+        app_state.view.status = 'uploading'
+        self.refresh_workspace()
 
         # 2. Process each item
         results = []
@@ -205,6 +208,9 @@ class UploaderController:
         if added_ids:
             self.add_ui(added_ids)
             ui.notify(f"Successfully added {len(added_ids)} files", type='positive')
+
+        app_state.view.status = 'idle'
+        self.refresh_workspace()
 
         if sender:
             sender.run_method('removeUploadedFiles')
