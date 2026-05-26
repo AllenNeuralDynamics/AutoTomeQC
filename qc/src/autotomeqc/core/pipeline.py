@@ -1,0 +1,312 @@
+# autotomeqc/core/pipeline.py
+from datetime import datetime
+from pathlib import Path
+import time
+import logging
+import cv2
+import numpy as np
+import threading
+from collections import deque
+from typing import Deque, Dict, Optional, Any
+from concurrent.futures import Future
+from autotomeqc.utils.io import save_json_results, save_debug_image
+from autotomeqc.config.schemas import AppConfig
+from autotomeqc.core.models import PipelineResult, QCCriteria, SectionResult, PipelineTask, Detection, ProcessInput
+from pydantic import ValidationError
+from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
+from autotomeqc.yolo_segmentation.post_processing import YoloPostProcessor
+from autotomeqc.algorithms.coverage import SectionCoverageQC
+from autotomeqc.algorithms.knife_mark import KnifeMarksQC
+from autotomeqc.algorithms.thickness_consistency import ThicknessConsistencyQC
+from autotomeqc.algorithms.thickness import ThicknessQC
+from autotomeqc.algorithms.shape import ShapeQC
+
+
+class AutoTomePipeline:
+    DEFAULT_MAX_QUEUE_SIZE = 20   # 20 frames 640x640 RGB is ~24MB
+
+    def __init__(self, config:AppConfig):
+        self.config = config
+        self.log = logging.getLogger(self.__class__.__name__)
+        self.output_path = Path(self.config.qc.output_dir) if self.config.qc.output_dir else None
+        self.save_qc_json = self.config.qc.save_qc_json if self.config else True
+        self.save_segmented_img = self.config.qc.save_segmented_images if self.config else False
+        self.save_input_img = self.config.qc.save_input_images if self.config else False
+        self.return_mask = self.config.qc.return_mask_data if self.config else False
+
+        self.input_queue: Deque[PipelineTask] = deque(maxlen=self.DEFAULT_MAX_QUEUE_SIZE)
+        self.queue_lock = threading.Lock()
+        self.worker_thread = None
+        self.is_running = False
+
+        # Preprocessing - Segmentation via YOLO
+        yolo_config = self.config.qc.yolo
+        self.segmenter = YoloSegmentation(config=yolo_config)
+        self.post_processor = YoloPostProcessor(config=self.config.qc.yolo_post_processing)
+
+        self.log.info("Initializing QC Models...")
+        self.qc_modules: Dict[str, Any] = {
+            "coverage": SectionCoverageQC(self.config.qc.section_coverage if self.config else None),
+            "knife_mark": KnifeMarksQC(self.config.qc.knife_mark if self.config else None),
+            "thickness_consistency": ThicknessConsistencyQC(self.config.qc.thickness_consistency if self.config else None),
+            "thickness": ThicknessQC(self.config.qc.thickness if self.config else None),
+            "shape": ShapeQC(self.config.qc.shape if self.config.qc.shape else None, output_dir=self.output_path),
+        }
+
+    def start(self):
+        if self.is_running:
+            self.log.warning("Pipeline.start() called, but pipeline is already running.")
+            return True
+
+        try:
+            is_ready = self.segmenter.ready.wait(timeout=60.0)  # Wait
+            if not is_ready or self.segmenter.model is None:
+                self.log.error("Pipeline Start Failed: YOLO Model initialization timed out or model is None.")
+                return False
+
+            self.is_running = True
+            self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
+            self.worker_thread.start()
+
+            self.log.info("Pipeline started successfully.")
+            return True
+        except Exception as e:
+            self.log.error(f"Critical error starting pipeline: {e}")
+            return False
+
+    def stop(self):
+        self.log.info("Stopping Pipeline...")
+        self.is_running = False
+        if self.worker_thread is not None:
+            self.worker_thread.join(timeout=5.0)
+            self.worker_thread = None
+
+    def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
+        """Entry point for processing a single file."""
+        filename = "Unknown"
+        future_ticket: Future[Dict[str, Any]] = Future()
+        ts = time.time()
+        timestamp_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            # Validate Input via Pydantic
+            try:
+                valid_input = ProcessInput(img_path=img_path, frame=frame)
+            except ValidationError:
+                msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
+                self._handle_pipeline_failure(None, [], filename, timestamp_str, msg, future_ticket)
+                return future_ticket
+
+            # 2. Handle Image Loading/Naming
+            if valid_input.img_path is not None:
+                path_obj = Path(valid_input.img_path)
+                filename = path_obj.stem
+                if not path_obj.exists():
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File not found: {valid_input.img_path}", future_ticket)
+                    return future_ticket
+                frame = cv2.imread(valid_input.img_path)
+                if frame is None:
+                    self._handle_pipeline_failure(None, [], filename, timestamp_str, f"File load failed: {valid_input.img_path}", future_ticket)
+                    return future_ticket
+            else:
+                frame = valid_input.frame
+                ts_dt = datetime.fromtimestamp(ts)
+                filename = f"{ts_dt:%Y%m%d_%H%M%S}_{ts_dt.microsecond // 1000:03d}"
+
+            # 3. Package and Enqueue Task
+            if frame is None:
+                raise ValueError("Frame provided to process is None")
+            frame = self.segmenter.resize_frame(frame)
+            task = PipelineTask(
+                frame=frame,
+                filename=filename,
+                timestamp=timestamp_str,
+                start_ts=ts,
+                future=future_ticket
+            )
+            with self.queue_lock:
+                try:
+                    # insert() raises IndexError if the deque is full
+                    self.input_queue.insert(len(self.input_queue), task)
+                    self.log.debug(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
+                except IndexError:
+                    # Catch the error, make room by dropping the oldest task
+                    dropped_task = self.input_queue.popleft()
+                    # Set result on the dropped task's future ticket
+                    self._handle_pipeline_failure(
+                        frame=None,
+                        detections=[],
+                        filename=dropped_task.filename,
+                        timestamp=dropped_task.timestamp,
+                        reason="Dropped: Buffer full (System Overloaded)",
+                        future_ticket=dropped_task.future
+                    )
+                    # NOW add the new task since there is room
+                    self.input_queue.append(task)
+                    self.log.debug(f"[{filename}] Task enqueued. Size: {len(self.input_queue)}")
+
+            return future_ticket  # Return the ticket so the user can await result
+
+        except Exception as e:
+            self._handle_pipeline_failure(None, [], filename, timestamp_str, f"Process Error: {str(e)}", future_ticket)
+            return future_ticket
+    
+    def _worker_loop(self):
+        """The 'Heavy Lifter': Consumes tasks and runs AI + QC logic."""
+        while self.is_running:
+            task = None
+            try:
+                with self.queue_lock:
+                    if self.input_queue:
+                        task = self.input_queue.popleft()  # Retrieve oldest task
+                if task is None:
+                    time.sleep(0.01) # 10ms sleep to save CPU cycles
+                    continue
+
+                try:
+                    frame = task.frame
+                    filename = task.filename
+                    future_ticket = task.future
+                    timestamp = task.timestamp
+                    start_ts = task.start_ts
+                    if frame is None or future_ticket is None:
+                        raise KeyError("Task missing 'frame' or 'future' ticket.")
+
+                    # Execute YOLO
+                    detections = self.segmenter.process_frame(frame)
+
+                    # Validate Detections
+                    is_valid, error_reason, detections = self.post_processor.validate_detections(detections)
+                    if not is_valid:
+                        self._handle_pipeline_failure(
+                            frame, detections, filename, timestamp, error_reason, future_ticket
+                        )
+                    else:
+                        # Pre-processing for QC (Segmentation & Cropping)
+                        detections = self.post_processor.cropped_segmented(frame, detections)
+                        # Execution for QC Algorithms
+                        self._handle_pipeline_valid_input(
+                            frame, detections, filename, timestamp, start_ts,
+                            validation_msg=error_reason,
+                            future_ticket=future_ticket,
+                        )
+                except Exception as e:
+                    self.log.error(f"Worker Error on {filename}: {e}")
+                    self._handle_pipeline_failure(frame, [], filename, timestamp, str(e), future_ticket)
+            except Exception as e:
+                self.log.error(f"Worker Loop Error: {e}")
+
+    def _handle_pipeline_failure(
+        self,
+        frame: Optional[np.ndarray],
+        detections: list[Detection],
+        filename: str,
+        timestamp: str,
+        reason: str,
+        future_ticket: Future
+    ) -> None:
+        """Standardized reporting for any rejection or failure in the pipeline."""
+        self.log.warning(f"[{filename}] Pipeline Rejected: {reason}")
+        result = PipelineResult(
+            filename=filename,
+            timestamp=timestamp,
+            qc_summary="FAIL",
+            fail_reason=reason,
+            sections=[]
+        )
+        output = result.model_dump(exclude_none=True)
+        if self.save_qc_json and self.output_path is not None:
+            save_json_results(output, self.output_path / f"{filename}_qc.json")
+        if self.save_input_img and self.output_path is not None and frame is not None:
+            save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
+        if future_ticket and not future_ticket.done():
+            future_ticket.set_result(output)
+
+    def _handle_pipeline_valid_input(
+            self,
+            frame: np.ndarray,
+            detections: list[Detection],
+            filename: str,
+            timestamp: str,
+            start_ts: float,
+            future_ticket: Future,
+            validation_msg: str = "N/A"
+        ) -> None:
+        """
+        Executes QC checks on all sections and compiles the final result using Pydantic models.
+        """
+        # Filter out valid sections
+        sections = [d for d in detections if d.class_name == 'section' and d.section_image is not None]
+        sections_list = []
+        all_qc_passed = True
+
+        # Iterate through each section and run QC
+        for i, section_obj in enumerate(sections):
+            target_img = section_obj.section_image
+            if target_img is None:
+                continue
+
+            # Run the QC checks (Returns Dict[str, dict])
+            qc_results = self._run_all_checks(target_img)
+
+            # Determine if this specific section passed
+            section_passed = all(obj.pass_status for obj in qc_results.values())
+            if not section_passed:
+                all_qc_passed = False
+
+            # Instantiate SectionResult model
+            sections_list.append(SectionResult(
+                qc_result="PASS" if section_passed else "FAIL",
+                segmentation_conf=round(section_obj.confidence, 2),
+                area_in_pixels=section_obj.area_in_pixels,
+                overlap_ratio=round(section_obj.overlap_ratio, 2),
+                criteria=qc_results,
+                mask=section_obj.mask if (self.return_mask and section_obj.mask) else None
+            ))
+
+        # Final global summary report Logic
+        multiple_detected = len(sections) > 1
+        processing_time = round(time.time() - start_ts, 4)
+        global_pass = all_qc_passed and not multiple_detected
+        if multiple_detected:
+            current_fail_reason = validation_msg
+        elif not all_qc_passed:
+            current_fail_reason = "Section failed QC criteria"
+        else:
+            current_fail_reason = "N/A"
+
+        # Construct Final PipelineResult Model
+        result_obj = PipelineResult(
+            filename=filename,
+            timestamp=timestamp,
+            qc_summary="PASS" if global_pass else "FAIL",
+            fail_reason=current_fail_reason,
+            processing_time_sec=processing_time,
+            sections=sections_list
+        )
+        output = result_obj.model_dump(exclude_none=True)
+
+        # IO Operations
+        if self.save_qc_json and self.output_path:
+            save_json_results(output, self.output_path / f"{filename}_qc.json")
+        if self.save_input_img and self.output_path is not None:
+            save_debug_image(frame, self.output_path / f"{filename}_input.jpg")
+        if self.save_segmented_img and self.output_path is not None:
+            for i, section_obj in enumerate(sections):
+                img_to_save = section_obj.section_image
+                save_debug_image(img_to_save, self.output_path / f"{filename}_section_{i}.jpg")
+        # Resolve the Future
+        if future_ticket and not future_ticket.done():
+            future_ticket.set_result(output)
+
+    def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
+        results = {}
+        for name, module in self.qc_modules.items():
+            try:
+                # Execution in the worker thread
+                raw_res = module.check(qc_image)
+                results[name] = QCCriteria(**raw_res)
+            except Exception as e:
+                self.log.error(f"QC Check {name} failed: {e}")
+                results[name] = QCCriteria(pass_status=False, label="Error", message=str(e))
+        return results

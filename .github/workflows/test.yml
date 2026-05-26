@@ -1,14 +1,15 @@
-name: type-check
+name: Python Tests
+
 on:
   workflow_call:
-    inputs:
+    inputs: 
       runner_label: 
         description: 'Runner to use'
         type: string
         default: 'ubuntu-latest'
 
 jobs: 
-  type_check: 
+  run-tests: 
     runs-on: ${{ inputs.runner_label }}
     strategy: 
       matrix:
@@ -16,10 +17,16 @@ jobs:
     steps: 
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Install UV - set python version to ${{ matrix.python-version }} 
+      
+    - name: Install UV
       uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }} 
-    - name: Type check with mypy
-      run: |
-        uv run mypy .
+        enable-cache: true
+        
+    - name: Sync Workspace Dependencies
+      run: uv sync --all-packages
+      
+    - name: Unit test with PyTest  
+      # Removed "tests/" so it uses your root pyproject.toml configuration
+      run: uv run pytest

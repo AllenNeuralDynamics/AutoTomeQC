@@ -1,168 +1,87 @@
-# AutoTomeQC 
+
+# <img src="web/src/autotome_ui/static/favicon.ico" width="30" height="30" alt="AutoTomeQC Icon">  AutoTomeQC
 AutoTomeQC is an automated pipeline designed for Sectioning Quality Control. It integrates YOLO segmentation models and algorithmic checks to validate the quality of sections.
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://allenneuraldynamics.github.io/AutoTomeQC/)
 
 
-### Pipeline Overview
-| Input Image | Segmentation | QC Runs |
-| :---: | :---: | :--- |
-| ![Input](docs/assets/input.jpg) | ![Output](docs/assets/output.jpg) | <pre>Ready &gt; example/input_images/img1.jpg<br>Processing: img1<br>Status:     FAIL<br>Reason:     Section failed QC criteria<br> -&gt; Section 0: FAIL \| Area: 24504px<br>    ✅ coverage: full_section<br>    ❌ knife_mark: knifemark_shredding<br>    ✅ thickness_consistency: Consistent<br>    ✅ thickness: 60<br>    ✅ shape: Diamond</pre> |
+## Workspace Overview
 
-##  Getting Started
-- [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
+This repository is a monorepo workspace managed by [uv](https://github.com/astral-sh/uv). It contains the core quality control engine for tissue sectioning and its associated web-based orchestration interface.
+
+The workspace is structured into the following packages:
+
+| Package | Directory | Description |
+| :--- | :--- | :--- |
+| `autotomeqc` | `/qc` | The core engine, CLI, and FastAPI server for sectioning QC. |
+| `autotome-ui` | `/web` | Frontend UI built with `NiceGUI` for interacting with the instrument. |
+
+## Quick Start
+
+### Installation
+Ensure `uv` is installed, then sync the entire workspace to create a unified virtual environment:
+
 ```bash
 uv sync
+```
+
+
+## Running Components
+You can execute the entry points for each package directly from the project root.
+
+### Web UI (`autotome-ui`)
+Launches the full application, including the backend API server and the NiceGUI frontend.
+
+```bash
+# Launch with default settings
+uv run autotome-ui
+```
+
+**Optional Arguments:**
+*   `--ui-port <port>`: Sets the port for the web interface (default: 8080).
+*   `--backend-port <port>`: Sets the port for the backend API (default: 8000).
+*   `--log-level <level>`: Sets the logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`).
+*   `--web`: Forces the app to open in a web browser. In this mode, file uploads are limited to 1000 files at a time due to browser and websocket constraints.
+
+**Example:**
+```bash
+uv run autotome-ui --ui-port 8081 --backend-port 8001 --log-level DEBUG
+```
+
+### QC Engine CLI (`autotomeqc`)
+Starts the core QC engine in an interactive command-line mode, waiting for file paths to be provided for processing.
+
+```bash
+# Launch the interactive CLI
 uv run autotomeqc
 ```
 
-## Usage 1. Interactive Mode (CLI)
+**Optional Arguments:**
+*   `--config <path>`: Path to a custom `config.yaml` file.
+*   `--log-level <level>`: Sets the logging verbosity.
 
-Use this mode to quickly test your saved section images. It launches the service and waits for you to paste file paths for analysis.
-
-Run the service:
+**Example:**
 ```bash
-uv run autotomeqc
+uv run autotomeqc --log-level DEBUG --config /path/to/my_config.yaml
 ```
 
-Once the service says `Ready >`, you can:
+## Development
+Testing
+Run tests across the entire workspace or for individual members:
 
-write a file path: `example/input_images/img1.jpg`
-
-Exit: Type `exit`, `stop`, or press `Ctrl+C`.
-
-
-## Usage 2. Python Library 
-
-You can import `AutoTomeService` directly into your own Python code to integrate QC into your acquisition loops.
-
-See the example codes  `example/example_import.py`
-
+# Run all workspace tests
 ```bash
-from autotomeqc.core.autotome_service import AutoTomeService
-
-# Initialize Service (Loads YOLO & Classification Models)
-service = AutoTomeService()
-service.start()
-
-# Method A: Process by File Path
-future_a = service.process(img_path="data/img1.jpg")
-result = future_a.result()  # Wait for the result
-print(f"QC Status: {result['qc_summary']}")
-
-# Method B: Process by Raw Frame (e.g., from Camera)
-future_b = service.process(frame=frame)
-result = future_b.result()  # Wait for the result
-print(f"QC Status: {result['qc_summary']}")
-
-service.stop()
+uv run pytest
 ```
 
-## Output
-You can view the results directly in the terminal:
+Type Checking & Linting
 
-**Example Output:**
+# Linting
 ```bash
-Ready > example/input_images/img1.jpg
-Processing: img1
-Status:     FAIL
-Reason:     Section failed QC criteria
- -> Section 0: FAIL | Area: 24504px
-    ✅ coverage: full_section
-    ❌ knife_mark: knifemark_shredding
-    ✅ thickness_consistency: Consistent
-    ✅ thickness: 60
-    ✅ shape: Diamond
+uv run ruff check .
 ```
 
-And, a full JSON report is also saved to disk.
-
-- **Directory:** The location is defined in `src/autotomeqc/config/yolo-config.yaml` (see the `output_dir` setting).
-- **Files:** `{filename}_qc.json`
-
-**Example JSON Report:**
-```json
-{
-    "filename": "img1",
-    "timestamp": "2026-04-23 20:49:57",
-    "qc_summary": "FAIL",
-    "fail_reason": "Section failed QC criteria",
-    "processing_time_sec": 0.5774,
-    "sections": [
-        {
-            "qc_result": "FAIL",
-            "segmentation_conf": 0.96,
-            "area_in_pixels": 24504,
-            "overlap_ratio": 1.0,
-            "criteria": {
-                "coverage": {
-                    "pass_status": true,
-                    "label": "full_section",
-                    "conf": 0.9958
-                },
-                "knife_mark": {
-                    "pass_status": false,
-                    "label": "knifemark_shredding",
-                    "conf": 0.9992,
-                    "reason": "Defect Detected: knifemark_shredding"
-                },
-                "thickness_consistency": {
-                    "pass_status": true,
-                    "label": "Consistent",
-                    "conf": 0.8967
-                },
-                "thickness": {
-                    "pass_status": true,
-                    "label": "60",
-                    "conf": 0.5589
-                },
-                "shape": {
-                    "pass_status": true,
-                    "label": "Diamond",
-                    "metric": 5,
-                    "message": "Detected Diamond (vertices=5)"
-                }
-            }
-        }
-    ]
-}
-```
-
-
-## Tools
-
-### Package/Project Management 
-
-This project utilizes [uv](https://docs.astral.sh/uv/) to handle installing dependencies as well as setting up environments for this project. It replaces tool like pip, poetry, virtualenv, and conda. 
-
-This project also uses [tox](https://tox.wiki/en/latest/index.html) for orchestrating multiple testing environments that mimics the github actions CI/CD so that you can test the workflows locally on your machine before pushing changes. 
-
-### Code Quality Check
-
-The following are tools used to ensure code quality in this project. 
-
-- Unit Testing
-
+# Static Type Checking
 ```bash
-uv run pytest tests
-```
-
-- Linting
-
-```bash
-uv run ruff check
-```
-
-- Type Check
-
-```bash
-uv run mypy src
-```
-
-## Documentation
-To install documentation dependencies, build and preview, run:
-```bash
-uv sync --group docs
-uv run mkdocs build
-uv run mkdocs serve
+uv run mypy .
 ```

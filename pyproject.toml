@@ -1,35 +1,34 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.uv]
+package = false
 
 [project]
-name = "autotomeqc"
+name = "autotomeqc-instrument"
 version = "0.10.1-dev.2"
-description = "Sectioning quality control"
+description = "AutoTome monorepo workspace"
 
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
-    "fastapi",
-    "ultralytics>=8.4.0",
-    "torch>=2.4.0",
-    "numpy>=1.26.0",
-    "opencv-python>=4.9.0",
-    "PyYAML>=6.0",
-    "lapx>=0.5.5",
+    "autotomeqc[api]",
+    "autotome-ui"
 ]
 
-[project.scripts]
-autotomeqc = "autotomeqc.__main__:main"
+[tool.uv.sources]
+autotomeqc = { workspace = true }
+autotome-ui = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+    "qc",
+    "web"
+]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3.5",
     "ruff>=0.9.9",
-    "mypy>=1.10.0",
-    "types-PyYAML>=6.0",
+    "mypy>=1.19.1",
+    "pytest-asyncio>=1.3.0",
+    "selenium",
 ]
 docs = [
     'mkdocs',
@@ -37,8 +36,17 @@ docs = [
     'mkdocstrings[python]'
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/autotomeqc"]
-
 [tool.pytest.ini_options]
-pythonpath = ["src", "tests"]
+pythonpath = ["qc/src", "web/src"]
+asyncio_mode = "auto"
+addopts = "-p nicegui.testing.plugin"
+main_file = "web/src/autotome_ui/main.py"
+
+[tool.mypy]
+mypy_path = ["qc/src", "web/src"]
+namespace_packages = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "imagesize"
+ignore_missing_imports = true

@@ -1,0 +1,45 @@
+qc:
+  output_dir: "example/output"
+  save_qc_json: true
+  save_segmented_images: true
+  save_input_images: true
+  return_mask_data: false
+  yolo:
+    weights_path: "weights/seg_fast_yolo26_640.pt"
+    conf_thresh: 0.5
+    img_size: 640
+    img_dim: [640, 640]
+    max_det: 10
+  yolo_post_processing:
+    out_dim: [640, 640]
+    loop_bbox_margin: 30
+    allow_no_loop: true
+    overlap_threshold: 0.5
+  section_coverage:
+    weights_path: "weights/section_coverage_v1.pt"
+    img_size: 224
+    img_dim: [224, 224]
+    pass_labels: ["full_section"]
+    min_confidence: 0.5
+  knife_mark:
+    weights_path: "weights/knife_mark_v1.pt"
+    img_size: 640
+    img_dim: [640, 640]
+    pass_labels: ["knifemark_none"]
+    min_confidence: 0.5
+  thickness_consistency:
+    weights_path: "weights/thickness_consistency_v1.pt"
+    img_size: 224
+    img_dim: [224, 224]
+    pass_labels: ["Consistent"]
+    min_confidence: 0.5
+  thickness:
+    weights_path: "weights/thickness_v1.pt"
+    img_size: 224
+    img_dim: [224, 224]
+    pass_labels: ["ANY"]
+    min_confidence: 0.1
+  shape:
+    save_debug_img: true
+
+
