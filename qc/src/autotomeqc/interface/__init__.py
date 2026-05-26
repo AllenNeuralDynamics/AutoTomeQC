@@ -1,1 +1,0 @@
-# This file makes the 'components' directory an importable Python module.
