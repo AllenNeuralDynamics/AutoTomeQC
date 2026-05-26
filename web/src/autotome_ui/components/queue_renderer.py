@@ -101,12 +101,17 @@ class QueueRenderer:
                 if info and row['status'] != info.status:
                     row['status'] = info.status
 
-            # This will check the box of the active file being processed
-            self.table.selected = [{'id': active_file_id}]
+            if active_file_id:
+                self.table.selected = [{'id': active_file_id}]
+                # Auto-scroll to the active file
+                try:
+                    row_index = next(i for i, row in enumerate(self.table.rows) if row.get('id') == active_file_id)
+                    self.table.run_method('scrollTo', row_index, 'center')
+                except StopIteration:
+                    pass
+            else:
+                # Clear the selection completely if no file is active
+                self.table.selected = []
+
+            # Updates to the browser
             self.table.update()
-            
-            try:
-                row_index = next(i for i, row in enumerate(self.table.rows) if row.get('id') == active_file_id)
-                self.table.run_method('scrollTo', row_index, 'center')
-            except StopIteration:
-                pass
