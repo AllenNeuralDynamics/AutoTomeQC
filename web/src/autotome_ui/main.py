@@ -37,7 +37,7 @@ setup_app_resources()
 
 @ui.page('/')
 def index():
-    logger.debug(f"Starting AutoTomeQC in {'Web' if args.web else 'Native'} mode.")
+    logger.info(f"Starting AutoTomeQC in {'Native' if app_state.is_native else 'Web'} mode.")
     ui.add_css((STATIC_DIR / 'theme.css').read_text())
     ui.dark_mode().enable()
     ui.colors(primary='#F27D26', secondary='#151515', accent='#F27D26')
