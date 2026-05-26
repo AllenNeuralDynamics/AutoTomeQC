@@ -21,6 +21,9 @@ jobs:
     uses: ./.github/workflows/type.yml  # TODO: Move this to AllenNeuralDynamics/.github if fixed
   docs:
     uses: ./.github/workflows/docs.yml
+  sync_versions_test:  # Test
+    uses: ./.github/workflows/sync_versions.yml
+
 
   # 2. Run the Tagging logic ONLY if the tests pass
   tag-and-release:
@@ -31,3 +34,7 @@ jobs:
     with:
       runner_label: 'ubuntu-latest'
       # custom_release_rules: 'fix:patch,feat:minor,breaking:major'
+  sync_versions:
+    if: github.event_name == 'push'
+    needs: [tag-and-release] # Wait for standard checks to pass before syncing
+    uses: ./.github/workflows/sync_versions.yml
