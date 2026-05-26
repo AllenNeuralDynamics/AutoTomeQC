@@ -206,7 +206,7 @@ class MainWorkspace:
         return svg_content
 
     def _render_error(self):
-        msg = getattr(app_state, 'view_error', 'Backend Error')
+        msg = app_state.view.error or 'Backend Error'
         ui.label(msg).classes('text-red-600 font-bold')
 
     def _render_navigation(self):
