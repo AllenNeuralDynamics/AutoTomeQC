@@ -3,7 +3,6 @@ import io
 import logging
 import zipfile
 import webview
-import asyncio
 from nicegui import ui, app
 from autotome_ui.models.status import app_state
 
