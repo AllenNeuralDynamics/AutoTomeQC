@@ -1,0 +1,47 @@
+name: Sync Workspace Versions
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  sync-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required for the bot to commit and push changes back
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Sync versions to workspace members
+        run: |
+          # 1. Extract the new version from the root pyproject.toml
+          ROOT_VERSION=$(grep -m 1 '^version = ' pyproject.toml | cut -d '"' -f 2)
+          echo "Detected root version: $ROOT_VERSION"
+
+          # 2. Update the member files
+          sed -i "s/^version = .*/version = \"$ROOT_VERSION\"/" qc/pyproject.toml
+          sed -i "s/^version = .*/version = \"$ROOT_VERSION\"/" web/pyproject.toml
+
+      - name: Commit and Push changes
+        run: |
+          # Check if there are actually any changes to commit
+          if git diff --exit-code qc/pyproject.toml web/pyproject.toml; then
+            echo "No version changes detected in members. Nothing to commit."
+            exit 0
+          fi
+
+          # Set up git bot user
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Stage and commit the changes
+          git add qc/pyproject.toml web/pyproject.toml
+          
+          git commit -m "chore: sync workspace member versions to $ROOT_VERSION [skip ci]"
+          
+          # Push back to the branch that triggered the workflow
+          git push origin ${{ github.ref_name }}
