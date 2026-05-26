@@ -2,7 +2,9 @@ import json
 import io
 import logging
 import zipfile
-from nicegui import ui
+import webview
+import asyncio
+from nicegui import ui, app
 from autotome_ui.models.status import app_state
 
 logger = logging.getLogger(__name__)
@@ -41,7 +43,7 @@ def render_header(left_drawer):
         config_display.set_content(config_str)
         config_dialog.open()
 
-    def _handle_export_click():
+    async def _handle_export_click():
         # Filter the queue for files that actually have results (JSON exists)
         files_with_results = [
             info for info in app_state.queued_files.values() 
@@ -53,25 +55,40 @@ def render_header(left_drawer):
             return
 
         try:
-            # Package the existing Images and JSON files into an in-memory ZIP
-            memory_file = io.BytesIO()
-            with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-                
-                for info in files_with_results:
-                    # Write the image file into the zip
-                    if info.path and info.path.exists():
-                        zf.write(info.path, arcname=info.path.name)
-                    
-                    # Write the previously dumped JSON file into the zip
-                    if info.json_path and info.json_path.exists():
-                        zf.write(info.json_path, arcname=info.json_path.name)
-
-            memory_file.seek(0)
-            
-            # Trigger native browser download 
-            ui.download(memory_file.read(), 'autotome_results.zip')
-            ui.notify(f'Exporting {len(files_with_results)} results...', type='positive')
-            
+            if app_state.is_native:
+                result = await app.native.main_window.create_file_dialog(
+                    webview.FileDialog.SAVE,
+                    save_filename='autotome_results.zip'
+                )
+                # If the user clicks "Cancel" or closes the dialog, result is None/empty
+                if not result:
+                    return
+                # Extract the file path the user chose
+                export_path = result[0]
+                # Write the ZIP directly to their chosen destination
+                with zipfile.ZipFile(export_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for info in files_with_results:
+                        if info.path and info.path.exists():
+                            zf.write(info.path, arcname=info.path.name)
+                        if info.json_path and info.json_path.exists():
+                            zf.write(info.json_path, arcname=info.json_path.name)
+                ui.notify(f'Saved successfully to {export_path}', type='positive')
+                return
+            else:
+                # Package the existing Images and JSON files into an in-memory ZIP
+                memory_file = io.BytesIO()
+                with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for info in files_with_results:
+                        # Write the image file into the zip
+                        if info.path and info.path.exists():
+                            zf.write(info.path, arcname=info.path.name)
+                        # Write the previously dumped JSON file into the zip
+                        if info.json_path and info.json_path.exists():
+                            zf.write(info.json_path, arcname=info.json_path.name)
+                memory_file.seek(0)
+                # Trigger native browser download 
+                ui.download(memory_file.read(), 'autotome_results.zip')
+                ui.notify(f'Exporting {len(files_with_results)} results...', type='positive')
         except Exception as e:
             ui.notify(f'Export failed: {e}', type='negative')
 

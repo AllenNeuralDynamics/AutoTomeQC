@@ -7,7 +7,7 @@ dependencies = [
     "nicegui>=1.4.0",
     "httpx>=0.25.0",
     "pydantic>=2.0.0",
-    "pywebview",
+    "pywebview>=5.0.0",
     "imagesize",
     "autotomeqc[api]",
 ]
