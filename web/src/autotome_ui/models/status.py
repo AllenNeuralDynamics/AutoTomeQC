@@ -4,8 +4,16 @@ import tempfile
 from pathlib import Path
 import time
 from typing import Dict, List, Optional, Tuple
+from importlib.metadata import version, PackageNotFoundError
 from pydantic import BaseModel, Field, ConfigDict, computed_field
 from autotome_ui.models.backend_schemas import PipelineResult, AppConfig
+
+def get_app_version() -> str:
+    """Helper to fetch the package version safely."""
+    try:
+        return version("autotome-ui")
+    except PackageNotFoundError:
+        return "unknown"
 
 def get_app_temp_dir() -> Path:
     """
@@ -67,6 +75,7 @@ class AppState(BaseModel):
     """Holds the global state of the frontend using Pydantic for validation."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     is_native: bool = True
+    version: str = Field(default_factory=get_app_version)
 
     # Backend state
     is_backend_ready: bool = False

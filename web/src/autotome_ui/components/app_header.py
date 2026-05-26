@@ -79,7 +79,8 @@ def render_header(left_drawer):
     with ui.header().classes('app-header').classes(remove='bg-primary'):
         with ui.row().classes('header-left'):
             ui.button(icon='chevron_left', color=None, on_click=lambda: left_drawer.toggle()).props('flat dense').classes('btn-icon')
-
+            ui.label(f'v{app_state.version}').classes('text-xs text-gray-500 font-mono ml-2')
+            
         with ui.row().classes('header-right'):
             ui.button('CONFIG', icon='settings', color=None,
                       on_click=_handle_config_click).classes('btn-config')
