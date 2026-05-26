@@ -23,7 +23,7 @@ def render_loading_overlay(wait_backend_ready_callback=None, fetch_config_callba
             # Backend is ready! Fetch the configuration before closing the overlay
                 if fetch_config_callback:
                     await fetch_config_callback()  # wait for the subscribed callbacks to complete
-                    loading_dialog.close()
+                loading_dialog.close()
                 health_timer.deactivate()
             except Exception as e:
                 ui.notify(f"Failed to fetch config: {str(e)}", type='negative')
