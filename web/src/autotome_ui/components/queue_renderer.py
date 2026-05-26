@@ -20,8 +20,8 @@ class QueueRenderer:
 
         columns = [
             {'name': 'img_src', 'label': 'Img', 'field': 'img_src', 'align': 'left', 'style': 'width: 15px; padding: 0 2px 0 0;'},
-            {'name': 'name', 'label': 'File Name', 'field': 'name', 'align': 'left', 'sortable': True, 'classes': 'ellipsis', 'style': 'font-size: 0.75rem; padding: 0 2px;'},
-            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left', 'sortable': True, 'style': 'width: 95px; min-width: 80px; max-width: 95px; padding: 0 2px; font-size: 0.75rem;'},
+            {'name': 'name', 'label': 'File Name', 'field': 'name', 'align': 'left', 'classes': 'ellipsis', 'style': 'font-size: 0.75rem; padding: 0 2px;'},
+            {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left', 'classes': 'ellipsis', 'style': 'width: 95px; min-width: 80px; max-width: 95px; padding: 0 2px; font-size: 0.75rem;'},
         ]
 
         # Initialize the native NiceGUI table

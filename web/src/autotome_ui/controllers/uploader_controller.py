@@ -97,12 +97,7 @@ class UploaderController:
         
         app_state.active_file_id = None
     
-        # Sort files consistently (e.g., by filename)
-        sorted_files = sorted(
-            app_state.queued_files.items(), 
-            key=lambda item: item[1].name
-        )
-        for file_id, info in sorted_files:
+        for file_id, info in app_state.queued_files.items():
             if not app_state.is_processing:
                 break
 
@@ -197,9 +192,13 @@ class UploaderController:
         if not file_items:
             return
 
-        # 2. Process tasks (using the appropriate loader per item)
-        tasks = [self._process_item(item) for item in file_items]
-        results = await asyncio.gather(*tasks)
+        # 2. Process each item
+        results = []
+        for item in file_items:
+            # _process_item handles updating app_state.queued_files
+            file_id = await self._process_item(item)
+            if file_id:
+                results.append(file_id)
 
         # 3. Batch Update
         added_ids = [res for res in results if res is not None]
