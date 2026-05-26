@@ -21,9 +21,6 @@ jobs:
     uses: ./.github/workflows/type.yml  # TODO: Move this to AllenNeuralDynamics/.github if fixed
   docs:
     uses: ./.github/workflows/docs.yml
-  sync_versions_test:  # Test
-    uses: ./.github/workflows/sync_versions.yml
-
 
   # 2. Run the Tagging logic ONLY if the tests pass
   tag-and-release:
