@@ -14,7 +14,7 @@ on:
 jobs:
   # 1. Run Linter and Tests first
   pytest:
-    uses: AllenNeuralDynamics/.github/.github/workflows/test.yml@main
+    uses: ./.github/workflows/test.yml
   lint:
     uses: AllenNeuralDynamics/.github/.github/workflows/lint.yml@main
   type-check:
