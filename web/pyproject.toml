@@ -24,17 +24,3 @@ packages = ["src/autotome_ui"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[dependency-groups]
-dev = [
-    "pytest>=8.3.5",
-    "pytest-asyncio>=0.23.0",
-    "ruff>=0.9.9",
-    "mypy>=1.10.0",
-    "types-PyYAML>=6.0",
-    "selenium",
-]
-
-[[tool.mypy.overrides]]
-module = "imagesize"
-ignore_missing_imports = true

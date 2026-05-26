@@ -34,21 +34,5 @@ autotomeqc = { workspace = true }
 autotomeqc = "autotomeqc.interface.cli:run_interactive_cli"
 autotomeqc-server = "autotomeqc.interface.server:main"
 
-[dependency-groups]
-dev = [
-    "pytest>=8.3.5",
-    "ruff>=0.9.9",
-    "mypy>=1.10.0",
-    "types-PyYAML>=6.0",
-]
-docs = [
-    'mkdocs',
-    'mkdocs-material',
-    'mkdocstrings[python]'
-]
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/autotomeqc"]
-
-[tool.pytest.ini_options]
-pythonpath = ["src", "tests"]
