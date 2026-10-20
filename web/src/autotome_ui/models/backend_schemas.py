@@ -40,6 +40,7 @@ class YoloSettings(BaseModel):
     img_size: int
     img_dim: List[int]
     max_det: int
+    mask_open_kernel: int = 3
 
 class PostProcessingSettings(BaseModel):
     """Schema for the yolo_post_processing section in yaml."""

@@ -21,6 +21,7 @@ class YoloSettings(BaseModel):
     img_size: int = 640
     img_dim: List[int] = [640, 640]
     max_det: int = 10
+    mask_open_kernel: int = 3  # square ellipse kernel size for opening the section mask; 0 disables
 
     @field_validator('weights_path')
     @classmethod
