@@ -5,7 +5,7 @@ qc:
   save_input_images: true
   return_mask_data: false
   yolo:
-    weights_path: "weights/best.pt"
+    weights_path: "weights/seg_fast_yolo26_640.pt"
     conf_thresh: 0.5
     img_size: 640
     img_dim: [640, 640]
