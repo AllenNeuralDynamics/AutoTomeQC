@@ -1,8 +1,16 @@
 # tests/yolo_segmentation/test_yolo_segmentation.py
 import pytest
 import numpy as np
+import torch
 from unittest.mock import MagicMock, patch
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
+
+def _two_piece_mask() -> np.ndarray:
+    """640x640 binary mask: a large square plus a small disconnected blob."""
+    mask = np.zeros((640, 640), dtype=np.uint8)
+    mask[100:300, 100:300] = 1  # section
+    mask[100:120, 400:420] = 1  # stray fragment
+    return mask
 
 # --- FIXTURES ---
 
@@ -15,6 +23,7 @@ def mock_config():
     config.img_size = 640
     config.img_dim = [640, 640]
     config.max_det = 30
+    config.mask_open_kernel = 3
     return config
 
 @pytest.fixture
@@ -83,6 +92,8 @@ def test_process_frame_logic(server):
     
     # Setup Masks
     mock_result.masks.xy = [np.array([[10, 10], [20, 20], [10, 20]])]
+    mock_result.orig_shape = (640, 640)
+    mock_result.masks.data = [torch.from_numpy(_two_piece_mask())]
     server.model.track.return_value = [mock_result]
 
     # Execute
