@@ -98,7 +98,7 @@ class YoloSegmentation:
         Falls back to the original polygon if the mask is empty.
         """
         h, w = orig_shape[:2]
-        mask = (mask_tensor.cpu().numpy() > 0.5).astype(np.uint8)
+        mask: np.ndarray = (mask_tensor.cpu().numpy() > 0.5).astype(np.uint8)
         if mask.shape != (h, w):
             mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
         # Opening removes thin bridges and 1-px spurs; shredding on the section edge is much wider than the kernel
