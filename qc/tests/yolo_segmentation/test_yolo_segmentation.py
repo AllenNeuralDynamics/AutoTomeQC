@@ -1,8 +1,17 @@
 # tests/yolo_segmentation/test_yolo_segmentation.py
 import pytest
 import numpy as np
+import torch
 from unittest.mock import MagicMock, patch
 from autotomeqc.yolo_segmentation.yolo_segmentation import YoloSegmentation
+
+def _two_piece_mask() -> np.ndarray:
+    """640x640 binary mask: a large square plus a small stray blob joined by a 1-px hairline."""
+    mask = np.zeros((640, 640), dtype=np.uint8)
+    mask[100:300, 100:300] = 1
+    mask[100:120, 400:420] = 1
+    mask[109, 300:400] = 1      # hairline connector
+    return mask
 
 # --- FIXTURES ---
 
@@ -15,6 +24,7 @@ def mock_config():
     config.img_size = 640
     config.img_dim = [640, 640]
     config.max_det = 30
+    config.mask_open_kernel = 3
     return config
 
 @pytest.fixture
@@ -83,15 +93,25 @@ def test_process_frame_logic(server):
     
     # Setup Masks
     mock_result.masks.xy = [np.array([[10, 10], [20, 20], [10, 20]])]
+    mock_result.orig_shape = (640, 640)
     server.model.track.return_value = [mock_result]
 
-    # Execute
+    # Execute (_largest_polygon is stubbed: this test only checks result extraction)
+    polygon = [[10.0, 10.0], [20.0, 20.0], [10.0, 20.0]]
     frame = np.zeros((640, 640, 3), dtype=np.uint8)
-    detections = server.process_frame(frame)
+    with patch.object(YoloSegmentation, "_largest_polygon", return_value=polygon):
+        detections = server.process_frame(frame)
 
     # Assertions
     assert len(detections) == 1
     assert detections[0].class_name == "section"
     assert detections[0].confidence == 0.95
     assert detections[0].track_id == 0  # Default if id is None
-    assert isinstance(detections[0].mask, list)
+    assert detections[0].mask == polygon
+
+def test_largest_polygon_keeps_only_largest_piece():
+    """A stray blob joined to the section by a hairline must not appear in the polygon."""
+    mask = torch.from_numpy(_two_piece_mask())
+    poly = YoloSegmentation._largest_polygon(mask, (640, 640), np.zeros((0, 2)), open_kernel=3)
+    xs = [p[0] for p in poly]
+    assert max(xs) < 350  # stray blob sits at x >= 400
