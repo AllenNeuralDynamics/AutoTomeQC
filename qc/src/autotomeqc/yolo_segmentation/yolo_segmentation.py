@@ -86,7 +86,12 @@ class YoloSegmentation:
         return frame
 
     @staticmethod
-    def _largest_polygon(mask_tensor, orig_shape, fallback_xy, open_kernel: int = 0) -> list:
+    def _largest_polygon(
+        mask_tensor: torch.Tensor,
+        orig_shape: tuple[int, int],
+        fallback_xy: np.ndarray,
+        open_kernel: int = 0,
+    ) -> list[list[float]]:
         """
         Build a polygon from the binary mask keeping only its largest connected piece.
         masks.xy joins disjoint pieces with hairline connectors, which leaves tails and stray blobs.
