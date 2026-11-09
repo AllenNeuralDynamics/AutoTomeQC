@@ -304,8 +304,7 @@ class AutoTomePipeline:
         for name, module in self.qc_modules.items():
             try:
                 # Execution in the worker thread
-                raw_res = module.check(qc_image)
-                results[name] = QCCriteria(**raw_res)
+                results[name] = module.check(qc_image)  # every QC module returns a QCCriteria
             except Exception as e:
                 self.log.error(f"QC Check {name} failed: {e}")
                 results[name] = QCCriteria(pass_status=False, label="Error", message=str(e))
