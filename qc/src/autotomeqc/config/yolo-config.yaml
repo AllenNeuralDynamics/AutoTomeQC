@@ -35,9 +35,7 @@ qc:
     pass_labels: ["Consistent"]
     min_confidence: 0.5
   thickness:
-    weights_path: "weights/thickness_rf.joblib"   # colour random forest (sklearn)
-    img_size: 224
-    img_dim: [224, 224]
+    weights_path: "weights/thickness_rf.joblib"   # colour random forest (sklearn), uses the 640x640 crop as is
     pass_labels: ["ANY"]
     min_confidence: 0.1
   shape:

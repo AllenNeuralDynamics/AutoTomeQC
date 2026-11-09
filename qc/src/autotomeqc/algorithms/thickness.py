@@ -3,8 +3,6 @@
 
 The model (weights/thickness_rf.joblib) was trained on 17 colour features
 (HSV, Lab, colour spread) of segmented sections on a black background.
-`masks()` and `extract()` below must stay identical to the training codes, 
-otherwise the features no longer match what the forest was trained on.
 """
 import logging
 from typing import List, Optional
@@ -12,6 +10,8 @@ from typing import List, Optional
 import cv2
 import joblib
 import numpy as np
+
+from autotomeqc.core.models import QCCriteria
 
 
 def masks(bgr: np.ndarray):
@@ -72,7 +72,8 @@ def extract(bgr: np.ndarray, norm_v: Optional[float] = None) -> dict:
 class ThicknessQC:
     """Predicts section thickness (nm) with the colour random forest.
 
-    the pipeline treats it like the other QC modules. The input is the segmented section crop (BGR, black background), used at
+    Same interface as YOLOClassifier (`predict` and `check` both return a QCCriteria), so the pipeline treats it
+    like the other QC modules. The input is the segmented section crop (BGR, black background), used at
     its native size: the feature code (15 px erode) depends on the resolution the model was
     trained at (640x640), so the image is NOT resized.
     """
@@ -107,46 +108,43 @@ class ThicknessQC:
             self.model = None
             self.log.warning(f"Could not load {config.weights_path}. Error: {e}")
 
-    def predict(self, image: np.ndarray) -> dict:
+    def predict(self, image: np.ndarray) -> QCCriteria:
+        """Runs the forest. Here pass_status=True only means 'the prediction ran'; check() decides QC."""
         if self.model is None:
-            return {"error": "Model not loaded", "label": "Unknown", "conf": 0.0}
+            return QCCriteria(pass_status=False, label="Unknown", conf=0.0, message="Model not loaded")
         if image is None:
-            return {"error": "Input image is None", "label": "Error", "conf": 0.0}
+            return QCCriteria(pass_status=False, label="Error", conf=0.0, message="Input image is None")
 
         try:
             feats = extract(image, self.norm_v)
             x = np.array([[feats[k] for k in self.features]])
             proba = self.model.predict_proba(x)[0]
             classes = self.model.classes_
-            top = int(np.argmax(proba))
-            nm = int(classes[top])
-            near = np.abs(classes - nm) <= self.RANGE_NM
-            return {
-                "label": str(nm),
-                "conf": round(float(proba[top]), 4),
-                "metric": {
-                    "thickness_nm": nm,
-                    f"conf_within_{self.RANGE_NM}nm": round(float(proba[near].sum()), 4),
-                },
-                "error": None,
-            }
+            nm = int(classes[int(np.argmax(proba))])
+            within = float(proba[np.abs(classes - nm) <= self.RANGE_NM].sum())
+            return QCCriteria(
+                pass_status=True,
+                label=str(nm),
+                conf=round(float(proba.max()), 4),
+                metric=float(nm),   # thickness in nm; kept numeric because the web UI declares metric as a float
+                message=f"Predicted {nm} nm; P(within ±{self.RANGE_NM} nm) = {within:.2f}",
+            )
         except Exception as e:
             self.log.error(f"Prediction failed for {self.model_name}: {e}")
-            return {"error": str(e), "label": "Error", "conf": 0.0}
+            return QCCriteria(pass_status=False, label="Error", conf=0.0, message=str(e))
 
-    def check(self, image: np.ndarray) -> dict:
+    def check(self, image: np.ndarray) -> QCCriteria:
         """Standard QC check: predict, then validate against the config criteria."""
         result = self.predict(image)
-        if result.get("error"):
-            result["pass_status"] = False
+        if not result.pass_status:  # prediction failed: return the error result as is
             return result
 
-        is_valid_label = "ANY" in self.pass_labels or result.get("label") in self.pass_labels
-        is_confident = result.get("conf", 0) >= self.min_confidence
+        is_valid_label = "ANY" in self.pass_labels or result.label in self.pass_labels
+        is_confident = (result.conf or 0.0) >= self.min_confidence
 
-        result["pass_status"] = bool(is_valid_label and is_confident)
+        result.pass_status = is_valid_label and is_confident
         if not is_valid_label:
-            result["reason"] = f"Thickness not accepted: {result.get('label')} nm"
+            result.reason = f"Thickness not accepted: {result.label} nm"
         elif not is_confident:
-            result["reason"] = f"Low Confidence ({result.get('conf')} < {self.min_confidence})"
+            result.reason = f"Low Confidence ({result.conf} < {self.min_confidence})"
         return result
