@@ -7,7 +7,7 @@ The model (weights/thickness_rf.joblib) was trained on 17 colour features
 otherwise the features no longer match what the forest was trained on.
 """
 import logging
-from typing import List
+from typing import List, Optional
 
 import cv2
 import joblib
@@ -27,9 +27,21 @@ def masks(bgr: np.ndarray):
     return m, kept
 
 
-def extract(bgr: np.ndarray) -> dict:
-    """The colour features the forest was trained on (HSV, Lab, colour spread)."""
+def normalise_brightness(bgr: np.ndarray, kept: np.ndarray, target: float) -> np.ndarray:
+    """Uniform gain so the median V of the used pixels equals `target` (removes session brightness)."""
+    gain = target / max(float(np.median(bgr.max(axis=2)[kept])) / 255, 1e-3)
+    return np.clip(bgr.astype(np.float32) * gain, 0, 255).astype(np.uint8)
+
+
+def extract(bgr: np.ndarray, norm_v: Optional[float] = None) -> dict:
+    """The colour features the forest was trained on (HSV, Lab, colour spread).
+
+    norm_v: brightness the section is normalised to before measuring (the model's saved `norm_v`).
+    None = no normalisation, for models trained before normalisation was added.
+    """
     _, kept = masks(bgr)
+    if norm_v is not None:
+        bgr = normalise_brightness(bgr, kept, norm_v)
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV_FULL).astype(np.float32)   # H scaled to 0-255
     lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB).astype(np.float32)
@@ -76,6 +88,7 @@ class ThicknessQC:
         self.model = None
         self.features: List[str] = []
         self.classes: np.ndarray = np.array([])
+        self.norm_v: Optional[float] = None
         self.model_name = config.weights_path.replace("\\", "/").split("/")[-1]
         self.pass_labels = config.pass_labels
         self.min_confidence = config.min_confidence
@@ -86,6 +99,7 @@ class ThicknessQC:
             self.model = bundle["model"]
             self.features = list(bundle["features"])
             self.classes = np.asarray(bundle["classes"])
+            self.norm_v = bundle.get("norm_v")   # None for models trained without brightness normalisation
             # warm-up so the first real frame is not slow
             self.model.predict_proba(np.zeros((1, len(self.features))))
             self.log.debug(f"Model {self.model_name} loaded successfully.")
@@ -100,7 +114,7 @@ class ThicknessQC:
             return {"error": "Input image is None", "label": "Error", "conf": 0.0}
 
         try:
-            feats = extract(image)
+            feats = extract(image, self.norm_v)
             x = np.array([[feats[k] for k in self.features]])
             proba = self.model.predict_proba(x)[0]
             classes = self.model.classes_
