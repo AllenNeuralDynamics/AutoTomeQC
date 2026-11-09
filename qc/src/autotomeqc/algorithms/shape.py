@@ -23,7 +23,7 @@ class ShapeQC:
     def check(self, image, filename: Optional[str] = None) -> QCCriteria:
         """
         Analyzes the section shape (Diamond vs Hexagon).
-        
+
         Args:
             image (np.ndarray): The segmented image section.
             filename (str, optional): The base filename for saving debug images.

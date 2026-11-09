@@ -36,8 +36,8 @@ qc:
     min_confidence: 0.5
   thickness:
     weights_path: "weights/thickness_rf.joblib"   # colour random forest (sklearn), uses the 640x640 crop as is
-    pass_labels: ["ANY"]
     min_confidence: 0.1
+    tolerance_nm: 20   # applies only when process(expected_nm=...) is given
   shape:
     save_debug_img: true
 

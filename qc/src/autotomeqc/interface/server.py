@@ -1,5 +1,6 @@
 # src/autotomeqc/interface/server.py
 import os
+from typing import Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 
@@ -46,10 +47,10 @@ def get_config():
 
 # Create the endpoint
 @app.post("/api/v1/process")
-def process_image(img_path: str):
+def process_image(img_path: str, expected_nm: Optional[float] = None):
     try:
-        # Pass the file path directly to the pipeline
-        future_ticket = service.process(img_path=img_path)
+        # Pass the file path (and optional thickness target) directly to the pipeline
+        future_ticket = service.process(img_path=img_path, expected_nm=expected_nm)
         result = future_ticket.result()  # Wait for the worker thread to finish
         return result
     except Exception as e:

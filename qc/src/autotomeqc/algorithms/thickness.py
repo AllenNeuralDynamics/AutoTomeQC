@@ -72,18 +72,17 @@ def extract(bgr: np.ndarray, norm_v: Optional[float] = None) -> dict:
 class ThicknessQC:
     """Predicts section thickness (nm) with the colour random forest.
 
-    Same interface as YOLOClassifier (`predict` and `check` both return a QCCriteria), so the pipeline treats it
-    like the other QC modules. The input is the segmented section crop (BGR, black background), used at
+    Same interface as YOLOClassifier (`predict` and `check` both return a QCCriteria),
+    so the pipeline treats it like the other QC modules.
+    The input is the segmented section crop (BGR, black background), used at
     its native size: the feature code (15 px erode) depends on the resolution the model was
     trained at (640x640), so the image is NOT resized.
     """
 
-    RANGE_NM = 20   # report the probability that the true thickness is within +-RANGE_NM
-
     def __init__(self, config):
         """
         Args:
-            config: An instance of AlgorithmSettings (CONFIG.qc.thickness);
+            config: An instance of ThicknessSettings (CONFIG.qc.thickness);
                     weights_path must point to thickness_rf.joblib
         """
         self.model = None
@@ -91,8 +90,8 @@ class ThicknessQC:
         self.classes: np.ndarray = np.array([])
         self.norm_v: Optional[float] = None
         self.model_name = config.weights_path.replace("\\", "/").split("/")[-1]
-        self.pass_labels = config.pass_labels
         self.min_confidence = config.min_confidence
+        self.tolerance_nm = config.tolerance_nm   # one tolerance: used for the target check and the P(within) report
         self.log = logging.getLogger(self.__class__.__name__)
 
         try:
@@ -121,30 +120,42 @@ class ThicknessQC:
             proba = self.model.predict_proba(x)[0]
             classes = self.model.classes_
             nm = int(classes[int(np.argmax(proba))])
-            within = float(proba[np.abs(classes - nm) <= self.RANGE_NM].sum())
+            within = float(proba[np.abs(classes - nm) <= self.tolerance_nm].sum())
             return QCCriteria(
                 pass_status=True,
                 label=str(nm),
                 conf=round(float(proba.max()), 4),
                 metric=float(nm),   # thickness in nm; kept numeric because the web UI declares metric as a float
-                message=f"Predicted {nm} nm; P(within ±{self.RANGE_NM} nm) = {within:.2f}",
+                message=f"Predicted {nm} nm; P(within ±{self.tolerance_nm:g} nm) = {within:.2f}",
             )
         except Exception as e:
             self.log.error(f"Prediction failed for {self.model_name}: {e}")
             return QCCriteria(pass_status=False, label="Error", conf=0.0, message=str(e))
 
-    def check(self, image: np.ndarray) -> QCCriteria:
-        """Standard QC check: predict, then validate against the config criteria."""
+    def check(self, image: np.ndarray, expected_nm: Optional[float] = None) -> QCCriteria:
+        """Standard QC check: predict, then validate against the config criteria.
+
+        Passes when the confidence is >= min_confidence and, if expected_nm is given (e.g. the
+        instrument setting), the prediction is within the config's tolerance_nm of it.
+        Without expected_nm it only reports the thickness.
+        """
         result = self.predict(image)
         if not result.pass_status:  # prediction failed: return the error result as is
             return result
 
-        is_valid_label = "ANY" in self.pass_labels or result.label in self.pass_labels
         is_confident = (result.conf or 0.0) >= self.min_confidence
 
-        result.pass_status = is_valid_label and is_confident
-        if not is_valid_label:
-            result.reason = f"Thickness not accepted: {result.label} nm"
-        elif not is_confident:
+        within_tolerance = True   # no expected_nm given = nothing to compare, so this check does not apply
+        if expected_nm is not None:
+            diff = float(result.metric) - expected_nm
+            within_tolerance = abs(diff) <= self.tolerance_nm
+            result.message = (f"{result.message}; expected {expected_nm:g} nm "
+                              f"(off by {diff:+g} nm, tolerance ±{self.tolerance_nm:g} nm)")
+
+        result.pass_status = is_confident and within_tolerance
+        if not is_confident:
             result.reason = f"Low Confidence ({result.conf} < {self.min_confidence})"
+        elif not within_tolerance:
+            result.reason = (f"Thickness {result.label} nm is more than ±{self.tolerance_nm:g} nm "
+                             f"from the {expected_nm:g} nm target")
         return result

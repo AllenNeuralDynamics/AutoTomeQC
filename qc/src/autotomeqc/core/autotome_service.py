@@ -64,9 +64,14 @@ class AutoTomeService:
             self.log.error(f"Error during shutdown: {e}")
             return False
 
-    def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
+    def process(
+        self,
+        img_path: Optional[str] = None,
+        frame: Optional[np.ndarray] = None,
+        expected_nm: Optional[float] = None,
+    ) -> Future:
         if not self.running or self.pipeline is None:
             raise RuntimeError("Service is stopped")
 
         # The Service just hands it off to the Pipeline
-        return self.pipeline.process(img_path=img_path, frame=frame)
+        return self.pipeline.process(img_path=img_path, frame=frame, expected_nm=expected_nm)
