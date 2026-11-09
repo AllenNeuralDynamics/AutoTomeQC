@@ -35,7 +35,7 @@ qc:
     pass_labels: ["Consistent"]
     min_confidence: 0.5
   thickness:
-    weights_path: "weights/thickness_v1.pt"
+    weights_path: "weights/thickness_rf.joblib"   # colour random forest (sklearn)
     img_size: 224
     img_dim: [224, 224]
     pass_labels: ["ANY"]
