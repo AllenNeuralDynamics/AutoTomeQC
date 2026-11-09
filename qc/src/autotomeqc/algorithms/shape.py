@@ -4,6 +4,7 @@ import cv2
 import logging
 from pathlib import Path
 from autotomeqc.utils.io import save_debug_image
+from autotomeqc.core.models import QCCriteria
 
 class ShapeQC:
     def __init__(self, config, output_dir: Optional[Path] = None):
@@ -19,7 +20,7 @@ class ShapeQC:
         self.log = logging.getLogger(self.__class__.__name__)
         self.log.debug("ShapeQC initialized.")
 
-    def check(self, image, filename: Optional[str] = None):
+    def check(self, image, filename: Optional[str] = None) -> QCCriteria:
         """
         Analyzes the section shape (Diamond vs Hexagon).
         
@@ -30,7 +31,7 @@ class ShapeQC:
         try:
             # 1. Validation
             if image is None:
-                return {"pass_status": False, "error": "Input image is None", "label": "Error"}
+                return QCCriteria(pass_status=False, label="Error", message="Input image is None")
 
             # 2. Preprocessing (Grayscale + Threshold)
             if len(image.shape) == 3:
@@ -45,7 +46,7 @@ class ShapeQC:
 
             if not contours:
                 self.log.warning("ShapeQC: No contours found.")
-                return {"pass_status": False, "error": "No contours found", "label": "Empty"}
+                return QCCriteria(pass_status=False, label="Empty", message="No contours found")
 
             # Assume largest contour is the section
             cnt = max(contours, key=cv2.contourArea)
@@ -68,7 +69,7 @@ class ShapeQC:
 
             # 6. Pass/Fail Logic (Noise filter)
             if cv2.contourArea(cnt) < 100:
-                return {"pass_status": False, "error": "Contour too small", "label": "Noise"}
+                return QCCriteria(pass_status=False, label="Noise", message="Contour too small")
 
             self.log.debug(f"ShapeQC: Detected {shape_label} (v={num_vertices})")
 
@@ -96,13 +97,13 @@ class ShapeQC:
                     save_debug_image(vis_img, save_path)
                     self.log.debug(f"Saved shape debug image to {save_path}")
 
-            return {
-                "label": shape_label,
-                "metric": num_vertices,
-                "message": f"Detected {shape_label} (vertices={num_vertices})",
-                "pass_status": True,
-            }
+            return QCCriteria(
+                pass_status=True,
+                label=shape_label,
+                metric=num_vertices,
+                message=f"Detected {shape_label} (vertices={num_vertices})",
+            )
 
         except Exception as e:
             self.log.error(f"ShapeQC crashed: {e}")
-            return {"pass_status": False, "error": str(e), "label": "Error"}
+            return QCCriteria(pass_status=False, label="Error", message=str(e))
