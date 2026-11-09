@@ -3,6 +3,7 @@ import numpy as np
 from typing import List
 from ultralytics import YOLO
 from cv2 import resize, INTER_NEAREST
+from autotomeqc.core.models import QCCriteria
 
 
 class YOLOClassifier:
@@ -25,9 +26,10 @@ class YOLOClassifier:
         except Exception as e:
             self.log.warning(f"Could not load {model_path}. Error: {e}")
 
-    def predict(self, image: np.ndarray) -> dict:
+    def predict(self, image: np.ndarray) -> QCCriteria:
+        """Runs the model. Here pass_status=True only means 'the prediction ran'; check() decides QC."""
         if self.model is None or image is None:
-            return {"error": "Model not loaded", "label": "Unknown", "conf": 0.0}
+            return QCCriteria(pass_status=False, label="Unknown", conf=0.0, message="Model not loaded")
 
         try:
             if image.shape[0] != self.img_size or image.shape[1] != self.img_size:
@@ -36,39 +38,31 @@ class YOLOClassifier:
             top_idx = results[0].probs.top1  # Index of highest confidence
             conf = float(results[0].probs.top1conf)
             label = results[0].names[top_idx]
-            return {"label": label, "conf": round(conf, 4), "error": None}
+            return QCCriteria(pass_status=True, label=label, conf=round(conf, 4))
         except Exception as e:
             self.log.error(f"Prediction failed for {self.model_name}: {e}")
-            return {"error": str(e), "label": "Error", "conf": 0.0}
+            return QCCriteria(pass_status=False, label="Error", conf=0.0, message=str(e))
 
-    def check(self, image: np.ndarray) -> dict:
+    def check(self, image: np.ndarray) -> QCCriteria:
         """
         Standard QC Check: Predicts -> Validates against Config Criteria
         """
         result = self.predict(image)
-        if result.get("error"):
-            result["pass_status"] = False  # Changed key
+        if not result.pass_status:  # prediction failed: return the error result as is
             return result
 
         # Check Label
-        if "ANY" in self.pass_labels:
-            is_valid_label = True
-        else:
-            is_valid_label = result.get("label") in self.pass_labels
-            
+        is_valid_label = "ANY" in self.pass_labels or result.label in self.pass_labels
         # Check Confidence
-        is_confident = result.get("conf", 0) >= self.min_confidence
+        is_confident = (result.conf or 0.0) >= self.min_confidence
 
         # Final Decision using pass_status
-        if is_valid_label and is_confident:
-            result["pass_status"] = True
-        else:
-            result["pass_status"] = False
-            if not is_valid_label:
-                result["reason"] = f"Defect Detected: {result.get('label')}"
-                self.log.debug(result["reason"])
-            elif not is_confident:
-                result["reason"] = f"Low Confidence ({result.get('conf')} < {self.min_confidence})"
-                self.log.debug(result["reason"])
+        result.pass_status = is_valid_label and is_confident
+        if not is_valid_label:
+            result.reason = f"Defect Detected: {result.label}"
+            self.log.debug(result.reason)
+        elif not is_confident:
+            result.reason = f"Low Confidence ({result.conf} < {self.min_confidence})"
+            self.log.debug(result.reason)
 
         return result

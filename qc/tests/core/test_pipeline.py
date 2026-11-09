@@ -7,7 +7,7 @@ from concurrent.futures import TimeoutError, Future
 # Import the class and config
 from autotomeqc.core.pipeline import AutoTomePipeline
 from autotomeqc.config.schemas import AppConfig
-from autotomeqc.core.models import Detection
+from autotomeqc.core.models import Detection, QCCriteria
 
 # --- FIXTURES ---
 
@@ -79,6 +79,9 @@ def pipeline(mock_config):
 
         test_config_obj = AppConfig(**mock_config)
         pipe = AutoTomePipeline(config=test_config_obj)
+        # Every QC module returns a QCCriteria; tests override this per module where needed
+        for module in pipe.qc_modules.values():
+            module.check.return_value = QCCriteria(pass_status=True, label="OK")
         yield pipe
         pipe.stop()
 
@@ -115,11 +118,11 @@ def test_handle_pipeline_valid_input_runs_qc(pipeline, mock_external_deps):
     
     # Simulate the QC modules detecting a problem (Blank/No Signal)
     for mod in pipeline.qc_modules.values():
-        mod.check.return_value = {
-            "pass_status": False, 
-            "label": "FAIL", 
-            "message": "Low signal/Blank image detected"
-        }
+        mod.check.return_value = QCCriteria(
+            pass_status=False,
+            label="FAIL",
+            message="Low signal/Blank image detected",
+        )
 
     # Create a dummy detection from yolo segmentation
     detections = [Detection(
