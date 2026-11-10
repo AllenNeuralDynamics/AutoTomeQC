@@ -125,7 +125,6 @@ class ThicknessQC:
                 pass_status=True,
                 label=str(nm),
                 conf=round(float(proba.max()), 4),
-                metric=float(nm),   # thickness in nm; kept numeric because the web UI declares metric as a float
                 message=f"Predicted {nm} nm; P(within ±{self.tolerance_nm:g} nm) = {within:.2f}",
             )
         except Exception as e:
@@ -147,7 +146,7 @@ class ThicknessQC:
 
         within_tolerance = True   # no expected_nm given = nothing to compare, so this check does not apply
         if expected_nm is not None:
-            diff = float(result.metric) - expected_nm
+            diff = float(result.label) - expected_nm   # label is the predicted thickness in nm, as text
             within_tolerance = abs(diff) <= self.tolerance_nm
             result.message = (f"{result.message}; expected {expected_nm:g} nm "
                               f"(off by {diff:+g} nm, tolerance ±{self.tolerance_nm:g} nm)")
