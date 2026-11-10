@@ -37,6 +37,8 @@ def main():
             # WAY 1: Pass by File Path (Service loads the file)
             # ---------------------------------------------------------
             future = service.process(img_path=path)
+            # Optional: you can also pass expected_nm to check against the target thickness
+            # future = service.process(img_path=path, expected_nm=100)
 
             # ---------------------------------------------------------
             # WAY 2: Pass by Raw Frame (You load the file)
