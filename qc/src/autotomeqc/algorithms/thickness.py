@@ -11,6 +11,7 @@ import cv2
 import joblib
 import numpy as np
 
+from autotomeqc.algorithms.base import ClassifierQC
 from autotomeqc.core.models import QCCriteria
 
 
@@ -69,11 +70,11 @@ def extract(bgr: np.ndarray, norm_v: Optional[float] = None) -> dict:
     }
 
 
-class ThicknessQC:
+class ThicknessQC(ClassifierQC):
     """Predicts section thickness (nm) with the colour random forest.
 
-    Same interface as YOLOClassifier (`predict` and `check` both return a QCCriteria),
-    so the pipeline treats it like the other QC modules.
+    A ClassifierQC like YOLOClassifier (`predict` and `check` both return a QCCriteria),
+    so the pipeline treats it like the other QC modules. check() adds an optional expected_nm.
     The input is the segmented section crop (BGR, black background), used at
     its native size: the feature code (15 px erode) depends on the resolution the model was
     trained at (640x640), so the image is NOT resized.
@@ -142,19 +143,15 @@ class ThicknessQC:
         if not result.pass_status:  # prediction failed: return the error result as is
             return result
 
-        is_confident = (result.conf or 0.0) >= self.min_confidence
-
-        within_tolerance = True   # no expected_nm given = nothing to compare, so this check does not apply
-        if expected_nm is not None:
+        reason = self._failure_reason(result)   # confidence
+        if expected_nm is not None:   # no expected_nm = nothing to compare, so this check does not apply
             diff = float(result.label) - expected_nm   # label is the predicted thickness in nm, as text
-            within_tolerance = abs(diff) <= self.tolerance_nm
             result.message = (f"{result.message}; expected {expected_nm:g} nm "
                               f"(off by {diff:+g} nm, tolerance ±{self.tolerance_nm:g} nm)")
-
-        result.pass_status = is_confident and within_tolerance
-        if not is_confident:
-            result.reason = f"Low Confidence ({result.conf} < {self.min_confidence})"
-        elif not within_tolerance:
-            result.reason = (f"Thickness {result.label} nm is more than ±{self.tolerance_nm:g} nm "
-                             f"from the {expected_nm:g} nm target")
+            if reason is None and abs(diff) > self.tolerance_nm:
+                reason = (f"Thickness {result.label} nm is more than ±{self.tolerance_nm:g} nm "
+                          f"from the {expected_nm:g} nm target")
+        if reason:
+            result.pass_status = False
+            result.reason = reason
         return result
