@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 from pathlib import Path
@@ -47,6 +47,19 @@ class AlgorithmSettings(BaseModel):
     def make_absolute(cls, v):
         return resolve_path(v)
 
+class ThicknessSettings(BaseModel):
+    """Thickness QC (random forest). No pass_labels: the target comes from process(expected_nm=...)."""
+    weights_path: str
+    min_confidence: float
+    tolerance_nm: float = Field(
+        description="Allowed |predicted - expected| in nm. Only used when process() is given an expected_nm."
+    )
+
+    @field_validator('weights_path')
+    @classmethod
+    def make_absolute(cls, v):
+        return resolve_path(v)
+
 class ShapeSettings(BaseModel):
     """Specific settings for the ShapeQC module."""
     save_debug_img: bool = True
@@ -64,7 +77,7 @@ class QCSettings(BaseModel):
     section_coverage: AlgorithmSettings
     knife_mark: AlgorithmSettings
     thickness_consistency: AlgorithmSettings
-    thickness: AlgorithmSettings
+    thickness: ThicknessSettings
     shape: ShapeSettings
 
     @field_validator('output_dir')

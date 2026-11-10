@@ -198,7 +198,8 @@ class UploaderController:
         # 2. Process each item
         results = []
         for item in file_items:
-            # _process_item handles updating app_state.queued_files
+            # _process_item handles up
+            # dating app_state.queued_files
             file_id = await self._process_item(item)
             if file_id:
                 results.append(file_id)
@@ -251,7 +252,7 @@ class UploaderController:
         # Update State
         file_id = uuid.uuid4().hex
         app_state.queued_files[file_id] = QueuedFile(
-            name=file_name, path=dest_path, img_src=f"/temp_uploads/{file_name}",
+            name=file_name, path=dest_path, img_src=f"/temp_uploads/{file_name}?v={file_id}",
             status='PENDING', width=width, height=height
         )
         return file_id  

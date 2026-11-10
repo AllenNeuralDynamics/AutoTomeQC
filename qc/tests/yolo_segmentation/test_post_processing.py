@@ -21,7 +21,7 @@ def mock_config():
             "section_coverage": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
             "knife_mark": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
             "thickness_consistency": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
-            "thickness": {"weights_path": "d", "img_size": 1, "img_dim": [1,1], "pass_labels": [], "min_confidence": 0.5},
+            "thickness": {"weights_path": "d", "min_confidence": 0.5, "tolerance_nm": 20},
             "shape": {"save_debug_img": False}
         }
     }

@@ -55,8 +55,26 @@ future_b = service.process(frame=frame)
 result = future_b.result()  # Wait for the result
 print(f"QC Status: {result['qc_summary']}")
 
+# Optional: also check the thickness against a target (e.g. the instrument setting)
+future_c = service.process(img_path="data/img1.jpg", expected_nm=60)
+result = future_c.result()
+
+
 service.stop()
 ```
+
+**Thickness target (`expected_nm`):** without it, the thickness module only reports the predicted thickness
+(`label`, in nm, as text: use `float(label)` to compare it). With it, the thickness QC also fails when the prediction is farther from `expected_nm` than
+`tolerance_nm`. The tolerance is set in `src/autotomeqc/config/yolo-config.yaml`, not per call:
+
+```yaml
+thickness:
+  weights_path: "weights/thickness_rf.joblib"
+  min_confidence: 0.1
+  tolerance_nm: 20     # applies only when process(expected_nm=...) is given
+```
+
+The same option is available on the web API as `POST /api/v1/process?img_path=...&expected_nm=60`.
 
 **Note: Installation in External Projects:**
 If you want to use the `autotomeqc` engine in another project, you can install it directly from GitHub using `uv`:
@@ -126,7 +144,8 @@ And, a full JSON report is also saved to disk.
                 "thickness": {
                     "pass_status": true,
                     "label": "60",
-                    "conf": 0.5589
+                    "conf": 0.5589,
+                    "message": "Predicted 60 nm; P(within ±20 nm) = 0.74"
                 },
                 "shape": {
                     "pass_status": true,

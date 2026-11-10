@@ -32,7 +32,7 @@ def mock_config():
             "section_coverage": {"weights_path": "d", "img_size": 224, "pass_labels": ["full"], "min_confidence": 0.5},
             "knife_mark": {"weights_path": "d", "img_size": 640, "pass_labels": ["none"], "min_confidence": 0.5},
             "thickness_consistency": {"weights_path": "d", "img_size": 224, "pass_labels": ["consistent"], "min_confidence": 0.5},
-            "thickness": {"weights_path": "d", "img_size": 224, "pass_labels": ["ANY"], "min_confidence": 0.5},
+            "thickness": {"weights_path": "d", "min_confidence": 0.5, "tolerance_nm": 20},
             "shape": {"save_debug_img": True}
         }
     }

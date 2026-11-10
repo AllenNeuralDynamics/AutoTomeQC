@@ -56,6 +56,12 @@ class AlgorithmSettings(BaseModel):
     pass_labels: List[str]
     min_confidence: float = 0.5
 
+class ThicknessSettings(BaseModel):
+    """Thickness QC (random forest). Mirrors the backend's ThicknessSettings: no pass_labels / img_size."""
+    weights_path: Optional[str] = None
+    min_confidence: float
+    tolerance_nm: float   # allowed |predicted - expected| in nm; only used when expected_nm is given
+
 class ShapeSettings(BaseModel):
     """Specific settings for the ShapeQC module."""
     save_debug_img: bool = True
@@ -73,7 +79,7 @@ class QCSettings(BaseModel):
     section_coverage: AlgorithmSettings
     knife_mark: AlgorithmSettings
     thickness_consistency: AlgorithmSettings
-    thickness: AlgorithmSettings
+    thickness: ThicknessSettings
     shape: ShapeSettings
 
 class AppConfig(BaseSettings):

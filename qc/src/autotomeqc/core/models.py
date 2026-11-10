@@ -47,6 +47,7 @@ class PipelineTask(BaseModel):
     timestamp: str = "N/A"
     start_ts: float
     future: Future
+    expected_nm: Optional[float] = None    # target thickness; None = no thickness-target check
 
 class ProcessInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)

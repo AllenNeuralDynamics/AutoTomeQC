@@ -81,8 +81,17 @@ class AutoTomePipeline:
             self.worker_thread.join(timeout=5.0)
             self.worker_thread = None
 
-    def process(self, img_path: Optional[str] = None, frame: Optional[np.ndarray] = None) -> Future:
-        """Entry point for processing a single file."""
+    def process(
+        self,
+        img_path: Optional[str] = None,
+        frame: Optional[np.ndarray] = None,
+        expected_nm: Optional[float] = None,
+    ) -> Future:
+        """Entry point for processing a single file.
+
+        expected_nm: optional target thickness. When given, the thickness QC also fails if the predicted
+        thickness is farther than the config's thickness.tolerance_nm from it.
+        """
         filename = "Unknown"
         future_ticket: Future[Dict[str, Any]] = Future()
         ts = time.time()
@@ -94,6 +103,11 @@ class AutoTomePipeline:
                 valid_input = ProcessInput(img_path=img_path, frame=frame)
             except ValidationError:
                 msg = "Ambiguous input: Provide either 'img_path' OR 'frame', not both/neither."
+                self._handle_pipeline_failure(None, [], filename, timestamp_str, msg, future_ticket)
+                return future_ticket
+
+            if expected_nm is not None and expected_nm <= 0:
+                msg = f"Invalid thickness target: expected_nm={expected_nm} (must be > 0)"
                 self._handle_pipeline_failure(None, [], filename, timestamp_str, msg, future_ticket)
                 return future_ticket
 
@@ -122,7 +136,8 @@ class AutoTomePipeline:
                 filename=filename,
                 timestamp=timestamp_str,
                 start_ts=ts,
-                future=future_ticket
+                future=future_ticket,
+                expected_nm=expected_nm,
             )
             with self.queue_lock:
                 try:
@@ -189,6 +204,7 @@ class AutoTomePipeline:
                             frame, detections, filename, timestamp, start_ts,
                             validation_msg=error_reason,
                             future_ticket=future_ticket,
+                            expected_nm=task.expected_nm,
                         )
                 except Exception as e:
                     self.log.error(f"Worker Error on {filename}: {e}")
@@ -230,7 +246,8 @@ class AutoTomePipeline:
             timestamp: str,
             start_ts: float,
             future_ticket: Future,
-            validation_msg: str = "N/A"
+            validation_msg: str = "N/A",
+            expected_nm: Optional[float] = None,
         ) -> None:
         """
         Executes QC checks on all sections and compiles the final result using Pydantic models.
@@ -247,7 +264,7 @@ class AutoTomePipeline:
                 continue
 
             # Run the QC checks (Returns Dict[str, dict])
-            qc_results = self._run_all_checks(target_img)
+            qc_results = self._run_all_checks(target_img, expected_nm)
 
             # Determine if this specific section passed
             section_passed = all(obj.pass_status for obj in qc_results.values())
@@ -299,12 +316,15 @@ class AutoTomePipeline:
         if future_ticket and not future_ticket.done():
             future_ticket.set_result(output)
 
-    def _run_all_checks(self, qc_image: np.ndarray) -> Dict[str, QCCriteria]:
+    def _run_all_checks(self, qc_image: np.ndarray, expected_nm: Optional[float] = None) -> Dict[str, QCCriteria]:
         results = {}
         for name, module in self.qc_modules.items():
             try:
-                # Execution in the worker thread
-                results[name] = module.check(qc_image)  # every QC module returns a QCCriteria
+                # Execution in the worker thread; every QC module returns a QCCriteria
+                if name == "thickness":
+                    results[name] = module.check(qc_image, expected_nm=expected_nm)  # None = no target check
+                else:
+                    results[name] = module.check(qc_image)
             except Exception as e:
                 self.log.error(f"QC Check {name} failed: {e}")
                 results[name] = QCCriteria(pass_status=False, label="Error", message=str(e))
